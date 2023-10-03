@@ -74,13 +74,13 @@ export default function Teach() {
                                     >
                                 Teach association
                             </button>
-                            {
-                                toast ?
-                                <Toast/>
-                                :
-                                <></>
-                            }
                         </div>
+                        {
+                            toast ?
+                            <Toast status={1}/>
+                            :
+                            <></>
+                        }
                     </div>
                 </div>
             </div>

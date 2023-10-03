@@ -304,7 +304,7 @@ input:focus{
     }
 }
 
-.toast-wrapper{
+/* .toast-wrapper{
     animation: toast-animation 2s ease;
     text-overflow: clip;
     overflow: hidden;
@@ -319,4 +319,11 @@ input:focus{
     } 100% {
         width: 0px;
     }
+} */
+
+.toast-wrapper {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
