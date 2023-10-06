@@ -20,13 +20,41 @@ interface ModelCardData {
     isCached: boolean,
 }
 
+interface Model {
+    access_level: string;
+    author_email: string;
+    author_username: string;
+    description: string;
+    domain: string;
+    hash: string;
+    identifier: string;
+    is_indexed: boolean;
+    model_name: string;
+    num_params: number;
+    publish_date: string;
+    size: number;
+    size_in_memory: number;
+    thirdai_version: string;
+    trained_on: string;
+  }
+
 export default function ModelCards() {
     const { port } = usePort()
 
     const [modelCards, setModelCards] = useState<ModelCardData[]>([])
+    const [cachedModels, setCachedModels] = useState<Model[]>([])
 
     useEffect(() => {
-        // console.log(`port is ${port}`)
+        // Check the currently downloaded model
+        axios.post(`http://localhost:${port}/fetch_from_cache`)
+        .then(response => {
+          // Set the fetched model cards to state
+          console.log(response.data)
+          setCachedModels(response.data)
+        })
+        .catch(error => {
+          console.error("Error fetching model cards", error);
+        });
 
         // Make an axios request to fetch the model metadata
         axios.post(`http://localhost:${port}/fetch_model_cards`)
@@ -62,12 +90,14 @@ export default function ModelCards() {
                             <ModelCard 
                                 key={idx}
                                 name={card.modelName} 
+                                author = {card.authorUsername}
                                 description={card.modelDesc}
                                 status={card.hasIndex ? 1: 0} // Replace with the actual status from card if available
                                 publishDate={card.publishDate} 
                                 trainSet={card.dataset}
                                 diskSize={`${(card.modelSize / 1024).toFixed(2)} GB`} 
                                 ramSize={`${(card.modelSizeInMemory / 1024).toFixed(2)} GB`}
+                                cached={cachedModels.some(cachedModel => cachedModel.identifier === `${card.authorUsername}/${card.modelName}`)}
                         />))
                     }
                 </div>

@@ -219,6 +219,28 @@ async def save(path: SaveModel):
         print(f"Error saving file path: {error}")
         return { 'success': False, 'msg': error }
 
+class LoadModel(BaseModel):
+    filePath: str
+
+@app.post("/load")
+def load(path: LoadModel):
+    global backend_instance
+
+    path = path.filePath
+
+    print(f"backend: loading model from source: {path}")
+
+    try:
+        backend_instance.backend = ndb.NeuralDB.from_checkpoint(
+            checkpoint_path=path,
+        )
+    except Exception as error:
+        error_msg = str(error)
+        print(f"backend: {error_msg}")
+
+    return {'success': True, 'source_files': list(backend_instance.backend.sources().values())}
+
+
 @app.post("/fetch_model_cards")
 async def fetch_model_cards():
     global backend_instance
@@ -238,8 +260,8 @@ async def fetch_model_cards():
             "publishDate": bazaar_entry.publish_date,
             "dataset": bazaar_entry.trained_on,
             # modelSize and modelSizeInMemory are expected to be in MB, but they are in B
-            "modelSize": bazaar_entry.size // 1000000,
-            "modelSizeInMemory": bazaar_entry.size_in_memory // 1000000,
+            "modelSize": bazaar_entry.size // (1024 * 1024),
+            "modelSizeInMemory": bazaar_entry.size_in_memory // (1024 * 1024),
             "isCached": True
             if backend_instance.bazaar._model_dir_in_cache(
                 bazaar_entry.identifier, bazaar_entry, only_check_dir_exists=True
@@ -256,6 +278,65 @@ async def fetch_model_cards():
         card["domain"] = "Public"
 
     return model_cards
+
+@app.websocket("/fetch_base_model")
+async def fetch_base_model(websocket: WebSocket):
+    await websocket.accept()
+
+    global backend_instance
+
+    async for message in websocket.iter_text():
+
+        data = json.loads(message)
+        
+        domain = data['domain']
+        author_username = data['author_username']
+        model_name = data['model_name']
+
+        async def async_on_progress(fraction):
+            progress = int(100 * fraction)
+            message = "Downloading model in progress"
+            await websocket.send_json({"progress": progress, "message": message})
+
+        def on_progress(fraction):
+            loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
+
+        try:
+            loop = asyncio.get_running_loop()
+            checkpoint_dir = await loop.run_in_executor(None, lambda: backend_instance.bazaar.get_model_dir(
+                model_name, 
+                author_username, 
+                on_progress=on_progress))
+            
+            # TODO: update isCached status of this model card in caches
+            await websocket.send_json({"progress": 100, "message": f'Model downloaded at {checkpoint_dir}'})
+        except Exception as e:
+            await websocket.send_json({"error": True, "message": str(e)})
+
+class UseInfoModel(BaseModel):
+    domain: str
+    author_username: str
+    model_name: str
+
+@app.post("/use_model")
+def use_model(useInfo: UseInfoModel):
+    global backend_instance
+
+    domain = useInfo.domain
+    author_username = useInfo.author_username
+    model_name = useInfo.model_name
+
+    backend_instance.backend = ndb.NeuralDB.from_checkpoint(
+        checkpoint_path=backend_instance.bazaar._cached_model_dir_path(
+            f"{author_username}/{model_name}"
+        )
+    )
+    return {"success": True, 
+            "msg": f'Backend use model {domain}/{author_username}/{model_name}'}
+
+@app.post("/fetch_from_cache")
+def fetch_from_cache():
+    return backend_instance.bazaar.fetch_from_cache()
 
 class SettingInput(BaseModel):
     model_preference: str

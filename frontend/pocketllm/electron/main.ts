@@ -57,6 +57,19 @@ function createWindow() {
     })
   })
 
+  // Set up a listener for the 'open-folder-dialog' message
+  ipcMain.on('open-folder-dialog', (event) => {
+    dialog.showOpenDialog({
+      properties: ['openDirectory']
+    }).then(result => {
+      if (!result.canceled && result.filePaths.length > 0) {
+        event.sender.send('selected-folder', result.filePaths[0]);
+      }
+    }).catch(err => {
+      console.log(err);
+    });
+  });
+
   ipcMain.handle('show-save-dialog', async (_) => {
     const result = await dialog.showSaveDialog(win!, {
       title: 'Save File',
