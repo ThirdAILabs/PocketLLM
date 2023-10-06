@@ -42,7 +42,7 @@ Follow the steps below to set up and run the project.
 4. **Copy the Backend to Frontend**:
    Copy the `main` folder from `dist` to the `frontend` directory, ensuring it is at the same level as `package.json`.
 
-   > **Note**: If you need to work with the backend alone, running `python main.py` or `./dist/main` is sufficient. It's a good debugging practice to not involve the frontend if you're certain the problem lies in the backend.
+   > **Note**: If you need to work with the backend alone, running `python main.py` or `./dist/main` is sufficient. It's a good debugging practice to use `curl` and `websocat` without involving the frontend if you're certain the problem lies in the backend.
 
 ## Frontend Setup
 
