@@ -30,6 +30,9 @@ a.datas += Tree('/Users/yecao/nltk_data/corpora/stopwords', prefix='nltk_data/co
 # Gmail oAuth authentication
 a.datas += [('client_secrets.json', 'client_secrets.json', 'DATA')]
 
+# Add trafilatura and trafilatura/settings.cfg
+a.datas += Tree('/opt/homebrew/lib/python3.11/site-packages/trafilatura', prefix='trafilatura')
+
 pyz = PYZ(a.pure)
 
 exe = EXE(
