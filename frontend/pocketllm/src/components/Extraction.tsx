@@ -33,11 +33,17 @@ export default function Extraction({ searchResults }: ExtractionProps) {
     });
 
     setTimeout(() => {
+      const newCollectStates = [...collectStates]
       newCollectStates[index] = " text-dark-emphasis"
       setCollectStates(newCollectStates)
     }, 1500)
   }
 
+
+  function openLinkExternally(e: React.MouseEvent<HTMLAnchorElement>) {
+      e.preventDefault();
+      window.electron.openExternalUrl(e.currentTarget.href);
+  }
 
   return (
     <div>
@@ -49,7 +55,26 @@ export default function Extraction({ searchResults }: ExtractionProps) {
           <div className="short-vertical-line ms-2 me-4"></div>
           <div>
             <div>{result.result_text}</div>
-            <div className='font-x-sm mt-2 text-dark-emphasis'>Source: {result.result_source} (Pages: {result.page_low} - {result.page_high})</div>
+            <div className='font-x-sm mt-2 text-dark-emphasis'>
+              Source: {result.result_source.startsWith('http') ? 
+                          <a 
+                            href={result.result_source} 
+                            onClick={openLinkExternally} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                                {result.result_source}
+                          </a>
+                          :
+                          result.result_source
+                      }
+              
+              {
+                result.page_low && result.page_high ?
+                (` Pages: ${result.page_low} - ${result.page_high}`) :
+                <></>
+              }
+            </div>
           </div>
         </div>
       ))}

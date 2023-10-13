@@ -69,7 +69,7 @@ export default function Teach() {
                         </div>
 
                         <div className='d-flex justify-content-center mb-3'>
-                            <button className='btn bg-secondary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
+                            <button className='btn bg-primary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
                                 onClick={handleToast}
                                     >
                                 Teach association

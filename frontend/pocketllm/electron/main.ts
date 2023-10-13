@@ -2,8 +2,8 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import path from 'node:path'
 import portfinder from 'portfinder'
 
-import { spawn } from 'child_process'
-let serverProcess
+import { spawn, ChildProcess } from 'child_process'
+let serverProcess: ChildProcess | null = null
 
 // The built directory structure
 //
@@ -25,6 +25,8 @@ const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    width: 1200, // default width
+    height: 900, // default height
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
@@ -70,6 +72,9 @@ function createWindow() {
     });
   });
 
+  // Remove the existing 'show-save-dialog' handler if any
+  ipcMain.removeHandler('show-save-dialog');
+
   ipcMain.handle('show-save-dialog', async (_) => {
     const result = await dialog.showSaveDialog(win!, {
       title: 'Save File',
@@ -87,7 +92,26 @@ function createWindow() {
       return null
     }
   })
+
+  ipcMain.on('open-external-url', (_, url) => {
+    const { shell } = require('electron');
+    shell.openExternal(url);
+  })
 }
+
+app.on('before-quit', () => {
+  if (serverProcess) {
+    serverProcess.kill()
+    console.log('Python server process killed before app quit')
+  }
+})
+
+app.on('will-quit', () => {
+  if (serverProcess && !serverProcess.killed) {
+    serverProcess.kill()
+    console.log('Python server process killed on app quit')
+  }
+})
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
@@ -96,6 +120,12 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
     win = null
+
+    // If on non-macOS, kill the Python process if it's running
+    if (serverProcess && !serverProcess.killed) {
+      serverProcess.kill()
+      console.log('Python server process killed on window-all-closed')
+    }
   }
 })
 
@@ -129,11 +159,11 @@ app.whenReady().then(async () => {
   console.log('spawn success')
 
   // Handle server process outputs or errors
-  serverProcess.stdout.on('data', (data) => {
+  serverProcess.stdout!.on('data', (data) => {
     console.log(`Server Output: ${data}`)
   })
   
-  serverProcess.stderr.on('data', (data) => {
+  serverProcess.stderr!.on('data', (data) => {
     console.error(`Server Error: ${data}`)
   })
 

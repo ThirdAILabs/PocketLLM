@@ -36,6 +36,9 @@ contextBridge.exposeInMainWorld(
     invoke: (channel: string, data?: any) => {
       return ipcRenderer.invoke(channel, data)
     },
+    openExternalUrl: (url: string) => {
+      ipcRenderer.send('open-external-url', url);
+    }
   }
 )
 

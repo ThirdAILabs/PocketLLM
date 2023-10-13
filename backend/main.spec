@@ -27,6 +27,9 @@ a.datas += Tree('/opt/homebrew/lib/python3.11/site-packages/langchain', prefix='
 # Replace /Users/yecao/nltk_data/corpora/stopwords with your stopwords path
 a.datas += Tree('/Users/yecao/nltk_data/corpora/stopwords', prefix='nltk_data/corpora/stopwords')
 
+# Gmail oAuth authentication
+a.datas += [('client_secrets.json', 'client_secrets.json', 'DATA')]
+
 pyz = PYZ(a.pure)
 
 exe = EXE(

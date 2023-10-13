@@ -2,20 +2,23 @@ import { useState } from 'react'
 import { usePort } from '../PortContext'
 import axios from 'axios'
 import ProgressCircular from './ProgressCircular'
+import { ModelDisplayInfo } from '../App'
+import { useNavigate } from 'react-router-dom'
 
 export type ModelCardProps = {
-    name: String,
-    author: String,
-    description: String,
+    name: string,
+    author: string,
+    description: string,
     status: Number,
-    publishDate: String,
-    trainSet: String,
-    diskSize: String,
-    ramSize: String,
-    cached: boolean
+    publishDate: string,
+    trainSet: string,
+    diskSize: string,
+    ramSize: string,
+    cached: boolean,
+    setCurrentModel: React.Dispatch<React.SetStateAction<ModelDisplayInfo | null>>
 }
 
-export default function ModelCard({name, author, description, status, publishDate, trainSet, diskSize, ramSize, cached}: ModelCardProps) {
+export default function ModelCard({name, author, description, status, publishDate, trainSet, diskSize, ramSize, cached, setCurrentModel}: ModelCardProps) {
     const { port } = usePort()
 
     // State variable to manage WebSocket connection
@@ -24,8 +27,9 @@ export default function ModelCard({name, author, description, status, publishDat
     const [startProgress, setStartProgress] = useState(false)
     const [isDownloaded, setIsDownloaded] = useState(false)
 
+    const navigate = useNavigate()
 
-    const useModel = async (domain: String, author_name: String, model_name: String) => {
+    const useModel = async (domain: string, author_name: string, model_name: string) => {
         try {
             const response = await axios.post(`http://localhost:${port}/use_model`, {
                 domain: domain,
@@ -38,6 +42,12 @@ export default function ModelCard({name, author, description, status, publishDat
     
             if (data.success) {
                 console.log(data.msg);
+                setCurrentModel({
+                    author_name: author_name,
+                    model_name: model_name
+                });
+                // Redirect to /
+                navigate('/')
             } else {
                 console.error("Failed to set the model in the backend.")
             }
@@ -47,7 +57,7 @@ export default function ModelCard({name, author, description, status, publishDat
         }
     }
 
-    const downloadModel = (domain: String, author_name: String, model_name: String) => {
+    const downloadModel = (domain: string, author_name: string, model_name: string) => {
         try {
             // Initialize the WebSocket connection when the button is clicked
             const ws = new WebSocket(`ws://localhost:${port}/fetch_base_model`);
@@ -102,9 +112,9 @@ export default function ModelCard({name, author, description, status, publishDat
     }
 
     return (
-    <div  className='model-card p-4 rounded-3 mb-3 d-flex flex-column justify-content-between'>
+    <div  className='model-card p-4 rounded-3 mb-3 me-2 d-flex flex-column justify-content-between'>
         <div>
-            <div className='fw-bold'>{"thirdai / " + name}</div>
+            <div className='fw-bold'>{`${author} / ${name}`}</div>
             <div className='font-sm text-dark mb-2'>{description}</div>
         </div>
 
@@ -125,7 +135,10 @@ export default function ModelCard({name, author, description, status, publishDat
                 </div>
                 {
                     isDownloaded || cached ?
-                    <button onClick={() => useModel('Public', author, name)} className='btn btn-general px-3 fw-bold bg-primary bg-opacity-10 text-primary rounded-4'>USE</button>
+                    <div>
+                        <button onClick={() => useModel('Public', author, name)} className='btn btn-general px-3 fw-bold bg-primary bg-opacity-10 text-primary rounded-4 mb-2'>USE</button>
+                        <button className='btn btn-general px-3 fw-bold bg-secondary bg-opacity-10 text-warning rounded-4'>Uninstall</button>
+                    </div>
                     :
                     <button onClick={() => downloadModel('Public', author, name)} className='btn btn-general px-3 fw-bold text-primary'>
                         {

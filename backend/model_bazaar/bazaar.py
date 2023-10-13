@@ -261,6 +261,34 @@ class Bazaar:
 
         return bazaar_entries
 
+    def fetch_meta_cache_model(self):
+        bazaar_entries = []
+        # Walk through the directories
+        for dirpath, dirnames, filenames in os.walk(self._cache_dir):
+            depth = relative_path_depth(
+                child_path=Path(dirpath), parent_path=Path(self._cache_dir)
+            )
+
+            if depth == 2:
+                # We're two levels in, which is the level of all checkpoint dirs
+                split_path = dirpath.split(os.path.sep)
+                model_name = split_path[-1]
+                author_username = split_path[-2]
+
+                identifier = f"{author_username}/{model_name}"
+                with open(self._cached_model_metadata_path(identifier), "r") as f:
+                    bazaar_entry = BazaarEntry.from_dict(json.load(f))
+
+                bazaar_entries.append(bazaar_entry)
+
+                dirnames.clear()  # Don't descend any further
+
+            elif depth > 2:
+                # We're too deep, don't process this directory
+                dirnames.clear()
+
+        return bazaar_entries
+
     def list_model_names(self):
         return [entry.identifier for entry in self.fetch()]
 

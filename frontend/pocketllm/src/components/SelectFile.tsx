@@ -2,20 +2,28 @@ import { useEffect, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { usePort } from '../PortContext'
 import ProgressBar from './ProgressBar'
+import { SelectedFile } from '../App'
 
-interface SelectedFile {
-    fileName: string;
-    filePath: string;
-    uuid: string;
+interface SelectFileProps {
+    selectedFiles: SelectedFile[];
+    setSelectedFiles: React.Dispatch<React.SetStateAction<SelectedFile[]>>;
+    indexFiles: SelectedFile[];
+    setIndexFiles: React.Dispatch<React.SetStateAction<SelectedFile[]>>;
+    progress: number;
+    setProgress: React.Dispatch<React.SetStateAction<number>>;
+    startProgress: boolean;
+    setStartProgress: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-export default function SelectFile() {
-    const { port } = usePort()
+export default function SelectFile(props: SelectFileProps) {
+    const {
+        selectedFiles, setSelectedFiles, 
+        indexFiles, setIndexFiles, 
+        progress, setProgress, 
+        startProgress, setStartProgress 
+    } = props;
 
-    const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
-    const [indexFiles, setIndexFiles] = useState<SelectedFile[]>([]);
-    const [progress, setProgress] = useState(0);
-    const [startProgress, setStartProgress] = useState(false);
+    const { port } = usePort()
 
     // State variable to manage WebSocket connection
     const [_, setWebSocket] = useState<null | WebSocket>(null);

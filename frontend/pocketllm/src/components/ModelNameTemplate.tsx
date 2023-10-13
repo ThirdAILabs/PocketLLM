@@ -1,13 +1,17 @@
-type modelNameProps = {
-    model: String;
-    modelType: String;
+import { ModelDisplayInfo } from '../App'
+
+type ModelNameProps = {
+  modelInfo: ModelDisplayInfo | null;
 }
 
-export default function ModelName({model, modelType}: modelNameProps) {
+export default function ModelName({ modelInfo }: ModelNameProps) {
+
+  if (!modelInfo) return <></>; // render <></> if modelInfo is null
+
   return (
     <div className='mx-2'>
-        <div className='model-name'>{model}</div>
-        <div className='model-type'>{modelType}</div>
+        <div className='model-name'>{modelInfo.model_name}</div>
+        <div className='model-type'>{modelInfo.author_name}</div>
     </div>
   )
 }

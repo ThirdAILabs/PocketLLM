@@ -39,7 +39,16 @@ Follow the steps below to set up and run the project.
    </pre>
    This will create a folder named `dist/main`.
 
-4. **Copy the Backend to Frontend**:
+4. **Test ndb.URL (This is a bug caused by trafilatura and pyinstaller I am looking for solution rn)**:
+   1. In command line run `./dist/main/main`
+   2. Open another command line window run: `websocat ws://localhost:8000/url_train` followed by `{"url": "https://en.wikipedia.org/wiki/Machine_learning"}`
+   3. If neuraldb URL training happens without error, congrats, skip the rest and continue to step 5.
+   4. Otherwise, edit `site-packages/trafilatura/core.py` in the following way:
+   5. Ctrl+F(`config.getint`), you should see 7 occurences of `config.getint('DEFAULT', 'MIN_OUTPUT_SIZE')`
+   6. Modify all 7 `config.getint('DEFAULT', 'MIN_OUTPUT_SIZE')` to `config.getint('DEFAULT', 'MIN_OUTPUT_SIZE', fallback = 250)`
+   7. My thought on the cause of the bug: `MIN_OUTPUT_SIZE` is a global int constant with value `250`. It's found in dev time but not able to be found after Pyinstaller compilation.
+
+5. **Copy the Backend to Frontend**:
    Copy the `main` folder from `dist` to the `frontend` directory, ensuring it is at the same level as `package.json`.
 
    > **Note**: If you need to work with the backend alone, running `python main.py` or `./dist/main` is sufficient. It's a good debugging practice to use `curl` and `websocat` without involving the frontend if you're certain the problem lies in the backend.

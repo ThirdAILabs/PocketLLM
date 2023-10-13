@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import Teach from "./Teach"
+import LoadGmail from './GmailLoad'
+import LoadUrl from './LoadUrl'
 import axios from "axios"
 import { usePort } from '../PortContext'
 
@@ -61,13 +63,11 @@ export default function FunctionBar() {
             <i className="bi bi-cloud-plus"></i>
             <div className='font-sm'>Load</div>
         </button>
+        <LoadUrl/>
+        <LoadGmail/>
         <button className='btn btn-general mx-1' onClick={handleSave}>
             <i className="bi bi-file-earmark-arrow-down"></i>
             <div className='font-sm'>Save</div>
-        </button>
-        <button className='btn btn-general mx-1'>
-            <i className="bi bi-box-arrow-right"></i>
-            <div className='font-sm'>Exit</div>
         </button>
     </div>
   )

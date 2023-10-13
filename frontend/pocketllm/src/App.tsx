@@ -24,10 +24,32 @@ export interface SearchResult {
   result_text: string
 }
 
+export interface SelectedFile {
+  fileName: string;
+  filePath: string;
+  uuid: string;
+}
+
+export interface ModelDisplayInfo {
+  author_name: string;
+  model_name: string;
+}
+
 function App() {
 
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]); // Define a suitable type for search results
-  const [summaryResult, setSummaryResult] = useState<string>('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]); // Used inside <SearchBar/> and <Extraction/>
+  const [summaryResult, setSummaryResult] = useState<string>(''); // Used inside <SearchBar/> and <Summary/>
+
+  // Used inside <SelectFile/> for state persistence
+  const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
+  const [indexFiles, setIndexFiles] = useState<SelectedFile[]>([]);
+  const [progress, setProgress] = useState(0);
+  const [startProgress, setStartProgress] = useState(false);
+
+  // Used inside <ModelCards/> 
+  const [currentModel, setCurrentModel] = useState<ModelDisplayInfo | null>(null);
+
+  // Intro visual effect
   const [landing, setLanding] = useState(<LandingAnimation/>);
 
   useEffect(()=>{
@@ -45,27 +67,39 @@ function App() {
         <Router>
           <Routes>
 
-              <Route path="/ModelCards" element={<ModelCards />} />
+              <Route path="/ModelCards" element={<ModelCards setCurrentModel={setCurrentModel} />} />
               
               <Route path="/" element = {
                 <>
                   <Link to="/ModelCards">
                     <button className="btn font-sm mb-3 btn-general text-white bg-secondary bg-opacity-75">View Model Cards</button>
-                    </Link>
+                  </Link>
 
                   <div className='d-flex mb-3 align-items-center'>
-                    <SelectFile/>
-                    <ModelName model="General-QnA" modelType="Local Model"/>
+                    <SelectFile
+                          selectedFiles={selectedFiles}
+                          setSelectedFiles={setSelectedFiles}
+                          indexFiles={indexFiles}
+                          setIndexFiles={setIndexFiles}
+                          progress={progress}
+                          setProgress={setProgress}
+                          startProgress={startProgress}
+                          setStartProgress={setStartProgress}
+                    />
+                    <ModelName modelInfo = {currentModel}/>
                   </div>
+
                   <FunctionBar/>
+
                   <SearchBar onSearch = {setSearchResults} onSummary = {setSummaryResult}/>
+
                   <div style={{minWidth: "60vw", maxWidth: "70vw"}}>
                     <Summary summary = {summaryResult}/>
                     <Extraction searchResults={searchResults}/>
-                  </div>                
+                  </div>
                 </>
 
-              }> 
+              }>
 
               </Route>
 
