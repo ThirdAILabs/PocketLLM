@@ -1,7 +1,7 @@
 {
   "name": "pocketllm",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
@@ -14,20 +14,28 @@
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@mui/material": "^5.14.12",
+    "@stripe/react-stripe-js": "^2.3.1",
+    "@stripe/stripe-js": "^2.1.10",
+    "@supabase/supabase-js": "^2.38.2",
     "@types/react-datepicker": "^4.15.1",
     "@types/react-router-dom": "^5.3.3",
     "axios": "^1.5.0",
     "bootstrap": "^5.3.2",
     "bootstrap-icons": "^1.11.1",
+    "electron-updater": "^6.1.4",
+    "express": "^4.18.2",
+    "moment": "^2.29.4",
     "portfinder": "^1.0.32",
     "react": "^18.2.0",
     "react-datepicker": "^4.18.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.16.0",
+    "split-pane-react": "^0.1.3",
     "uuid": "^9.0.1",
     "vite-tsconfig-paths": "^4.2.1"
   },
   "devDependencies": {
+    "@types/express": "^4.17.20",
     "@types/react": "^18.2.21",
     "@types/react-dom": "^18.2.7",
     "@types/uuid": "^9.0.4",
@@ -58,6 +66,13 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Mr-Ye-Cao",
+        "repo": "pocketllm-release"
+      }
     ]
   },
   "main": "dist-electron/main.js"

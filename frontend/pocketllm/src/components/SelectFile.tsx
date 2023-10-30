@@ -2,31 +2,40 @@ import { useEffect, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { usePort } from '../PortContext'
 import ProgressBar from './ProgressBar'
-import { SelectedFile } from '../App'
+import { WorkSpaceFile } from '../App'
+import useTelemetry from '../hooks/useTelemetry'
+import { WorkSpaceMetadata } from '../App'
+import { ModelDisplayInfo } from '../App'
 
 interface SelectFileProps {
-    selectedFiles: SelectedFile[];
-    setSelectedFiles: React.Dispatch<React.SetStateAction<SelectedFile[]>>;
-    indexFiles: SelectedFile[];
-    setIndexFiles: React.Dispatch<React.SetStateAction<SelectedFile[]>>;
+    selectedFiles: WorkSpaceFile[];
+    setSelectedFiles: React.Dispatch<React.SetStateAction<WorkSpaceFile[]>>;
     progress: number;
     setProgress: React.Dispatch<React.SetStateAction<number>>;
     startProgress: boolean;
     setStartProgress: React.Dispatch<React.SetStateAction<boolean>>;
+    curWorkSpaceID: string|null,
+    setCurWorkSpaceID: React.Dispatch<React.SetStateAction<string|null>>,
+    setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
+    currentModel: ModelDisplayInfo | null,
 }
 
 export default function SelectFile(props: SelectFileProps) {
     const {
         selectedFiles, setSelectedFiles, 
-        indexFiles, setIndexFiles, 
         progress, setProgress, 
-        startProgress, setStartProgress 
+        startProgress, setStartProgress,
+        curWorkSpaceID, setCurWorkSpaceID, setWorkSpaceMetadata,
+        currentModel
     } = props;
 
     const { port } = usePort()
 
     // State variable to manage WebSocket connection
     const [_, setWebSocket] = useState<null | WebSocket>(null);
+
+    // For telemetry
+    const recordEvent = useTelemetry()
 
     useEffect(() => {
         const handler = ({filePath, fileName}: {filePath: string, fileName: string}) => {
@@ -42,6 +51,7 @@ export default function SelectFile(props: SelectFileProps) {
                 {
                     fileName: fileName,
                     filePath: filePath,
+                    isSaved: false,
                     uuid: uuidv4(), // Generate a new UUID for each file
                 },
             ])
@@ -66,21 +76,56 @@ export default function SelectFile(props: SelectFileProps) {
 
                 const filePaths = selectedFiles.map(file => file.filePath)
 
-                // Send a message to the server to start the computation via WebSocket
-                ws.send(JSON.stringify({ startComputation: true, filePaths }))
+                ws.send(JSON.stringify({ filePaths }))
             };
     
             ws.onmessage = (message) => {
                 const data = JSON.parse(message.data);
                 setProgress(data.progress);
-                console.log(data.progress, data.message);
+                console.log(data.progress, data.message)
 
                 if (data.progress === 100) {
+                    if (curWorkSpaceID === null) {
+                        // Create a new workspace
+                        const newWorkSpaceID = uuidv4()   // Generate a new unique workspace ID
+                        setCurWorkSpaceID(newWorkSpaceID) // Set the current workspace ID
+
+                        const newWorkSpaceMetadata = {
+                            workspaceID: newWorkSpaceID,
+                            workspaceName: selectedFiles[0].fileName,
+                            model_info: {
+                                author_name: currentModel ? currentModel.author_name : 'thirdai',
+                                model_name: currentModel ? currentModel.model_name : 'Default model',
+                            },
+                            documents: selectedFiles,
+                            last_modified: new Date().toISOString(),
+                            isWorkSpaceSaved: false,
+                        };
+
+                        setWorkSpaceMetadata(prevMetaData => [...prevMetaData, newWorkSpaceMetadata]);
+                    } else {
+                        // Index new file into existing workspace
+                        setWorkSpaceMetadata(prevMetaData => prevMetaData.map(workspace => {
+                            if (workspace.workspaceID === curWorkSpaceID) {
+                                // Combine existing documents with newly selected files
+                                const updatedDocuments = [...workspace.documents, ...selectedFiles]
+
+                                // Update the isWorkSpaceSaved property of the matching workspace
+                                return { ...workspace, 
+                                        documents: updatedDocuments, 
+                                        isWorkSpaceSaved: false 
+                                    };
+                            } else {
+                                // Return other workspaces without modification
+                                return workspace;
+                            }
+                        }))
+                    }
+
                     setTimeout(() => {
                         setStartProgress(false)
                         setProgress(0)
 
-                        setIndexFiles([...indexFiles, ...selectedFiles])
                         setSelectedFiles([])
                     }, 500);
                 }
@@ -112,12 +157,25 @@ export default function SelectFile(props: SelectFileProps) {
 
   return (
     <>
-        <button type="button" className="btn bg-transparent btn-general" id="select-file-btn" data-bs-toggle="modal" data-bs-target="#exampleModal">
-            <i className="bi bi-plus-circle"></i>
+  
+        <button onClick={(_) => 
+                    recordEvent({
+                        UserAction: 'Click',
+                        UIComponent: 'add-file button',
+                        UI: 'SelectFile',
+                    })}
+                type="button" 
+                className="btn btn-general mx-1 pt-0 h-100" 
+                id="select-file-btn" 
+                data-bs-toggle="modal" 
+                data-bs-target="#exampleModal">
+            <i className="bi bi-file-earmark fs-6"></i>
+            <div className='font-sm'>File</div>
         </button>
+ 
 
         <div className="modal fade" id="exampleModal" tabIndex={-1} aria-labelledby="exampleModalLabel" aria-hidden="true">
-            <div className="modal-dialog">
+            <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content">
                     <div className="modal-header border-0 ">
                         <button type="button" className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -157,20 +215,6 @@ export default function SelectFile(props: SelectFileProps) {
                             </ul>
                         </div>
                         <hr className='my-2'/>
-                        <div className='mb-3'>
-                            <div className='d-flex font-x-sm'>Indexed files</div>
-
-                            {
-                                indexFiles.map((file) => (
-                                    <li key={file.uuid} className="file-item">
-                                    {file.fileName.length > 20 ? file.fileName.slice(0, 20) + '...' : file.fileName}
-                                        <button className='btn ms-2' onClick={() => removeFile(file.uuid)}>
-                                            <i className="bi bi-x-circle-fill text-secondary"></i>
-                                        </button>
-                                    </li>
-                                ))
-                            }
-                        </div>
                     </div>
                 </div>
             </div>

@@ -71,8 +71,13 @@ Follow the steps below to set up and run the project.
    </pre>
 
 ## Distribution Setup
+1. **Hide Frontend Debug Console**:
+   Go to `/frontend/pocketllm/electron/main.ts`, uncomment following line. This disables user from openning debug console using `cmd+option+i`.
+   <pre>
+   <code>Menu.setApplicationMenu(Menu.buildFromTemplate([]));</code>
+   </pre>
 
-1. **Sign Python Binaries**:
+2. **Sign Python Binaries**:
    Before notarizing, it's essential to ensure all executable Python binaries are signed. Typically, the Python binaries are inside the `main` folder, which was compiled using PyInstaller.
    
    Navigate to where the Python binaries are:
@@ -90,7 +95,7 @@ Follow the steps below to set up and run the project.
    <code>./sign_all.sh</code>
    </pre>
 
-2. **Package the Frontend**:
+3. **Package the Frontend**:
    <pre>
    <code>npm run build</code>
    </pre>

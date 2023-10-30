@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import ModelCard from "./ModelCard"
+import ModelCard from "../components/ModelCard"
 import axios from 'axios'
 import { Link } from 'react-router-dom';
-import ModelChip from './ModelChip';
+import ModelChip from '../components/ModelChip';
 import { usePort } from '../PortContext'
 import { ModelDisplayInfo } from '../App'
 
@@ -41,9 +41,10 @@ interface Model {
 
 interface ModelCardsProps {
   setCurrentModel: React.Dispatch<React.SetStateAction<ModelDisplayInfo | null>>;
+  setCurWorkSpaceID: (modelID: string | null) => void
 }
 
-export default function ModelCards({ setCurrentModel }: ModelCardsProps) {
+export default function ModelCards({ setCurrentModel, setCurWorkSpaceID }: ModelCardsProps) {
     const { port } = usePort()
     const [selectedChip, setSelectedChip] = useState<number | null>(null)
     const [modelCards, setModelCards] = useState<ModelCardData[]>([])
@@ -78,7 +79,7 @@ export default function ModelCards({ setCurrentModel }: ModelCardsProps) {
     return (
         <div className='full-page-setup row'>
             <div className='col-3 bg-secondary bg-opacity-10 p-3 text-start'>
-                <h5 className='fw-bold my-3'>Dataset</h5>
+                <h5 className='fw-bold my-3 pt-5 '>Dataset</h5>
                 <div className='d-flex flex-wrap'>
                     {modelCards.map((card, idx) => (
                         <div key={idx} 
@@ -88,11 +89,34 @@ export default function ModelCards({ setCurrentModel }: ModelCardsProps) {
                     ))}
                 </div>
             </div>
-            <div className='col-9 d-flex flex-column align-items-center p-4'>
-                <Link to="/"> <button className="btn font-sm mb-3 btn-general text-white bg-secondary bg-opacity-75">Back to main</button> </Link>
+            <div className='col-9 d-flex flex-column align-items-center p-4 mt-5'>
+                <Link to="/" className='d-flex w-100 align-items-start'> 
+                  <button className="btn font-sm mb-3 btn-general text-light-emphasis d-flex">
+                    <i className="bi bi-chevron-double-left me-2"></i>
+                    Back to main
+                  </button>
+                </Link>
                 <h2 className='fw-bold w-100 text-start'>Model Bazaar</h2>
                 <hr className='w-100 text-body-tertiary m-0 mb-4'/>
                 <div className='w-100 d-flex flex-wrap' style={{height: "70vh", overflowY: "scroll"}}>
+
+
+                  <ModelCard 
+                      name="Default model" 
+                      author="thirdai"
+                      description="Lighweight, fast and sufficient for most use cases"
+                      status={0}
+                      publishDate="2023-07-31" 
+                      trainSet="Highly curated text"
+                      diskSize={`0 GB`} 
+                      ramSize={`0 GB`}
+                      cached={true}
+                      uninstallable = {false}
+                      setCurrentModel={setCurrentModel}
+                      setCurWorkSpaceID = {setCurWorkSpaceID}
+                  />
+
+                  
                     {
                         modelCards.filter(card => !selectedTask || card.task === selectedTask).map((card, idx) => (
                             <ModelCard 
@@ -105,8 +129,10 @@ export default function ModelCards({ setCurrentModel }: ModelCardsProps) {
                                 trainSet={card.dataset}
                                 diskSize={`${(card.modelSize / 1024).toFixed(2)} GB`} 
                                 ramSize={`${(card.modelSizeInMemory / 1024).toFixed(2)} GB`}
+                                uninstallable = {true}
                                 cached={cachedModels.some(cachedModel => cachedModel.identifier === `${card.authorUsername}/${card.modelName}`)}
                                 setCurrentModel={setCurrentModel}
+                                setCurWorkSpaceID = {setCurWorkSpaceID}
                             />
                         ))
                     }

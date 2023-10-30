@@ -1,74 +1,90 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
+
+import { WorkSpaceFile } from '../App'
 import Teach from "./Teach"
 import LoadGmail from './GmailLoad'
 import LoadUrl from './LoadUrl'
-import axios from "axios"
-import { usePort } from '../PortContext'
+import SpecifySummarizer from './SpecifySummarizer'
+import SelectFile from './SelectFile'
+import { WorkSpaceMetadata } from '../App'
+import { ModelDisplayInfo } from '../App'
 
-export default function FunctionBar() {
-  const { port } = usePort()
+type FunctionBarProps = {
+  currentModel: ModelDisplayInfo | null,
+  specifySummerizerTrigger: React.RefObject<HTMLButtonElement>,
+  summerizeFormTrigger: React.RefObject<HTMLButtonElement>,
+  queryEnabled: Boolean,
+  curWorkSpaceID: string|null,
+  setCurWorkSpaceID: React.Dispatch<React.SetStateAction<string|null>>,
+  setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
+  summarizer: string | null, setSummarizer: (model: string | null) => void
+};
 
-  const handleSave = () => {
-    // Use Electron IPC to show save dialog
-    window.electron.invoke('show-save-dialog')
-      .then(filePath => {
-        if (filePath) {
-          console.log('File will be saved to:', filePath);
-          
-          // Here save the file to the chosen path
-          axios.post(`http://0.0.0.0:${port}/save`, { filePath })
-            .then(response => {
-              console.log('File path sent successfully:', response.data)
-            })
-            .catch(error => {
-              console.error('Error sending file path:', error)
-            })
+export default function FunctionBar({summarizer, setSummarizer, specifySummerizerTrigger, summerizeFormTrigger, queryEnabled,  
+                                    curWorkSpaceID, setCurWorkSpaceID, setWorkSpaceMetadata,
+                                    currentModel
+                                  }: FunctionBarProps) {
+  const [selectedFiles, setSelectedFiles] = useState<WorkSpaceFile[]>([]);
+  const [progress, setProgress] = useState(0);
+  const [startProgress, setStartProgress] = useState(false);
 
-        } else {
-          console.log('Save dialog was canceled');
-        }
-      })
-      .catch(err => console.error('Error showing save dialog', err));
-  }
+  // input animation
+  const ref = useRef<HTMLButtonElement>(null);
+  const ref2 = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState("55px");
 
-  const handleLoad = () => {
-    window.electron.send('open-folder-dialog')
-  }
-
-  useEffect(() => {
-    const handler = (folderPath: string) => {
-      console.log(`Load model from ${folderPath}`)
-      axios.post(`http://localhost:${port}/load`, {
-        filePath: folderPath
-      })
-      .then(response => {
-        console.log(response.data);
-      })
-      .catch(error => {
-        console.error("Error sending folder path to backend:", error)
-      })
-    }
-
-    const cleanup = window.electron.on('selected-folder', handler)
-  
-    return () => {
-      cleanup()
-    }
-  }, [port])
+  useEffect(()=>{
+    setWidth(`${ref.current?.clientWidth? (ref.current.clientWidth): "55"}px`);
+}, [])
 
   return (
-    <div className='d-flex mb-3'>
-        <Teach/>
-        <button onClick={ handleLoad } className='btn btn-general mx-1'>
-            <i className="bi bi-cloud-plus"></i>
-            <div className='font-sm'>Load</div>
-        </button>
-        <LoadUrl/>
-        <LoadGmail/>
-        <button className='btn btn-general mx-1' onClick={handleSave}>
-            <i className="bi bi-file-earmark-arrow-down"></i>
-            <div className='font-sm'>Save</div>
-        </button>
+    <div className='d-flex mb-3 align-items-end justify-content-center'>
+      <div className='d-flex align-items-end'
+        style={{width: `${width}`, overflow: "hidden", transition: "all 1s ease"}}
+        onMouseEnter={()=>{setWidth(`${ref2.current?.clientWidth? (ref2.current.clientWidth): "195"}px`)}}
+        onMouseLeave={()=>{setWidth(`${ref.current?.clientWidth? (ref.current.clientWidth): "55"}px`)}}
+      >
+        <div className='d-flex align-items-end' ref={ref2}>
+          <button className='btn mx-1' ref={ref}>
+            <i className="bi bi-box-arrow-in-right fs-5"></i>
+              <div className='font-sm'>Upload</div>
+          </button>
+          <div className='d-flex align-items-end bg-secondary bg-opacity-25 rounded-3 ms-1 p-1'>
+            <SelectFile
+                    selectedFiles={selectedFiles}
+                    setSelectedFiles={setSelectedFiles}
+                    progress={progress}
+                    setProgress={setProgress}
+                    startProgress={startProgress}
+                    setStartProgress={setStartProgress}
+                    curWorkSpaceID = {curWorkSpaceID} setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                    currentModel = {currentModel}
+            />
+            <LoadUrl
+                    curWorkSpaceID = {curWorkSpaceID} setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                    currentModel = {currentModel}
+            />
+            <LoadGmail
+                    setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                    currentModel = {currentModel}
+            />
+          </div>
+          
+        </div>
+        
+      </div>
+      {
+        queryEnabled ?
+        <>
+          <SpecifySummarizer summarizer={summarizer} setSummarizer={setSummarizer}  trigger={specifySummerizerTrigger} formTrigger = {summerizeFormTrigger}/>
+          <div className='short-vertical-line-xs mb-2 mx-2'></div>
+          <Teach/>
+        </>
+        :
+        <></>
+      }
+        
+        
     </div>
   )
 }

@@ -15,10 +15,12 @@ export type ModelCardProps = {
     diskSize: string,
     ramSize: string,
     cached: boolean,
+    uninstallable: boolean,
     setCurrentModel: React.Dispatch<React.SetStateAction<ModelDisplayInfo | null>>
+    setCurWorkSpaceID: (modelID: string | null) => void
 }
 
-export default function ModelCard({name, author, description, status, publishDate, trainSet, diskSize, ramSize, cached, setCurrentModel}: ModelCardProps) {
+export default function ModelCard({name, author, description, status, publishDate, trainSet, diskSize, ramSize, cached, uninstallable, setCurrentModel, setCurWorkSpaceID}: ModelCardProps) {
     const { port } = usePort()
 
     // State variable to manage WebSocket connection
@@ -30,6 +32,27 @@ export default function ModelCard({name, author, description, status, publishDat
     const navigate = useNavigate()
 
     const useModel = async (domain: string, author_name: string, model_name: string) => {
+        if (model_name === 'Default model' && author_name === 'thirdai') {
+            const response = await axios.post(`http://localhost:${port}/reset_neural_db`)
+
+            const data = response.data
+    
+            if (data.success) {
+                console.log(data.msg)
+                // Unselect current chosen workspace in <Sidebar/>
+                setCurWorkSpaceID(null)
+                setCurrentModel({
+                    author_name: author_name,
+                    model_name: model_name
+                });
+                // Redirect to /
+                navigate('/')
+            } else {
+                console.error("Failed to set the model in the backend.")
+            }
+            return
+        }
+
         try {
             const response = await axios.post(`http://localhost:${port}/use_model`, {
                 domain: domain,
@@ -42,6 +65,8 @@ export default function ModelCard({name, author, description, status, publishDat
     
             if (data.success) {
                 console.log(data.msg);
+                // Unselect current chosen workspace in <Sidebar/>
+                setCurWorkSpaceID(null)
                 setCurrentModel({
                     author_name: author_name,
                     model_name: model_name
@@ -122,7 +147,7 @@ export default function ModelCard({name, author, description, status, publishDat
         <div className='d-flex align-items-start'>
             {
                 status === 0 ?
-                <i className="bi bi-check-circle-fill text-primary fs-4"></i>
+                <></>
                 :
                 <i className="bi bi-exclamation-circle-fill text-success fs-4"></i>
             }
@@ -137,7 +162,7 @@ export default function ModelCard({name, author, description, status, publishDat
                     isDownloaded || cached ?
                     <div>
                         <button onClick={() => useModel('Public', author, name)} className='btn btn-general px-3 fw-bold bg-primary bg-opacity-10 text-primary rounded-4 mb-2'>USE</button>
-                        <button className='btn btn-general px-3 fw-bold bg-secondary bg-opacity-10 text-warning rounded-4'>Uninstall</button>
+                        {uninstallable ? <button className='btn btn-general px-3 fw-bold bg-secondary bg-opacity-10 rounded-4'>Uninstall</button> : <></>}
                     </div>
                     :
                     <button onClick={() => downloadModel('Public', author, name)} className='btn btn-general px-3 fw-bold text-primary'>

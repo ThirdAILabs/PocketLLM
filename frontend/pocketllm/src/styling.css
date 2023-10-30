@@ -22,6 +22,50 @@
 }
 
 
+/* Styling scrollbars */
+/* width */
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  
+  /* Track */
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+  
+  /* Handle */
+  ::-webkit-scrollbar-thumb {
+    background: #ababab;
+    border-radius: 5px;
+  }
+  
+  /* Handle on hover */
+  ::-webkit-scrollbar-thumb:hover {
+    background: #808080;
+  }
+  
+
+#input-search:focus {
+    border: inherit;
+    outline: none !important;
+    outline-width: 0 !important;
+    box-shadow: none;
+    -moz-box-shadow: none;
+    -webkit-box-shadow: none;
+}
+
+.bi-login {
+    
+    background: conic-gradient(from -45deg, #ea4335 110deg, #4285f4 90deg 180deg, #34a853 180deg 270deg, #fbbc05 270deg) 73% 55%/150% 150% no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+      
+}
+
+
 .font-x-sm{
     font-size: x-small;
 }
@@ -47,7 +91,45 @@ input:focus{
     font-size: small;
 }
 
+.border-shadow {
+    box-shadow: 1px 1px 5px 2px rgba(224, 224, 224, 0.777);
+}
+
+.title-bar {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    width: 100%;
+    -webkit-app-region: drag;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.title-functions{
+    -webkit-app-region: no-drag !important;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.no-drag {
+    -webkit-app-region: no-drag !important;
+}
+
+.btn-general2{
+    cursor: pointer;
+    transition: all 0.5s ease;
+    background-color: white;
+}
+
+.btn-general2:hover {
+    background-color: rgb(242, 242, 242) !important;
+}
+
 .btn-general{
+    cursor: pointer;
     transition: all 0.5s ease;
     border: none;
 }
@@ -118,6 +200,7 @@ input:focus{
 
 .extraction{
     width: 100%;
+    overflow: hidden;
     background-color: rgb(242, 242, 242);
     text-align: left;
     border: 1px solid rgb(224, 224, 224);
@@ -125,7 +208,16 @@ input:focus{
 
 .short-vertical-line{
     border-left: 2px solid rgb(181, 181, 181);
-    height: 50px;
+    height: 60px;
+}
+
+.short-vertical-line-xs{
+    border-left: 2px solid rgb(181, 181, 181);
+    height: 40px;
+}
+
+.horizontal-line{
+    border-bottom: 2px solid rgb(181, 181, 181);
 }
 
 .collect{
@@ -138,15 +230,7 @@ input:focus{
     text-align: left;
     border: 1px solid rgb(224, 224, 224);
     width: 375px;
-    height: 250px;
-}
-
-.gear{
-    cursor: pointer;
-}
-
-.gear:hover{
-    color: black !important;
+    height: 300px;
 }
 
 .specify-model-dialog {
@@ -158,6 +242,13 @@ input:focus{
     border: 1px solid rgb(224, 224, 224);
     border-radius: 5px;
     padding: 10px;
+}
+
+.summerize-warning{
+    position: absolute;
+    top: 5px;
+    left: 0px;
+    width: 100%;
 }
 
 .api-input{
@@ -346,4 +437,55 @@ input:focus{
 
 .url-popover {
     background-color: white;
+}
+
+.subscribe-frame {
+    border-radius: 15px;
+    padding: 20px;
+    
+}
+
+.subcribed {
+    background: linear-gradient( rgb(169, 211, 255), azure, white, white, white);
+}
+
+.subcribe-save {
+    position: absolute;
+    top: 5px;
+    right: 0px;
+    transform: rotate(15deg);
+}
+
+.userHeadshot {
+    width: 30px;
+    height: 30px;
+    border-radius: 15px;
+    border: 1px solid rgb(224, 224, 224);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sidebar-curent-select{
+    position: absolute;
+    transform: rotate(-45deg);
+    top: 0;
+    right: 1.5px;
+}
+
+.selected-file-list-wrapper {
+    text-align: left;
+    max-width: 350px;
+    border-radius: 10px;
+    border: rgb(224, 224, 224) 1px solid;
+    padding: 10px;
+    padding-right: 5px;
+    max-height: 120px;
+    overflow: hidden;
+}
+
+.selected-file-list-scrollbar-wrapper {
+    overflow: auto;
+    width: 100%;
+    max-height: 60px;
 }

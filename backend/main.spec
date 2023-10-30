@@ -27,8 +27,15 @@ a.datas += Tree('/opt/homebrew/lib/python3.11/site-packages/langchain', prefix='
 # Replace /Users/yecao/nltk_data/corpora/stopwords with your stopwords path
 a.datas += Tree('/Users/yecao/nltk_data/corpora/stopwords', prefix='nltk_data/corpora/stopwords')
 
-# Gmail oAuth authentication
+# Gmail oAuth authentication for gmail account
+a.datas += [('client_secret_user_account.json', 'client_secret_user_account.json', 'DATA')]
+
+# Gmail oAuth authentication for gmail mailbox
 a.datas += [('client_secrets.json', 'client_secrets.json', 'DATA')]
+
+# Bundle GeneralQnA model into package
+# Remeber to save {"domain": "public","author_username": "thirdai","model_name": "GeneralQnA"} to /data
+# a.datas += Tree('data', prefix='data')
 
 # Add trafilatura and trafilatura/settings.cfg
 a.datas += Tree('/opt/homebrew/lib/python3.11/site-packages/trafilatura', prefix='trafilatura')

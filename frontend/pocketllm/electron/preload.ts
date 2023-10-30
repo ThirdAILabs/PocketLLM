@@ -38,6 +38,23 @@ contextBridge.exposeInMainWorld(
     },
     openExternalUrl: (url: string) => {
       ipcRenderer.send('open-external-url', url);
+    },
+    getOSDetails: () => {
+      const osDetails = {
+        type: ipcRenderer.sendSync('get-os-type'),
+        release: ipcRenderer.sendSync('get-os-release'),
+        arch: ipcRenderer.sendSync('get-os-arch')
+      };
+      return osDetails;
+    },
+    acceptUpdate: () => {
+      ipcRenderer.send('accept-update')
+    },
+    denyUpdate: () => {
+      ipcRenderer.send('deny-update')
+    },
+    once: (channel: string, func: (...args: any[]) => void) => {
+      ipcRenderer.once(channel, (_event, ...args) => func(...args));
     }
   }
 )

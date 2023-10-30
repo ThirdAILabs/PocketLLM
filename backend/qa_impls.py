@@ -57,7 +57,7 @@ class OpenAI(QA):
         )
 
     def answer(
-        self, question: str, context: str, on_error: Callable, prompt=None, **kwargs
+        self, question: str, context: str, on_error: Callable, model='gpt-3.5-turbo', prompt=None, **kwargs
     ) -> str:
         try:
             import openai
@@ -72,7 +72,7 @@ class OpenAI(QA):
                 prompt = self.default_prompt
 
             response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model=model,
                 messages=[
                     {
                         "role": "user",

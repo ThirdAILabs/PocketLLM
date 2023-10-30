@@ -55,7 +55,7 @@ export default function Teach() {
         </button>
 
         <form onSubmit={ handleSubmit } className="modal fade" id="teachModal" tabIndex={-1} aria-hidden="true">
-            <div className="modal-dialog">
+            <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content">
                     <div className="modal-header border-0 ">
                         <button type="button" className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close"></button>
