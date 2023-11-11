@@ -1,4 +1,6 @@
 from typing import Callable
+from fastapi import WebSocket
+import asyncio
 
 
 class QA:
@@ -96,6 +98,78 @@ class OpenAI(QA):
             on_error("backend: Error in OpenAI Summarizer")
             raise error
 
+    async def stream_answer(self, question: str, context: str, websocket: WebSocket, on_error: Callable, model='gpt-3.5-turbo', prompt=None, **kwargs):
+        try:
+            import openai
+            from nltk.tokenize import word_tokenize as nlkt_word_tokenize
+
+            context_words = nlkt_word_tokenize(context)
+            # OpenAI model we use has max tokens of ~4k, so we limit # words to 2k
+            context_words = context_words[:2000]
+            context_shortened = " ".join(context_words)
+
+            if not prompt:
+                prompt = self.default_prompt
+
+            response = openai.ChatCompletion.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": self.prompt_template.format(
+                            prompt=prompt,
+                            context=context_shortened,
+                            question=question,
+                        ),
+                    }
+                ],
+                temperature=0.1,
+                stream=True,
+            )
+
+            # print("Response from OpenAI:", response)
+
+            async def async_generator(sync_iterator):
+                try:
+                    for chunk in sync_iterator:
+                        # DEBUG: Check if chunks are being received
+                        # print("Chunk received:", chunk)
+                        yield chunk
+                        await asyncio.sleep(0)  # Yield control to the event loop
+                except Exception as e:
+                    # print("Error in async_generator:", e)  # DEBUG: Log exception
+                    on_error(f"backend: Error in OpenAI Summarizer - {e}")
+                    raise
+
+            full_msg = ''
+
+            # Use the async_generator to asynchronously stream results
+            async for chunk in async_generator(response):
+                choices = chunk.get('choices')
+                if choices:
+                    for choice in choices:
+                        delta = choice.get('delta')
+                        if delta:
+                            delta_content = delta.get('content')
+                            if delta_content:  # Ensure there's actual content
+                                # DEBUG: Check if messages are being sent
+                                full_msg += delta_content
+                                # print("full_msg content:", full_msg)
+                                await websocket.send_text(full_msg)
+                            else:
+                                pass
+                                # print("Delta content is empty")
+                        else:
+                            pass
+                            # print("Delta is missing in choice")
+                else:
+                    pass
+                    # print("Choices are missing in chunk")
+
+        except Exception as error:
+            print("Error in stream_answer:", error)  # DEBUG: Log exception
+            on_error("backend: Error in OpenAI Summarizer")
+            raise error
 
 class Dolly(QA):
     def __init__(self, **kwargs) -> None:

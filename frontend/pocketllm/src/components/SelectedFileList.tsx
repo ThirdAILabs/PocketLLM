@@ -43,7 +43,7 @@ export default function SelectedFileList({indexFiles, queryEnabled, workSpaceMet
         ?
             <div className='font-sm my-2'>Upload source to start search.</div>
         :
-            <div className='d-flex justify-content-center'>
+            <div className='d-flex justify-content-center align-items-center'>
                 <div className='font-sm selected-file-list-wrapper w-100'>
                     <div className='font-x-sm mb-2'>Indexed Files</div>
                     <div className='selected-file-list-scrollbar-wrapper'>
@@ -70,7 +70,7 @@ export default function SelectedFileList({indexFiles, queryEnabled, workSpaceMet
                 {
                         isCurrentWorkspaceExistAndNotSaved()
                         ?
-                        <Tooltip title="Save (ctrl/cmd + S)">
+                        <Tooltip title="Save (ctrl/cmd + S)" placement='right'>
                             <button className='btn btn-general no-drag text-secondary ms-3'
                                     onClick={handleSaveClick}
                             >

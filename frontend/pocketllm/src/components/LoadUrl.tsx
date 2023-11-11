@@ -13,9 +13,10 @@ type LoadUrlProps = {
   setCurWorkSpaceID: React.Dispatch<React.SetStateAction<string|null>>,
   setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
   currentModel: ModelDisplayInfo | null,
+  setCurrentUsage: React.Dispatch<React.SetStateAction<number>>
 }
 
-export default function LoadUrl({curWorkSpaceID, setWorkSpaceMetadata, setCurWorkSpaceID, currentModel}: LoadUrlProps) {
+export default function LoadUrl({curWorkSpaceID, setWorkSpaceMetadata, setCurWorkSpaceID, currentModel, setCurrentUsage}: LoadUrlProps) {
   const { port } = usePort()
 
   const [startProgress, setStartProgress] = React.useState(false);
@@ -44,6 +45,8 @@ export default function LoadUrl({curWorkSpaceID, setWorkSpaceMetadata, setCurWor
     ws.onopen = () => {
       ws.send(JSON.stringify({ url }))
       setStartProgress(true);
+
+      setCurrentUsage(prevUsage => prevUsage + 5)
     }
 
     ws.onmessage = (event) => {
@@ -62,6 +65,7 @@ export default function LoadUrl({curWorkSpaceID, setWorkSpaceMetadata, setCurWor
             {
               fileName: url,
               filePath: url,
+              fileSize: 5, // This is only an estimate
               isSaved: false,
               uuid: uuidv4(),
             }
@@ -85,6 +89,7 @@ export default function LoadUrl({curWorkSpaceID, setWorkSpaceMetadata, setCurWor
             {
               fileName: url,
               filePath: url,
+              fileSize: 5, // This is only an estimate
               isSaved: false,
               uuid: uuidv4(),
             }

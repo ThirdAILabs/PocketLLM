@@ -1,11 +1,12 @@
 import axios from 'axios'
 import React from 'react'
 import { usePort } from '../PortContext'
+import { SubscriptionPlan } from '../App'
 
 type AccountProps = {
-    user : { email: string, name: string },
+    user : { email: string, name: string, subscription_plan: SubscriptionPlan  },
     subscribeTrigger: React.RefObject<HTMLButtonElement>,
-    setUser: React.Dispatch<React.SetStateAction<{ email: string, name: string } | null>>,
+    setUser: React.Dispatch<React.SetStateAction<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>>,
 }
 
 export default function GeneralAccountProfile({user, subscribeTrigger, setUser} : AccountProps) {
@@ -34,15 +35,20 @@ export default function GeneralAccountProfile({user, subscribeTrigger, setUser} 
             <div className='userHeadshot bg-primary bg-opacity-25'>
                 {user.name[0]}
             </div>
-            <div className='font-x-sm mx-2'>Subscribed monthly</div>
+            {
+                user.subscription_plan !== SubscriptionPlan.FREE ?
+                (
+                    user.subscription_plan == SubscriptionPlan.PREMIUM ?
+                    <div className='font-x-sm mx-2'>Premium subscription</div>
+                    :
+                    <div className='font-x-sm mx-2'>Supreme subscription</div>
+                )
+                :
+                <div className='font-x-sm mx-2'>Unsubscribed</div>
+            }
         </button>
 
         <ul className="dropdown-menu font-sm mt-1 border-light-subtle border-shadow">
-            {/* <li>
-                <button className="dropdown-item d-flex btn-general2">
-                    <div className='me-2'>Setting</div>
-                </button>
-            </li> */}
             <li>
                 <button className="dropdown-item d-flex btn-general2"
                     onClick={()=>{subscribeTrigger.current?.click()}}

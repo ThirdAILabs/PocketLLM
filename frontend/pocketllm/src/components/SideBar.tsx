@@ -25,13 +25,30 @@ export default function SideBar({workSpaceMetadata, curWorkSpaceID, setCurWorkSp
 
     const [editNameEnabled, setEditNameEnabled] = useState<boolean[]>([]);
     const [workspaceNames, setWorkspaceNames] = useState<string[]>([])
+    const inputRefs = useRef<Array<HTMLInputElement | null>>([])
 
     useEffect(() => {
         setEditNameEnabled(new Array(workSpaceMetadata.length).fill(false))
         setWorkspaceNames(workSpaceMetadata.map(workspace => workspace.workspaceName || ""))
+        // Adjust the length of inputRefs.current
+        if (inputRefs.current.length !== workSpaceMetadata.length) {
+            inputRefs.current = Array.from({ length: workSpaceMetadata.length }, (_, i) => inputRefs.current[i] || null);
+        }
     }, [workSpaceMetadata])
 
     const toggleEditNameEnabled = (clickedIndex: number) => {
+ 
+        // Check if we're enabling the edit mode for the clicked index
+        if (!editNameEnabled[clickedIndex]) {
+            setTimeout(() => {
+                const inputElement = inputRefs.current[clickedIndex];
+                if (inputElement) {
+                  inputElement.focus()
+                  inputElement.select()
+                }
+              }, 200);
+        }
+ 
         // Calculate the new state of editNameEnabled
         const newEditNameEnabled = editNameEnabled.map((status, idx) => idx === clickedIndex ? !status : status)
 
@@ -332,14 +349,17 @@ export default function SideBar({workSpaceMetadata, curWorkSpaceID, setCurWorkSp
                         className='text-start w-100 position-relative' 
                         onClick={() => handleLoadWorkSpace(workspace.workspaceID)}
                     >
-                        <div className='d-flex'>
-                            <input  className='mb-2 bg-transparent border-0' 
+                        <form className='d-flex' onSubmit={(e)=>{console.log("handle name edit here"); e.preventDefault(); toggleEditNameEnabled(index)}}> 
+                        {/* handle edit name by enter with form on submit */}
+                            <input  
+                                    ref={el => inputRefs.current[index] = el}
+                                    className='mb-2 bg-transparent border-0 history-item' 
                                     value={workspaceNames[index] || ""}
-                                    disabled={!editNameEnabled[index]} 
+                                    readOnly={!editNameEnabled[index]} 
                                     onChange={(e) => setWorkspaceNames(prevNames => prevNames.map((name, idx) => idx === index ? e.target.value : name))}
                                     style={{width: "fit-content", maxWidth: "200px"}}
                             />
-                        </div>
+                        </form>
     
                         <div className='d-flex font-x-sm mt-1 text-light-emphasis'>
                             <div> {`${ workspace.documents.some(doc => doc.isSaved) ?  'Last saved: ' + moment.utc(workspace.last_modified).fromNow() : 'Not saved'}`} </div>
@@ -356,7 +376,7 @@ export default function SideBar({workSpaceMetadata, curWorkSpaceID, setCurWorkSp
                             <i className="btn btn-general p-1 bi bi-download mx-2 fs-6"></i>
                         </Tooltip>
                         
-                        <Tooltip title={workspace.documents.some(doc => doc.isSaved) ?  `${workspace.isWorkSpaceSaved ? 'Delete workspace' : 'Forgo workspace change'}` : 'Delete new workspace'}
+                        <Tooltip title={workspace.documents.some(doc => doc.isSaved) ?  `${workspace.isWorkSpaceSaved ? 'Delete workspace' : 'Undo unsaved change'}` : 'Delete new workspace'}
                                  placement='top' onClick={() => handleDeleteWorkSpace(workspace.workspaceID)}>
                             <i className="btn btn-general p-1 bi bi-trash3 fs-6"></i>
                         </Tooltip>

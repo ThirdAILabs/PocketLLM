@@ -6,6 +6,20 @@ type progressCircularProps = {
 
 export default function ProgressCircular({progress} : progressCircularProps) {
   return (
-      <CircularProgress variant="determinate" value={progress} size={30} />
+    <div className='position-relative'>
+      <CircularProgress variant="determinate" value={100} size={30} 
+        sx={{
+          color: (theme) =>
+            theme.palette.grey[theme.palette.mode === 'light' ? 400 : 800],
+        }}/>
+       <CircularProgress variant="determinate" value={progress} size={30} 
+        sx={{
+          position: "absolute",
+          left: 0
+        }}
+       />
+       
+    </div>
+     
   );
 }

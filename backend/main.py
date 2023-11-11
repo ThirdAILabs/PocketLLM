@@ -3,6 +3,7 @@
 import os
 import sys
 import json
+import hashlib
 import asyncio
 from fastapi import FastAPI, WebSocket, HTTPException, Response, Query
 from pydantic import BaseModel
@@ -87,13 +88,13 @@ def parse_prompt(query) -> Tuple[str, Optional[str]]:
 
 
 @app.get("/get_cached_workspace_metajson")
-async def get_cached_workspace_metajson():
-    USER_MODEL_CACHE = WORKING_FOLDER / "user_workspace_cache"
+def get_cached_workspace_metajson():
+    USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
     model_metadata_list = []
 
     # Walk through each folder in the user_workspace_cache
-    if USER_MODEL_CACHE.exists() and USER_MODEL_CACHE.is_dir():
-        for model_folder in USER_MODEL_CACHE.iterdir():
+    if USER_WORKSPACE_CACHE.exists() and USER_WORKSPACE_CACHE.is_dir():
+        for model_folder in USER_WORKSPACE_CACHE.iterdir():
             metadata_path = model_folder / 'metadata.json'
             
             # If metadata file exists, read its content
@@ -175,7 +176,7 @@ class QueryModel(BaseModel):
     search_str: str
 
 @app.post("/query")
-async def query(query_model: QueryModel):    
+def query(query_model: QueryModel):    
     global backend_instance
 
     # Handle the case when backend_instance is None
@@ -226,7 +227,7 @@ class TeachModel(BaseModel):
     target_str: str
 
 @app.post("/teach")
-async def teach(teach_model: TeachModel):
+def teach(teach_model: TeachModel):
     global backend_instance
 
     # Handle the case when backend_instance is None
@@ -269,7 +270,7 @@ class SaveModel(BaseModel):
     filePath: str
 
 @app.post("/save")
-async def save(path: SaveModel):
+def save(path: SaveModel):
     global backend_instance
     try:
         file_path = path.filePath
@@ -318,11 +319,11 @@ def save_workspace(model_data: SaveModelByID):
     currentModel = model_data.currentModel
     workspaceName = model_data.workspaceName
 
-    USER_MODEL_CACHE = WORKING_FOLDER / "user_workspace_cache"
+    USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
 
     # Generate a temporary workspace ID and create a temp folder
     temp_workspaceID = str(uuid4())
-    temp_model_folder = USER_MODEL_CACHE / temp_workspaceID
+    temp_model_folder = USER_WORKSPACE_CACHE / temp_workspaceID
     temp_model_folder.mkdir(parents=True, exist_ok=True)
 
     # Define file paths for the temporary workspace
@@ -379,7 +380,7 @@ def save_workspace(model_data: SaveModelByID):
         json.dump(metadata, meta_file)
 
     # Now, delete the original workspace if it exists
-    original_model_folder = USER_MODEL_CACHE / workspaceID
+    original_model_folder = USER_WORKSPACE_CACHE / workspaceID
     if original_model_folder.exists():
         shutil.rmtree(original_model_folder)
 
@@ -399,10 +400,10 @@ def load_by_id(model_data: LoadModelByID):
 
     print("Received workspaceID:", workspaceID)
 
-    USER_MODEL_CACHE = WORKING_FOLDER / "user_workspace_cache"
+    USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
 
     # Determine the path based on workspaceID
-    model_folder = USER_MODEL_CACHE / workspaceID
+    model_folder = USER_WORKSPACE_CACHE / workspaceID
     file_path = model_folder / 'model.ndb'
     
     # Check if the path exists
@@ -418,6 +419,32 @@ def load_by_id(model_data: LoadModelByID):
         print(f"backend: {error_msg}")
         raise HTTPException(status_code=500, detail=error_msg)
     
+    ####### Check if it's tryint to load saved Gmail workspace #######
+
+    # Determine the path for metadata.json
+    metadata_file_path = model_folder / 'metadata.json'
+
+    # Check if the metadata.json path exists and has the expected content
+    if metadata_file_path.exists():
+        try:
+            with open(metadata_file_path, 'r') as f:
+                metadata = json.load(f)
+            
+            # Verify if the workspace is Gmail by checking the conditions
+            documents = metadata.get('documents', [])
+            if len(documents) == 1 and documents[0].get('fileName') == 'gmail_inbox_data.csv':
+                backend_instance.gmail_query_switch = True
+            else:
+                backend_instance.gmail_query_switch = False
+        except json.JSONDecodeError as e:
+            print(f"Error parsing metadata.json: {e}")
+            raise HTTPException(status_code=500, detail="Error parsing metadata.json")
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            raise HTTPException(status_code=500, detail="Unexpected error when checking workspace type")
+    else:
+        backend_instance.gmail_query_switch = False
+
     return {'success': True}
 
 class DeleteModelByID(BaseModel):
@@ -425,10 +452,10 @@ class DeleteModelByID(BaseModel):
 
 @app.post("/delete_by_id")
 def delete_by_id(model_data: DeleteModelByID):
-    USER_MODEL_CACHE = WORKING_FOLDER / "user_workspace_cache"
+    USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
 
     # Determine the path based on workspaceID
-    model_folder = USER_MODEL_CACHE / model_data.workspaceID
+    model_folder = USER_WORKSPACE_CACHE / model_data.workspaceID
 
     # Check if the path exists
     if not model_folder.exists():
@@ -450,10 +477,10 @@ class ExportModelData(BaseModel):
 
 @app.post("/export_by_id")
 def export_by_id(export_data: ExportModelData):
-    USER_MODEL_CACHE = WORKING_FOLDER / "user_workspace_cache"
+    USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
 
     # Determine the path based on workspaceID
-    model_folder = USER_MODEL_CACHE / export_data.workspaceID
+    model_folder = USER_WORKSPACE_CACHE / export_data.workspaceID
 
     # Check if the path exists
     if not model_folder.exists():
@@ -546,36 +573,77 @@ class ImportModelData(BaseModel):
 
 @app.post("/import_workspace")
 def import_workspace(import_data: ImportModelData):
-    USER_MODEL_CACHE = WORKING_FOLDER / "user_workspace_cache"
+    USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
 
     chosen_directory = Path(import_data.directoryPath)
     metadata_path = chosen_directory / 'metadata.json'
     
     if not metadata_path.exists():
-        raise HTTPException(status_code=404, detail="metadata.json not found in the provided directory.")
-    
-    with open(metadata_path, 'r') as meta_file:
-        metadata = json.load(meta_file)
+        if chosen_directory.suffix == '.ndb':
+            new_workspaceID = str(uuid4())
+            destination_folder = USER_WORKSPACE_CACHE / new_workspaceID
+            destination_folder.mkdir(parents=True, exist_ok=True)
 
-    # Generate new workspace ID
-    new_workspaceID = str(uuid4())
+            metadata = {}
 
-    # Destination folder based on new workspace ID
-    destination_folder = USER_MODEL_CACHE / new_workspaceID
+            model_ndb_path = destination_folder / 'model.ndb'
+            shutil.copytree(chosen_directory, model_ndb_path)
+            
+            # Create and populate metadata.json
+            metadata = {
+                "workspaceID": new_workspaceID,
+                "workspaceName": chosen_directory.stem,  # Use the name of the .ndb file
+                "model_info": {
+                    "author_name": "thirdai",
+                    "model_name": "Default model"
+                },
+                "documents": [],
+                "last_modified": datetime.utcnow().isoformat()
+            }
+            
+            # Iterate inside .ndb/documents folder
+            documents_folder = model_ndb_path / 'documents'
+            if documents_folder.exists() and documents_folder.is_dir():
+                for subfolder in documents_folder.iterdir():
+                    for file in subfolder.iterdir():
+                        file_info = {
+                            "fileName": file.name,
+                            "filePath": str(file.resolve()),
+                            "uuid": str(uuid4()),
+                            "isSaved": True
+                        }
+                        metadata["documents"].append(file_info)
+            
+            # Write the metadata.json file in the destination folder
+            with open(destination_folder / 'metadata.json', 'w') as meta_file:
+                json.dump(metadata, meta_file, indent=4)
+            
+            return {'success': True, 'metadata': metadata}
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported workspace type.")
+    else:
+        with open(metadata_path, 'r') as meta_file:
+            metadata = json.load(meta_file)
 
-    try:
-        shutil.copytree(chosen_directory, destination_folder)
-    except Exception as error:
-        raise HTTPException(status_code=500, detail=str(error))
+        # Generate new workspace ID
+        new_workspaceID = str(uuid4())
 
-    # Update metadata with the new workspace ID
-    metadata['workspaceID'] = new_workspaceID
-    new_metadata_path = destination_folder / 'metadata.json'
+        # Destination folder based on new workspace ID
+        destination_folder = USER_WORKSPACE_CACHE / new_workspaceID
 
-    with open(new_metadata_path, 'w') as meta_file:
-        json.dump(metadata, meta_file)
+        try:
+            shutil.copytree(chosen_directory, destination_folder)
+        except Exception as error:
+            raise HTTPException(status_code=500, detail=str(error))
 
-    return {'success': True, 'metadata': metadata}
+        # Update metadata with the new workspace ID
+        metadata['workspaceID'] = new_workspaceID
+        new_metadata_path = destination_folder / 'metadata.json'
+
+        with open(new_metadata_path, 'w') as meta_file:
+            json.dump(metadata, meta_file)
+
+        return {'success': True, 'metadata': metadata}
 
 class UpdateWorkspaceNameRequest(BaseModel):
     workspaceID: str
@@ -586,9 +654,9 @@ def update_workspace_name(request: UpdateWorkspaceNameRequest):
     workspace_id = request.workspaceID
     new_workspace_name = request.newWorkspaceName
 
-    USER_MODEL_CACHE = WORKING_FOLDER / "user_workspace_cache"
+    USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
 
-    workspace_folder = USER_MODEL_CACHE / workspace_id
+    workspace_folder = USER_WORKSPACE_CACHE / workspace_id
     metadata_path = workspace_folder / 'metadata.json'
 
     if not metadata_path.exists():
@@ -606,7 +674,7 @@ def update_workspace_name(request: UpdateWorkspaceNameRequest):
 
 
 @app.post("/fetch_model_cards")
-async def fetch_model_cards():
+def fetch_model_cards():
     global backend_instance
 
     def clean_bazaar_entry(bazaar_entry):
@@ -677,6 +745,28 @@ async def fetch_base_model(websocket: WebSocket):
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
 
+class RemoveModelInfo(BaseModel):
+    author_username: str
+    model_name: str
+
+@app.post("/remove_model")
+def remove_model(info: RemoveModelInfo):
+    global backend_instance
+    
+    # Construct the identifier using the provided author_username and model_name
+    identifier = f"{info.author_username}/{info.model_name}"
+    
+    # Construct the directory path that needs to be removed
+    directory_to_remove = backend_instance.bazaar._cached_checkpoint_dir(identifier)
+
+    try:
+        # Use shutil.rmtree to remove the directory
+        shutil.rmtree(directory_to_remove)
+        return {"success": True, "msg": f"Removed model {identifier}"}
+    except Exception as e:
+        # If an error occurs, return an error message
+        raise HTTPException(status_code=500, detail=str(e))
+
 class UseInfoModel(BaseModel):
     domain: str
     author_username: str
@@ -707,7 +797,7 @@ class SettingInput(BaseModel):
     open_ai_api_key: str
 
 @app.post("/setting")
-async def setting(input_data: SettingInput):
+def setting(input_data: SettingInput):
     global backend_instance
     backend_instance.open_ai_api_key = input_data.open_ai_api_key
     backend_instance.preferred_summary_model = input_data.model_preference
@@ -758,15 +848,13 @@ async def websocket_summarize(websocket: WebSocket):
             backend_instance.openai_summarizer = OpenAI(open_ai_api_key)
         
         model = backend_instance.openai_summarizer
-        results = model.answer(
+        await model.stream_answer(
             prompt=summary_prompt,
             question=summary_query,
             context="\n".join([ref.text for ref in backend_instance.current_results]),
+            websocket=websocket,
             on_error=reset_summarizers,
         )
-
-        for result in results:
-            await websocket.send_text(result)
 
         await websocket.close()
 
@@ -797,16 +885,14 @@ async def gmail_summarize(websocket: WebSocket):
             backend_instance.openai_summarizer = OpenAI(open_ai_api_key)
         
         model = backend_instance.openai_summarizer
-        results = model.answer(
+        await model.stream_answer(
             # prompt=summary_prompt,
             question='what is this email about?',
             context=email_content,
+            websocket=websocket,
             on_error=reset_summarizers,
             model="gpt-3.5-turbo-16k",
         )
-
-        for result in results:
-            await websocket.send_text(result)
 
         await websocket.close()
 
@@ -839,24 +925,22 @@ async def gmail_reply(websocket: WebSocket):
             backend_instance.openai_summarizer = OpenAI(open_ai_api_key)
         
         model = backend_instance.openai_summarizer
-        results = model.answer(
+        await model.stream_answer(
             prompt = (
                 "Write a reply that is about 100 words "
                 "Answer in a friendly tone. "
             ),
             question=f'I am writing a reply to the email. In this case I want to say: {userIntent}. Help me write what I want to say fully.',
             context=email_content,
+            websocket=websocket,
             on_error=reset_summarizers,
             model="gpt-3.5-turbo-16k",
         )
 
-        for result in results:
-            await websocket.send_text(result)
-
         await websocket.close()
 
 @app.post("/gmail_inbox_delete_credential")
-async def gmail_inbox_delete_credential():
+def gmail_inbox_delete_credential():
     USER_GMAIL_CACHE = WORKING_FOLDER / "user_gmail_cache"
     credential_files = list(USER_GMAIL_CACHE.glob("*_token.pkl"))
 
@@ -872,7 +956,7 @@ async def gmail_inbox_delete_credential():
     return {"success": True, "message": "Credentials deleted successfully."}
 
 @app.post('/gmail_delete_login_credential')
-async def gmail_delete_login_credential():
+def gmail_delete_login_credential():
     try:
         USER_GMAIL_LOGIN_CACHE = WORKING_FOLDER / "user_gmail_login_cache"
 
@@ -880,12 +964,19 @@ async def gmail_delete_login_credential():
         if USER_GMAIL_LOGIN_CACHE.exists():
             shutil.rmtree(USER_GMAIL_LOGIN_CACHE)
 
+        IDENTITY_FILE = WORKING_FOLDER / 'user_identity.json'
+        with open(IDENTITY_FILE, 'r') as file:
+            identity_data = json.load(file)
+        identity_data['gmail_id'] = None
+        with open(IDENTITY_FILE, 'w') as file:
+            json.dump(identity_data, file)
+
         return {"success": True, "message": "Gmail login credential deleted."}
     except Exception as e:
         return {"success": False, "message": f"Error during logout: {str(e)}"}
 
 @app.post('/gmail_auto_login')
-async def gmail_auto_login():
+def gmail_auto_login():
     USER_GMAIL_LOGIN_CACHE = WORKING_FOLDER / "user_gmail_login_cache"
     USER_GMAIL_LOGIN_CACHE.mkdir(parents=True, exist_ok=True)
 
@@ -930,7 +1021,7 @@ async def gmail_auto_login():
         }
 
 @app.post('/gmail_login')
-async def gmail_login():
+def gmail_login():
     global backend_instance
 
     USER_GMAIL_LOGIN_CACHE = WORKING_FOLDER / "user_gmail_login_cache"
@@ -978,6 +1069,22 @@ async def gmail_login():
     response = session.get('https://www.googleapis.com/oauth2/v1/userinfo')
     if response.status_code == 200:
         user_info = response.json()
+
+        # Write gmail id into user identity system
+        IDENTITY_FILE = WORKING_FOLDER / 'user_identity.json'
+        email_id = hashlib.sha256(user_info['email'].encode()).hexdigest()
+
+        if IDENTITY_FILE.exists():
+            with open(IDENTITY_FILE, 'r', encoding='utf-8') as file:
+                identity = json.load(file)
+
+        # Update the identity with the hashed email
+        identity['gmail_id'] = email_id
+
+        # Save the updated identity
+        with open(IDENTITY_FILE, 'w', encoding='utf-8') as file:
+            json.dump(identity, file)
+
         return {
             "success": True, 
             'msg': 'Gmail auth successful', 
@@ -988,7 +1095,7 @@ async def gmail_login():
         return {"success": False, 'msg': f"Failed to fetch user's email. Error: {response.text}"}
 
 @app.post('/gmail_auth')
-async def gmail_auth():
+def gmail_auth():
     global backend_instance
 
     # Define the path to the "user_gmail_cache" folder
@@ -1078,7 +1185,7 @@ async def gmail_auth():
     #     return {"success": False, "msg": f"Failed to get user profile: {str(e)}"}
 
 @app.post("/gmail_total_emails")
-async def gmail_total_emails(user_id: str = 'me'):
+def gmail_total_emails(user_id: str = 'me'):
     service = backend_instance.gmail_auth_services.get(user_id)
     if not service:
         raise HTTPException(status_code=401, detail="User not authenticated")
@@ -1177,7 +1284,7 @@ async def  gmail_download_train(websocket: WebSocket):
         USER_GMAIL_INBOX_TEMP_CACHE.mkdir(parents=True, exist_ok=True)
 
         # Create a CSV file within this temporary folder
-        temp_file_location = USER_GMAIL_INBOX_TEMP_CACHE / "temp_gmail_data.csv"
+        temp_file_location = USER_GMAIL_INBOX_TEMP_CACHE / "gmail_inbox_data.csv"
 
         # Open a CSV file in write mode
         with open(temp_file_location, mode='w', encoding='utf-8') as csvfile:
@@ -1304,18 +1411,23 @@ async def url_train(websocket: WebSocket):
             await websocket.send_json({"error": True, "message": str(e)})
 
 @app.post("/reset_neural_db")
-async def reset_neural_db():
+def reset_neural_db():
     global backend_instance
 
     backend_instance.reset_neural_db()
 
     return {"success": True, 'msg': 'Neural DB reset successful'}
 
+class SubTypeModel(BaseModel):
+    subscriptionType: int
+
 if __name__ == "__main__":
     backend_instance = Backend()
 
     port_number = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
+    WORKING_FOLDER = Path(sys.argv[2]) if len(sys.argv) > 2 else WORKING_FOLDER
 
     print(f'backend: port_number = {port_number}')
+    print(f'backend: WORKING_FOLDER = {WORKING_FOLDER}')
 
     uvicorn.run(app, host="0.0.0.0", port=port_number)

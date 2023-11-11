@@ -5,12 +5,14 @@ import axios from 'axios'
 import ModelCards from "./pages/ModelCards";
 import LandingAnimation from "./pages/LandingAnimation";
 import TitleBar from "./components/TitleBar";
-import UpdateModal from "./components/UpdateModal";
+import AppUpdater from "./components/AppUpdater";
 import MainPage from "./pages/MainPage";
 import { usePort } from './PortContext'
 import Subscribe from "./components/Subscribe";
 import SaveNotice from './components/SaveNotice';
 import { SearchResult } from './pages/MainPage'
+import { FeatureUsableContext } from './contexts/FeatureUsableContext';
+
 import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap/dist/js/bootstrap.bundle.js";
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -36,8 +38,15 @@ export interface WorkSpaceMetadata {
 export interface WorkSpaceFile {
   fileName: string;
   filePath: string;
+  fileSize: number;
   uuid: string;
   isSaved: boolean;
+}
+
+export enum SubscriptionPlan {
+  FREE = "FREE",
+  PREMIUM = "PREMIUM",
+  SUPREME = "SUPREME"
 }
 
 function App() {
@@ -45,6 +54,8 @@ function App() {
 
   // Used inside <ModelCards/> 
   const [currentModel, setCurrentModel] = useState<ModelDisplayInfo | null>(null);
+  const [modelDownloadProgress, setModelDownloadProgress] = useState(0)
+  const [startModelDownloadProgress, setStartModelDownloadProgress] = useState(false)
 
   // Intro visual effect
   const [landing, setLanding] = useState(<LandingAnimation/>);
@@ -86,6 +97,15 @@ function App() {
 
   // Used inside <SearchBar/> and <Summary/>
   const [summaryResult, setSummaryResult] = useState<string>('')
+
+  // User gmail name and email
+  const [user, setUser] = useState<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>(null)
+
+  // User current usage
+  const [currentUsage, setCurrentUsage] = useState(0)
+
+  // User can / cannot continue using the app
+  const [isFeatureUsable, setIsFeatureUsable] = useState(true)
 
   useEffect(()=>{
     setTimeout(()=>{
@@ -132,6 +152,32 @@ function App() {
     }
   }, [curWorkSpaceID, workSpaceMetadata])
 
+  // Triggered when currentUsage changes
+  useEffect(() => {
+    // Function to write the updated usage to file
+    const writeUpdatedUsageToFile = async (newSize: number) => {
+      try {
+        const result = await window.electron.invoke('update-usage', newSize)
+        console.log('Usage size updated in file:', result); // result should be 'success'
+      } catch (error) {
+        console.error('Error sending update usage to main process:', error)
+      }
+    }
+  
+    // Call the function with the new size whenever currentUsage changes
+    if ( currentUsage !== 0 )
+      writeUpdatedUsageToFile(currentUsage)
+  }, [currentUsage])
+
+  useEffect(() => {
+    // A user can use features if they haven't exceeded the usage limit
+    // or if they are logged in (not null) and their subscription plan is not FREE.
+    const canUseFeature = currentUsage <= 200 || (user && user.subscription_plan !== SubscriptionPlan.FREE);
+  
+    // Explicitly cast to boolean to satisfy TypeScript's type checking
+    setIsFeatureUsable(!!canUseFeature);
+  }, [currentUsage, user])
+
   // Triggered only once at beginning to load workspace info from disk
   useEffect(() => {
     if (port) {
@@ -148,6 +194,35 @@ function App() {
         } catch (error) {
             console.error('Error fetching models:', error)
         }
+
+        // Avoid using raw model on start
+        if (currentModel === null) {
+          const domain = 'public'
+          const author_name = 'thirdai';
+          const model_name = 'GeneralQnA';
+          try {
+              const response = await axios.post(`http://localhost:${port}/use_model`, {
+                  domain: domain,
+                  model_name: model_name,
+                  author_username: author_name
+              })
+
+              const data = response.data
+
+              if (data.success) {
+                  console.log(data.msg)
+
+                  setCurrentModel({
+                      author_name: author_name,
+                      model_name: model_name
+                  })
+              } else {
+                  console.error("Failed to set the model in the backend.")
+              }
+          } catch (error) {
+              console.error('Error:', error)
+          }
+        }
       }
   
       window.electron.on('server-ready', handleServerReady)
@@ -158,56 +233,85 @@ function App() {
       window.electron.on('update-available', () => {
           updateTrigger?.current?.click()
       })
+
+      // Get current usage
+      try {
+        window.electron.invoke('get-current-usage').then(usageData => {
+          console.log(`From Render: Current Usage: ${usageData.size} MB`)
+          console.log(`From Render: Usage Reset Date: ${usageData.resetDate}`)
+
+          // Update the state with the fetched usage data
+          setCurrentUsage(usageData.size)
+
+          // Here check if the limit is exceeded
+          if (usageData.size > 200) {
+            // Limit exceeded
+            console.warn('Usage limit exceeded')
+          }
+        })
+      } catch (error) {
+        console.error('Error fetching current usage:', error);
+      }
   }, [])
 
   return (
+    <FeatureUsableContext.Provider value={{ isFeatureUsable }}>
 
-    <div className='full-page-height p-0'>
-    
-        <UpdateModal trigger = {updateTrigger}/>
-        <Subscribe trigger = {subscribeTrigger}/>
-        <SaveNotice trigger = {saveTrigger}
-                    workSpaceMetadata={workSpaceMetadata} setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                    setCurWorkSpaceID = {setCurWorkSpaceID}
-                    afterSaveResetCurWorkspace = {afterSaveResetCurWorkspace}
-                    allowUnsave = {allowUnsave}/>
-        <Router>
-          <Routes>
+      <div className='full-page-setup p-0'>
+      
+          <AppUpdater trigger = {updateTrigger}/>
+          <Subscribe trigger = {subscribeTrigger}
+                    user = {user} 
+                    setUser = {setUser}/>
+          <SaveNotice trigger = {saveTrigger}
+                      workSpaceMetadata={workSpaceMetadata} setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                      setCurWorkSpaceID = {setCurWorkSpaceID}
+                      afterSaveResetCurWorkspace = {afterSaveResetCurWorkspace}
+                      allowUnsave = {allowUnsave}/>
+          <Router>
+            <Routes>
 
-              <Route path="/ModelCards" element={<ModelCards setCurWorkSpaceID = {setCurWorkSpaceID} setCurrentModel={setCurrentModel} />} />
-              
-              <Route path="/" 
-              element = {
-                <MainPage currentModel={currentModel} 
-                          specifySummerizerTrigger={specifySummerizerTrigger} 
-                          specifySummarizerFormTrigger = {specifySummarizerFormTrigger}
-                          indexFiles = {indexFiles}
-                          queryEnabled = {indexFiles.length != 0}
-                          curWorkSpaceID = {curWorkSpaceID}
-                          setCurWorkSpaceID = {setCurWorkSpaceID}
-                          workSpaceMetadata = {workSpaceMetadata}  setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                          summarizer = {summarizer} setSummarizer = {setSummarizer}
-                          searchResults = {searchResults} setSearchResults = {setSearchResults}
-                          summaryResult = {summaryResult} setSummaryResult = {setSummaryResult}
-                          saveWorkSpaceTrigger = {saveTrigger}  
-                          setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace} setAllowUnsave = {setAllowUnsave}
-                />
-              }>
+                <Route path="/ModelCards" element={<ModelCards  setCurWorkSpaceID = {setCurWorkSpaceID} setCurrentModel={setCurrentModel} 
+                                                                progress = {modelDownloadProgress} setProgress = {setModelDownloadProgress}
+                                                                startProgress = {startModelDownloadProgress} setStartProgress = {setStartModelDownloadProgress}
+                                                                />} />
+                
+                <Route path="/" 
+                element = {
+                  <MainPage currentModel={currentModel} 
+                            specifySummerizerTrigger={specifySummerizerTrigger} 
+                            specifySummarizerFormTrigger = {specifySummarizerFormTrigger}
+                            indexFiles = {indexFiles}
+                            queryEnabled = {indexFiles.length != 0}
+                            curWorkSpaceID = {curWorkSpaceID}
+                            setCurWorkSpaceID = {setCurWorkSpaceID}
+                            workSpaceMetadata = {workSpaceMetadata}  setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                            summarizer = {summarizer} setSummarizer = {setSummarizer}
+                            searchResults = {searchResults} setSearchResults = {setSearchResults}
+                            summaryResult = {summaryResult} setSummaryResult = {setSummaryResult}
+                            saveWorkSpaceTrigger = {saveTrigger}  
+                            setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace} setAllowUnsave = {setAllowUnsave}
+                            setCurrentUsage = {setCurrentUsage}
+                  />
+                }>
 
-              </Route>
+                </Route>
 
-          </Routes>
-          <TitleBar workSpaceMetadata = {workSpaceMetadata} 
-                    subscribeTrigger={subscribeTrigger} 
-                    curWorkSpaceID = {curWorkSpaceID} 
-                    setCurWorkSpaceID = {setCurWorkSpaceID} 
-                    setWorkSpaceMetadata = {setWorkSpaceMetadata} 
-                    saveWorkSpaceTrigger = {saveTrigger}
-                    setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace} setAllowUnsave = {setAllowUnsave}
-                    />
-        </Router>
-      {landing}
-    </div>
+            </Routes>
+            <TitleBar workSpaceMetadata = {workSpaceMetadata} 
+                      subscribeTrigger={subscribeTrigger} 
+                      curWorkSpaceID = {curWorkSpaceID} 
+                      setCurWorkSpaceID = {setCurWorkSpaceID} 
+                      setWorkSpaceMetadata = {setWorkSpaceMetadata} 
+                      saveWorkSpaceTrigger = {saveTrigger}
+                      setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace} setAllowUnsave = {setAllowUnsave}
+                      user = {user} setUser = {setUser}
+                      currentUsage = {currentUsage}
+                      />
+          </Router>
+        {landing}
+      </div>
+    </FeatureUsableContext.Provider>
 
   )
 }

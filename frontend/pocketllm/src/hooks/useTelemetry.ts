@@ -19,7 +19,7 @@ function useTelemetry() {
     const recordEvent = useCallback((eventType: TelemetryEvent) => {
         // Here, you can send the data to your server or use Electron's IPC to communicate with the main process.
 
-        const userName = 'Ye Cao'
+        const userName = 'PSEUDONAME UNSET'
         const timestamp = new Date().toISOString()
         const osDetails = window.electron.getOSDetails();
         const machineType = `${osDetails.type}-${osDetails.release}-${osDetails.arch}`;

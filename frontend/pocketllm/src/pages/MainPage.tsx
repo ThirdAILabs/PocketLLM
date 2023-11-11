@@ -31,7 +31,8 @@ type MainPageProps = {
   searchResults: SearchResult[], setSearchResults: (results: SearchResult[]) => void,
   summaryResult: string, setSummaryResult: (result: string) => void,
   saveWorkSpaceTrigger: React.RefObject<HTMLButtonElement>,
-  setAfterSaveResetCurWorkspace: React.Dispatch<React.SetStateAction<boolean>>, setAllowUnsave: React.Dispatch<React.SetStateAction<boolean>>
+  setAfterSaveResetCurWorkspace: React.Dispatch<React.SetStateAction<boolean>>, setAllowUnsave: React.Dispatch<React.SetStateAction<boolean>>,
+  setCurrentUsage: React.Dispatch<React.SetStateAction<number>>
 }
 
 export default function MainPage({currentModel, specifySummerizerTrigger,specifySummarizerFormTrigger, 
@@ -41,7 +42,8 @@ export default function MainPage({currentModel, specifySummerizerTrigger,specify
                                   summarizer, setSummarizer,
                                   searchResults, setSearchResults,
                                   summaryResult, setSummaryResult,
-                                  saveWorkSpaceTrigger, setAfterSaveResetCurWorkspace, setAllowUnsave
+                                  saveWorkSpaceTrigger, setAfterSaveResetCurWorkspace, setAllowUnsave,
+                                  setCurrentUsage
                                 }: MainPageProps) {
 
   function openAISetKeyNotice() {
@@ -78,28 +80,36 @@ export default function MainPage({currentModel, specifySummerizerTrigger,specify
   }, [curWorkSpaceID, workSpaceMetadata])
 
   return (
-    <div className="w-100 h-100 d-flex flex-column justify-content-center">
-        <div className='d-flex my-3 align-items-center justify-content-center pt-5'>
-          <ModelName modelInfo = {currentModel}/>
+    <div className='w-100 h-100 d-flex flex-column justify-content-between model-cards-wrapper'>
+      <div className="w-100 h-100 mt-5 mb-2" style={{maxHeight: "95vh", overflowY: "auto"}}>
+        <div className='d-flex flex-column align-items-center'>
+          <div className='d-flex mb-3 align-items-center justify-content-center pt-5' style={{marginTop:'130px'}}>
+            <ModelName modelInfo = {currentModel}/>
+          </div>
+
+          <SelectedFileList indexFiles = {indexFiles} queryEnabled={queryEnabled}
+                            workSpaceMetadata = {workSpaceMetadata} curWorkSpaceID = {curWorkSpaceID} 
+                            saveWorkSpaceTrigger = {saveWorkSpaceTrigger} 
+                            setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace}
+                            setAllowUnsave = {setAllowUnsave}/>
+
+          <FunctionBar  summarizer={summarizer} setSummarizer={setSummarizer} 
+                        specifySummerizerTrigger={specifySummerizerTrigger} summerizeFormTrigger = {specifySummarizerFormTrigger} queryEnabled={queryEnabled}
+                        curWorkSpaceID = {curWorkSpaceID} setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                        currentModel = {currentModel}
+                        setCurrentUsage = {setCurrentUsage}/>
+
+          <SearchBar onSearch = {setSearchResults} onSummary = {setSummaryResult} summarizer={summarizer} queryEnabled={queryEnabled}/>
+
+          <div style={{minWidth: "60vw", maxWidth: "70vw"}}>
+            <Summary summary = {summaryResult}/>
+            <Extraction searchResults={searchResults} openAISetKeyNotice={openAISetKeyNotice}/>
+          </div>
         </div>
-
-        <SelectedFileList indexFiles = {indexFiles} queryEnabled={queryEnabled}
-                          workSpaceMetadata = {workSpaceMetadata} curWorkSpaceID = {curWorkSpaceID} 
-                          saveWorkSpaceTrigger = {saveWorkSpaceTrigger} 
-                          setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace}
-                          setAllowUnsave = {setAllowUnsave}/>
-
-        <FunctionBar  summarizer={summarizer} setSummarizer={setSummarizer} 
-                      specifySummerizerTrigger={specifySummerizerTrigger} summerizeFormTrigger = {specifySummarizerFormTrigger} queryEnabled={queryEnabled}
-                      curWorkSpaceID = {curWorkSpaceID} setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                      currentModel = {currentModel}/>
-
-        <SearchBar onSearch = {setSearchResults} onSummary = {setSummaryResult} summarizer={summarizer} queryEnabled={queryEnabled}/>
-
-        <div style={{minWidth: "60vw", maxWidth: "70vw"}}>
-          <Summary summary = {summaryResult}/>
-          <Extraction searchResults={searchResults} openAISetKeyNotice={openAISetKeyNotice}/>
-        </div>
+            
+      </div>
+      <div className='font-x-sm mb-3'>Terms of <a target='_blank' href="https://www.thirdai.com/terms-of-service-for-thirdai-pocketllm/">Service</a> and <a target='_blank' href="https://www.thirdai.com/privacy-policy-pocketllm/">Privacy Policy</a>.</div>
     </div>
+    
   )
 }

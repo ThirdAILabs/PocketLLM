@@ -3,7 +3,8 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import path from 'node:path'
 import portfinder from 'portfinder'
 import { autoUpdater } from 'electron-updater'
-
+import fs from 'fs'
+import { randomBytes } from 'crypto'
 import { spawn, ChildProcess } from 'child_process'
 let serverProcess: ChildProcess | null = null
 
@@ -30,13 +31,13 @@ import axios from 'axios'
 import { TelemetryEventPackage } from '../src/hooks/useTelemetry'
 
 const expressApp = express();
-const PORT = 3000;
+const expressPORT = 3792;
 
 // Supabase configuration (Get these values from your Supabase dashboard)
 const SUPABASE_URL = 'https://zdfbyydaiewiqvpymmtf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpkZmJ5eWRhaWV3aXF2cHltbXRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTc3NDA0NzAsImV4cCI6MjAxMzMxNjQ3MH0.N2eAAr8Xv9NghkOBJjqrgWXtzx4IdgpVyB4QrFbK_Yk';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 expressApp.use(express.json());
 
@@ -54,8 +55,10 @@ expressApp.post('/save-json', async (req: Request, res: Response) => {
       const { error } = await supabase.from('telemetry_events').insert(formattedEvents);
       if (error) {
           console.error("Error inserting data:", error);
+          res.status(500).send('Error saving data');
       } else {
           console.log("Data inserted successfully");
+          res.status(200).send('Data saved successfully');
       }
     } catch (err) {
         console.error('Error saving data to Supabase:', err);
@@ -63,9 +66,100 @@ expressApp.post('/save-json', async (req: Request, res: Response) => {
     }
 });
 
-expressApp.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+expressApp.listen(expressPORT, () => {
+    console.log(`Express server running on http://localhost:${expressPORT}`);
 });
+
+
+// All user info will be stored here.
+// This directory is persistent across udpates
+const USERDATAPATH = path.join(app.getPath('appData'), 'pocketllm');
+if (!fs.existsSync(USERDATAPATH)){
+  fs.mkdirSync(USERDATAPATH);
+}
+
+// User pseudonyme identity construction and retrieval
+const IDENTITY_FILE = path.join(USERDATAPATH, 'user_identity.json')
+
+interface Identity {
+  machine_id: string;
+  gmail_id: string | null;
+}
+
+const getUserIdentity = () => {
+  let identity : Identity
+  if (fs.existsSync(IDENTITY_FILE)) {
+    identity = JSON.parse(fs.readFileSync(IDENTITY_FILE, 'utf8'))
+  } else {
+    const machine_id = randomBytes(16).toString('hex')
+    identity = { 
+      machine_id, 
+      gmail_id: null,
+    }
+    fs.writeFileSync(IDENTITY_FILE, JSON.stringify(identity))
+  }
+
+  const userID = identity.gmail_id ? `${identity.gmail_id} | ${identity.machine_id}` : identity.machine_id
+  return { userID }
+}
+let  { userID }  = getUserIdentity()
+console.log(`User ID: ${userID}`)
+
+// Define an interface for usage data
+interface UsageData {
+  size: number; // Total size used
+  resetDate: Date; // The date when the usage was last reset
+}
+
+// Usage
+const USAGE_FILE = path.join(USERDATAPATH, 'usage.json')
+
+// Function to get or create the usage data
+const getOrCreateUsageData = (): UsageData => {
+  let usageData: UsageData;
+
+  if (fs.existsSync(USAGE_FILE)) {
+    // Read the existing usage data
+    const data = JSON.parse(fs.readFileSync(USAGE_FILE, 'utf8'));
+    usageData = {
+      size: data.size,
+      resetDate: new Date(data.resetDate)
+    };
+
+    const lastResetDate = usageData.resetDate;
+    const currentDate = new Date();
+
+    // Check if the last reset was more than a month ago
+    if (currentDate.getMonth() !== lastResetDate.getMonth() ||
+        currentDate.getFullYear() !== lastResetDate.getFullYear()) {
+      
+      console.log('Reset the usage data in a new month.')
+      
+      usageData.size = 0;
+      usageData.resetDate = new Date(); // Keep this as a Date object
+    }
+  } else {
+    console.log('Writing the usage file for first time.')
+
+    // Create new usage data with initial values
+    usageData = {
+      size: 0,
+      resetDate: new Date(), // Keep this as a Date object
+    };
+  }
+
+  // Serialize and write to file if necessary
+  fs.writeFileSync(USAGE_FILE, JSON.stringify({
+    size: usageData.size,
+    resetDate: usageData.resetDate.toISOString() // Convert to string here
+  }, null, 2));
+
+  return usageData;
+}
+
+const usageData = getOrCreateUsageData()
+console.log(`Current Usage: ${usageData.size} MB`)
+console.log(`Usage Reset Date: ${usageData.resetDate.toISOString()}`)
 
 
 function createWindow() {
@@ -77,6 +171,7 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
+    title: "PocketLLM"
   })
 
   // During dev - console can be useful 
@@ -152,15 +247,23 @@ function createWindow() {
   // Set up a listener for the 'open-file-dialog' message
   ipcMain.on('open-file-dialog', (event) => {
     dialog.showOpenDialog(win!, {
-      properties: ['openFile'],
+      properties: ['openFile', 'multiSelections'],
     }).then(result => {
       if (!result.canceled && result.filePaths.length > 0) {
-        const filePath = result.filePaths[0]
-        const fileName = path.basename(filePath)
-        event.sender.send('selected-file', {filePath, fileName})
+        // Map through each file path and get file details including size
+        const files = result.filePaths.map(filePath => {
+          const stats = fs.statSync(filePath)
+
+          return  {
+            filePath,
+            fileName: path.basename(filePath),
+            fileSize: stats.size, // Size of file in bytes
+          }
+        });
+        event.sender.send('selected-files', files);
       }
     }).catch(err => {
-      console.log(err)
+      console.log(err);
     })
   })
 
@@ -193,68 +296,96 @@ function createWindow() {
   })
 
   ipcMain.on('save-telemetry-data', (event, data) => {
-      const fs = require('fs');
-      
-      // Get the path to the user's appData directory, then join it with your app's name.
-      const userDataPath = path.join(app.getPath('appData'), 'pocketllm')
-
-      // Ensure the directory exists
-      if (!fs.existsSync(userDataPath)){
-        fs.mkdirSync(userDataPath);
+    const fs = require('fs');
+  
+    const telemeryFilePath = path.join(USERDATAPATH, 'telemetry-data.json');
+    console.log(`telemetry-data is stored at ${telemeryFilePath}`);
+  
+    const newEventData = JSON.parse(data);
+  
+    const processData = (fileContents: string) => {
+      let existingData = [];
+      try {
+          existingData = JSON.parse(fileContents);
+      } catch (parseErr) {
+          console.log(`Telemetry data Json parse error ${parseErr}`);
+          return;
       }
+  
+      const mergedData = existingData.concat(newEventData);
 
-      const filePath = path.join(userDataPath, 'telemetry-data.json')
-
-      console.log(`telemetry-data is stored at ${filePath}`)
-
-      const newEventData = JSON.parse(data); // This will be the new data to save.
-
-      if (fs.existsSync(filePath)) {
-          fs.readFile(filePath, 'utf8', (readErr: NodeJS.ErrnoException | null, fileContents: string) => {
-              if (readErr) {
-                  console.log(`Encounter read error ${readErr}`)
-                  return;
-              }
-
-              let existingData = [];
-              try {
-                  existingData = JSON.parse(fileContents);
-              } catch (parseErr) {
-                  console.log(`Telemetry data Json parse error ${parseErr}`)
-                  return;
-              }
-
-              const mergedData = existingData.concat(newEventData);
-
-              axios.post('http://localhost:3000/save-json', mergedData)
-              .then(response => {
-                  console.log('Data saved to PostgreSQL:', response.data);
-                  // ... rest of the logic ...
-              })
-              .catch(error => {
-                  console.error('Error saving data to PostgreSQL:', error)
-              });
-
-              fs.writeFile(filePath, JSON.stringify(mergedData, null, 2), (writeErr: NodeJS.ErrnoException | null) => {
-                  if (writeErr) {
-                      console.error(`Error saving data to PostgreSQL: ${writeErr}`)
-                      event.sender.send('telemetry-data-save-result', 'error');
-                  } else {
-                      console.error(`Save data to PostgreSQL success`)
-                  }
-              });
-          });
-      } else {
-          // File doesn't exist, so we'll create it and add the new event data inside an array.
-          fs.writeFile(filePath, JSON.stringify([newEventData], null, 2), (writeErr: NodeJS.ErrnoException | null) => {
+      const mergedDataWithUserID = mergedData.map((eventPackage: TelemetryEventPackage)  => ({
+        ...eventPackage,
+        UserName: userID
+      }))
+  
+      fs.writeFile(telemeryFilePath, JSON.stringify(mergedDataWithUserID, null, 2), (writeErr: NodeJS.ErrnoException | null) => {
+        if (writeErr) {
+          console.error(`Error writing to file: ${writeErr}`);
+          event.sender.send('telemetry-data-save-result', 'error');
+        } else {
+          console.log(`Current telemetry data length: ${mergedDataWithUserID.length}`)
+          if (mergedDataWithUserID.length >= 20) {
+            sendToDatabase(mergedDataWithUserID);
+          }
+        }
+      });
+    };
+  
+    const sendToDatabase = (data: TelemetryEventPackage[]) => {
+      axios.post(`http://localhost:${expressPORT}/save-json`, data)
+        .then(response => {
+          if (response.status === 200) {
+            console.log('Data saved to PostgreSQL:', response.data);
+            fs.writeFile(telemeryFilePath, JSON.stringify([], null, 2), (writeErr: NodeJS.ErrnoException | null) => {
               if (writeErr) {
-                  console.error(`Encounter write error ${writeErr}`)
+                console.error(`Error clearing file after database update: ${writeErr}`);
               } else {
-                  console.log(`File write success`)
+                console.log('Local file cleared after successful database update');
               }
-          });
-      }
+            });
+          } else {
+            console.error('Received non-success status from database:', response.status);
+          }
+        })
+        .catch(error => {
+          console.error('Error saving data to PostgreSQL:', error);
+        });
+    };
+  
+    if (fs.existsSync(telemeryFilePath)) {
+      fs.readFile(telemeryFilePath, 'utf8', (readErr: NodeJS.ErrnoException | null, fileContents: string) => {
+        if (readErr) {
+          console.log(`Encounter read error ${readErr}`);
+          return;
+        }
+        processData(fileContents);
+      });
+    } else {
+      processData('[]');
+    }
   });
+
+  // Remove the existing 'update-usage' handler if any
+  ipcMain.removeHandler('update-usage')
+
+  ipcMain.handle('update-usage', async (_, newSize) => {
+    if (fs.existsSync(USAGE_FILE)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(USAGE_FILE, 'utf8'));
+        data.size = newSize; // Assuming newSize is the new total size to set
+  
+        fs.writeFileSync(USAGE_FILE, JSON.stringify(data, null, 2));
+        return 'success';
+      } catch (error) {
+        console.error(`Error writing to file: ${error}`);
+        throw error; // This will send an error back to the renderer process
+      }
+    } else {
+      throw new Error('Usage file not found.');
+    }
+  });
+  
 
   // Remove the existing 'show-save-dialog' handler if any
   ipcMain.removeHandler('show-save-dialog');
@@ -277,6 +408,19 @@ function createWindow() {
     }
   })
 
+  // Remove the existing 'get-current-usage' handler if any
+  ipcMain.removeHandler('get-current-usage')
+
+  ipcMain.handle('get-current-usage', async (_) => {
+    const usageData = getOrCreateUsageData();
+    
+    const formattedUsageData = {
+      size: usageData.size,
+      resetDate: usageData.resetDate.toISOString()
+    };
+    return formattedUsageData;
+  })
+
   ipcMain.on('open-external-url', (_, url) => {
     const { shell } = require('electron');
     shell.openExternal(url);
@@ -297,19 +441,19 @@ app.on('will-quit', () => {
   }
 })
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
+  // Quit app when all windows are closed, except on macOS. There, it's common
+  // for applications and their menu bar to stay active until the user quits
+  // explicitly with Cmd + Q.
   if (process.platform !== 'darwin') {
     app.quit()
     win = null
+  }
 
-    // If on non-macOS, kill the Python process if it's running
-    if (serverProcess && !serverProcess.killed) {
-      serverProcess.kill()
-      console.log('Python server process killed on window-all-closed')
-    }
+  // Kill the Python process if it's running
+  if (serverProcess && !serverProcess.killed) {
+    serverProcess.kill()
+    console.log('Python server process killed on window-all-closed')
   }
 })
 
@@ -317,15 +461,18 @@ app.on('activate', () => {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
+    startBackend()
     createWindow()
   }
 })
 
-app.whenReady().then(async () => {
-  
+async function startBackend() {
   const availablePort = await portfinder.getPortPromise();
 
   console.log(`found port ${availablePort}`)
+
+  // Remove the existing 'get-port' handler if any
+  ipcMain.removeHandler('get-port');
 
   ipcMain.handle('get-port', (_) => {
     return availablePort;
@@ -338,7 +485,7 @@ app.whenReady().then(async () => {
 
   console.log('pythonExecutablePath:', pythonExecutablePath)
 
-  serverProcess = spawn(pythonExecutablePath, [availablePort.toString()])
+  serverProcess = spawn(pythonExecutablePath, [availablePort.toString(), USERDATAPATH])
 
   console.log('spawn success')
 
@@ -356,6 +503,11 @@ app.whenReady().then(async () => {
       win?.webContents.send('server-ready')
     }
   })
+}
+
+app.whenReady().then(async () => {
+
+  startBackend()
 
   // Create the main application window
   createWindow()

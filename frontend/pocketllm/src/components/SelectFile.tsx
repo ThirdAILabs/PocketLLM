@@ -18,6 +18,7 @@ interface SelectFileProps {
     setCurWorkSpaceID: React.Dispatch<React.SetStateAction<string|null>>,
     setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
     currentModel: ModelDisplayInfo | null,
+    setCurrentUsage: React.Dispatch<React.SetStateAction<number>>
 }
 
 export default function SelectFile(props: SelectFileProps) {
@@ -26,8 +27,11 @@ export default function SelectFile(props: SelectFileProps) {
         progress, setProgress, 
         startProgress, setStartProgress,
         curWorkSpaceID, setCurWorkSpaceID, setWorkSpaceMetadata,
-        currentModel
+        currentModel,
+        setCurrentUsage
     } = props;
+
+    const [draggover, setDraggover] = useState(false);
 
     const { port } = usePort()
 
@@ -38,31 +42,42 @@ export default function SelectFile(props: SelectFileProps) {
     const recordEvent = useTelemetry()
 
     useEffect(() => {
-        const handler = ({filePath, fileName}: {filePath: string, fileName: string}) => {
-            console.log(filePath, fileName)
-
-            // Check if file path already exists
-            const fileExists = selectedFiles.some(file => file.filePath === filePath)
-            if (fileExists)
-                return
-
-            setSelectedFiles(prevFiles => [
-                ...prevFiles,
-                {
-                    fileName: fileName,
-                    filePath: filePath,
-                    isSaved: false,
-                    uuid: uuidv4(), // Generate a new UUID for each file
-                },
-            ])
+        const handler = (files: WorkSpaceFile[]) => {
+          // files is now an array of {filePath, fileName}
+          const newFiles = files.filter(({ filePath }) => 
+            !selectedFiles.some(file => file.filePath === filePath)
+          ).map(file => ({
+            ...file,
+            isSaved: false,
+            uuid: uuidv4(),
+          }));
+      
+          setSelectedFiles(prevFiles => [...prevFiles, ...newFiles]);
         }
 
-        const cleanup = window.electron.on('selected-file', handler)
-    
+        const cleanup = window.electron.on('selected-files', handler);
+
         return () => {
-          cleanup()
-        }
-      }, [])
+          cleanup();
+        };
+      }, []);
+
+      const onDrop = (event: React.DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        setDraggover(false);
+        const files = Array.from(event.dataTransfer.files);
+        const fileDetails: WorkSpaceFile[] = files.map(file => ({
+          filePath: file.path,
+          fileName: file.name,
+          fileSize: file.size,
+          isSaved: false,
+          uuid: uuidv4(),
+        }));
+
+        console.log(fileDetails)
+
+        setSelectedFiles(prevFiles => [...prevFiles, ...fileDetails]);
+      };
 
       const addModel = () => {
         try {
@@ -73,6 +88,14 @@ export default function SelectFile(props: SelectFileProps) {
                 console.log('WebSocket Client Connected')
 
                 setStartProgress(true);
+
+                // Calculate the total size of the files to be uploaded
+                const totalSize = selectedFiles.reduce((acc, file) => acc + file.fileSize, 0)
+                // Convert the total size to megabytes and update current usage
+                const totalSizeInMB = totalSize / (1024 * 1024)
+
+                console.log(`Total file trained size: ${totalSizeInMB}`)
+                setCurrentUsage(prevUsage => prevUsage + totalSizeInMB)
 
                 const filePaths = selectedFiles.map(file => file.filePath)
 
@@ -181,40 +204,58 @@ export default function SelectFile(props: SelectFileProps) {
                         <button type="button" className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div className="modal-body pt-0">
-                        <div className='d-flex justify-content-center mb-4'>
-                            <button className='btn bg-secondary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
-                                    onClick={ selectFiles }>
-                                Select files...
-                            </button>
-                            <button className='btn bg-secondary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
-                                    onClick={ addModel }>
-                                Add to model
-                            </button>
+                       
+                        <div onDrop={onDrop} onDragOver={(e) => {e.preventDefault(); setDraggover(true)}} 
+                            onDragLeave={(e) => {e.preventDefault(); setDraggover(false)}}
+                            className={`drop-zone drop-zone-wrapper ${ draggover? " drop-zone-drag" : ""}`} 
+                            onClick={ selectFiles}>
+                            <i className="bi bi-upload fs-2 text-secondary mb-2"></i>
+                            Drop files here or click to select files.
                         </div>
 
                         {
                             startProgress ?
-                            <ProgressBar progress={progress}/>
+                            <div className='my-2'>
+                                <ProgressBar progress={progress}/>
+                            </div>
+                            
                             :
                             <></>
                         }
-                        <hr className='my-2'/>
-                        <div className='mb-3'>
-                            <div className='d-flex font-x-sm'>Selected files</div>
-                            <ul>
-                            {
-                                selectedFiles.map((file) => (
-                                    <li key={file.uuid} className="file-item">
-                                    {file.fileName.length > 20 ? file.fileName.slice(0, 20) + '...' : file.fileName}
-                                        <button className='btn ms-2' onClick={() => removeFile(file.uuid)}>
-                                            <i className="bi bi-x-circle-fill text-secondary"></i>
-                                        </button>
-                                    </li>
-                                ))
-                            }
-                            </ul>
-                        </div>
-                        <hr className='my-2'/>
+
+                        {
+                            selectedFiles.length > 0 ?
+                            <>
+                            <hr className='my-2'/>
+                            <div className='mb-3'>
+                                <div className='d-flex font-x-sm'>Selected files</div>
+    
+                                <ul style={{maxHeight: "140px", overflow: "auto"}}>
+                                {
+                                    selectedFiles.map((file) => (
+                                        <li key={file.uuid} className="file-item">
+                                        {file.fileName.length > 20 ? file.fileName.slice(0, 20) + '...' : file.fileName}
+                                            <button className='btn ms-2' onClick={() => removeFile(file.uuid)}>
+                                                <i className="bi bi-x-circle-fill text-secondary"></i>
+                                            </button>
+                                        </li>
+                                    ))
+                                }
+                                </ul>
+                                <div className='d-flex justify-content-center'>
+                                    <button className='btn bg-secondary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
+                                            onClick={ addModel }>
+                                        Add to model
+                                    </button>
+                                </div>
+                            </div>
+                            <hr className='my-2'/>
+                            </>
+                            :
+                            <></>
+                        }
+                        
+                        
                     </div>
                 </div>
             </div>

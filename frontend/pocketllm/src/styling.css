@@ -224,6 +224,34 @@ input:focus{
     transition: all 1s ease;
 }
 
+/* disable user select when readonly */
+.history-item:read-only{
+    color: rgb(78, 78, 78) !important;
+    cursor: pointer;
+    -webkit-user-select:none;
+    -moz-user-select:none;
+    -ms-user-select:none;
+    user-select:none;
+}
+
+.prevent-select {
+    -webkit-user-select:none;
+    -moz-user-select:none;
+    -ms-user-select:none;
+    user-select:none;
+}
+
+
+.model-cards-wrapper{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: white;
+    overflow: hidden;
+}
+
 .model-card{
     width: 100%;
     background-color: rgb(242, 242, 242);
@@ -231,6 +259,26 @@ input:focus{
     border: 1px solid rgb(224, 224, 224);
     width: 375px;
     height: 300px;
+}
+
+.model-card-mini{
+    width: 100%;
+    text-align: left;
+    background-color: rgb(245, 245, 245);
+    width: 250px;
+    height: 300px;
+    cursor: pointer;
+    transition: all 0.5s ease;
+}
+
+.model-card-mini:hover {
+    background-color: rgb(235, 235, 235);
+}
+
+.model-card-functions{
+    position: absolute;
+    right: 5px;
+    top: 5px;
 }
 
 .specify-model-dialog {
@@ -442,7 +490,7 @@ input:focus{
 .subscribe-frame {
     border-radius: 15px;
     padding: 20px;
-    
+    width: 300px;
 }
 
 .subcribed {
@@ -488,4 +536,23 @@ input:focus{
     overflow: auto;
     width: 100%;
     max-height: 60px;
+}
+
+.drop-zone-wrapper {
+    width: 100%;
+    min-height: 100px;
+    cursor: pointer;
+    border: rgb(198, 198, 198) 2px dashed;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: small;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.drop-zone-drag {
+    background-color: rgb(224, 224, 224);
 }

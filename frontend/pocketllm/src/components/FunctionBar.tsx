@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
+import Tooltip from '@mui/material/Tooltip';
 
 import { WorkSpaceFile } from '../App'
 import Teach from "./Teach"
@@ -8,6 +9,7 @@ import SpecifySummarizer from './SpecifySummarizer'
 import SelectFile from './SelectFile'
 import { WorkSpaceMetadata } from '../App'
 import { ModelDisplayInfo } from '../App'
+import { FeatureUsableContext } from '../contexts/FeatureUsableContext';
 
 type FunctionBarProps = {
   currentModel: ModelDisplayInfo | null,
@@ -18,12 +20,30 @@ type FunctionBarProps = {
   setCurWorkSpaceID: React.Dispatch<React.SetStateAction<string|null>>,
   setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
   summarizer: string | null, setSummarizer: (model: string | null) => void
+  setCurrentUsage: React.Dispatch<React.SetStateAction<number>>
 };
 
 export default function FunctionBar({summarizer, setSummarizer, specifySummerizerTrigger, summerizeFormTrigger, queryEnabled,  
-                                    curWorkSpaceID, setCurWorkSpaceID, setWorkSpaceMetadata,
-                                    currentModel
-                                  }: FunctionBarProps) {
+    curWorkSpaceID, setCurWorkSpaceID, setWorkSpaceMetadata,
+    currentModel,
+    setCurrentUsage
+  }: FunctionBarProps) {
+
+  const { isFeatureUsable } = useContext(FeatureUsableContext);
+
+  if (!isFeatureUsable) {
+      // Render a message or alternative UI
+      return (
+        <Tooltip title = "Feature not available due to exceeded workspace usage. Please check subscriptions for upgrades." placement='bottom'>
+          <button className='btn border-0 mx-1 mt-2 text-secondary text-opacity-75' onClick={(e)=>e.preventDefault()}>
+            <i className="bi bi-box-arrow-in-right fs-5"></i>
+              <div className='font-sm'>Upload</div>
+          </button>
+        </Tooltip>
+      
+      );
+  }
+
   const [selectedFiles, setSelectedFiles] = useState<WorkSpaceFile[]>([]);
   const [progress, setProgress] = useState(0);
   const [startProgress, setStartProgress] = useState(false);
@@ -59,14 +79,17 @@ export default function FunctionBar({summarizer, setSummarizer, specifySummerize
                     setStartProgress={setStartProgress}
                     curWorkSpaceID = {curWorkSpaceID} setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
                     currentModel = {currentModel}
+                    setCurrentUsage = {setCurrentUsage}
             />
             <LoadUrl
                     curWorkSpaceID = {curWorkSpaceID} setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
                     currentModel = {currentModel}
+                    setCurrentUsage = {setCurrentUsage}
             />
             <LoadGmail
                     setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
                     currentModel = {currentModel}
+                    setCurrentUsage = {setCurrentUsage}
             />
           </div>
           

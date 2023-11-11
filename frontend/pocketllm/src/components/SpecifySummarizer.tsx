@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from 'react'
+import { useState, FormEvent, useEffect, useRef } from 'react'
 import axios from 'axios'
 import { usePort } from '../PortContext'
 
@@ -18,6 +18,8 @@ export default function SpecifySummarizer( {summarizer , setSummarizer, trigger,
     const [notice, setNotice] = useState(<></>);
 
     const [openAiApiKey, setOpenAiApiKey] = useState("");
+
+    const closeRef = useRef<HTMLButtonElement>(null);
 
     useEffect(()=>{
         setValue(summarizer);
@@ -48,7 +50,11 @@ export default function SpecifySummarizer( {summarizer , setSummarizer, trigger,
         try {
             const response = await axios.post(`http://localhost:${port}/setting`, payload);
             if (response.data.success) {
-                giveNotice("success", "Summary model set.")
+                giveNotice("success", "Summary model set.");
+                setTimeout(()=>{
+                    closeRef.current?.click();
+                }, 1000)
+                
             } else {
                 giveNotice("warning", "Failed to set summary model.")
             }
@@ -68,7 +74,7 @@ export default function SpecifySummarizer( {summarizer , setSummarizer, trigger,
             <div className="modal-dialog specify-model-dialog modal-dialog-centered">
                 <div className="modal-content">
                     <div className="modal-header border-0 ">
-                        <button type="button" className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" ref={closeRef} className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div className="modal-body pt-0 px-3">
                         <div className='font-sm fw-bold mb-2'>Specify Summary Model</div>

@@ -177,7 +177,7 @@ export default function Extraction({ searchResults, openAISetKeyNotice }: Extrac
                     <div className='d-flex align-items-center'>
                       <div>
                           <button className='btn btn-general p-1 px-2'>
-                            <i className={`bi fs-2 collect bi-bookmark-star`}></i>
+                            <i className="bi fs-2 collect bi-hand-thumbs-up"></i>
                           </button>
                       </div>
 
@@ -211,7 +211,7 @@ export default function Extraction({ searchResults, openAISetKeyNotice }: Extrac
                         </>
                         :
                         <>
-                          <Clearification setRead = {setRead} clarifyItem = {'Summarization'}/>
+                          <Clearification setRead = {setRead} clarifyItem = {'Summarize'}/>
                           <Clearification setRead = {setRead} clarifyItem = {'Craft Reply'}/>
                         </>
                       }
@@ -220,7 +220,7 @@ export default function Extraction({ searchResults, openAISetKeyNotice }: Extrac
                         {summaries[index] && (
                           <>
                             <div className='horizontal-line my-3'/>
-                            <div className='mb-2'> <i className="bi bi-journal-text fs-5"></i> Summerization </div>
+                            <div className='mb-2'> <i className="bi bi-journal-text fs-5"></i> Summary </div>
                             <div className='w-100 ps-5' style={{overflowWrap: "break-word"}}>{summaries[index]}</div>
                           </>
                         )}
@@ -262,7 +262,8 @@ export default function Extraction({ searchResults, openAISetKeyNotice }: Extrac
                 :
                 <div key={index} className='extraction font-sm p-4 rounded-3 d-flex align-items-center mb-3'>
                   <button className='btn btn-general p-1 px-2' onClick={() => handleCollect(index)}>
-                    <i className={`bi fs-2 collect bi-bookmark-star ${collectStates[index]}`}></i>
+                    {/* <i className={`bi fs-2 collect bi-bookmark-star ${collectStates[index]}`}></i> */}
+                    <i className={`bi fs-2 collect bi-hand-thumbs-up ${collectStates[index]}`}></i>
                   </button>
                   <div className="short-vertical-line ms-2 me-4"></div>
                   <div>

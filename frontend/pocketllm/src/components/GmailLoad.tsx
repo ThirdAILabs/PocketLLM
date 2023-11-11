@@ -11,15 +11,18 @@ type LoadGmailProps = {
     setCurWorkSpaceID: React.Dispatch<React.SetStateAction<string|null>>,
     setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
     currentModel: ModelDisplayInfo | null,
+    setCurrentUsage: React.Dispatch<React.SetStateAction<number>>
 }
 
-export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, currentModel}: LoadGmailProps) {
+export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, currentModel, setCurrentUsage}: LoadGmailProps) {
     const { port } = usePort()
+    const closeRef = useRef<HTMLButtonElement>(null)
     const [progress, setProgress] = useState(0)
     const [startProgress, setStartProgress] = useState(false);
     const [label, setLabel] = useState("Begin Download");
     const labelRef = useRef<string>(label)
     const [loggedIn, setLoggedIn] = useState(false);
+    const [checked, setChecked] = useState(false);
     // const [startDate, setStartDate] = useState(new Date());
     // const [endDate, setEndDate] = useState(new Date());
     const [maxEmailNum, setMaxEmailNum] = useState<null | number>(null);
@@ -74,6 +77,8 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
                 user_id: 'me',   
                 num_emails: eDownloadNum
             }))
+
+            setCurrentUsage(prevUsage => prevUsage + (5.3 / 1000 * eDownloadNum)) // This is only an estimate based on: 1000 emails = 5.3MB
         };
 
         ws.onmessage = (event) => {
@@ -87,6 +92,9 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
                 }, 700)
             } else if (data.progress == 100 && labelRef.current == "Training...") {
                 setLabel("Finished")
+                setTimeout(()=>{
+                    closeRef.current?.click()
+                }, 500)
 
                 // Create a new workspace
                 const newWorkSpaceID = uuidv4()   // Generate a new unique workspace ID
@@ -96,6 +104,7 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
                     {
                         fileName: `Gmail latest ${eDownloadNum}`,
                         filePath: `Gmail latest ${eDownloadNum}`,
+                        fileSize: (5.3 / 1000 * eDownloadNum), // This is only an estimate based on: 1000 emails = 5.3MB
                         isSaved: false,
                         uuid: uuidv4(),
                     }
@@ -160,16 +169,21 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
 
   return (
     <>
-        <button type="button" className='btn btn-general mx-1 h-100'  data-bs-toggle="modal" data-bs-target="#gmailModal">
+        <button type="button" 
+            className='btn btn-general mx-1 h-100'  
+            data-bs-toggle="modal" data-bs-target="#gmailModal"
+            onClick={(e)=>e.preventDefault()}
+        >
             <i className="bi bi-google"></i>
             <div className='font-sm'>Gmail</div>
         </button>
+        
 
         <form onSubmit={(e)=>e.preventDefault()} className="modal fade" id="gmailModal" tabIndex={-1} aria-hidden="true">
             <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content">
                     <div className="modal-header border-0 ">
-                        <button type="button" className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button ref={closeRef} type="button" className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div className="modal-body pt-0">
                         {
@@ -236,16 +250,23 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
                             :
                             <div className='py-5'>
                                 <div className='d-flex mb-2 justify-content-center align-items-center'>
-                                    <i className="bi bi-google me-1"></i>
-                                    <i className="bi bi-mailbox me-2 font-lg"></i>
-                                    <div>Statement</div>
+                                    <div>Privacy consent</div>
                                 </div>
-                                <div className='font-sm'>Privacy: Your Gmail data will stay local.</div>
-                                <div className='d-flex justify-content-center mt-4'>
+                                <div className='font-sm'>Only selected text data from your emails will be downloaded to this local computer.</div>
+                                <div className="form-check font-sm d-flex justify-content-center mt-5">
+                                    <input className="form-check-input me-2" type="checkbox" value="" id="flexCheckDefault" 
+                                    checked={checked} onClick={()=>setChecked(!checked)}/>
+                                    <label className="form-check-label" htmlFor="flexCheckDefault">
+                                        I agree with the <a target='_blank' href='https://www.thirdai.com/privacy-policy-pocketllm/'>privacy notice</a>
+                                    </label>
+                                </div>
+                                <div className='d-flex justify-content-center mt-2'>
                                     <button type="button"
-                                            className='btn bg-secondary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
+                                            disabled={!checked}
+                                            className='btn bg-secondary bg-opacity-50 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
                                             onClick={ logInGmail } >
-                                        Confirm and start loggin with Gmail
+
+                                        Connect to Gmail
                                     </button>
                                 </div>
                             </div>
