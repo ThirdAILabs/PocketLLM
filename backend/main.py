@@ -574,37 +574,35 @@ class ImportModelData(BaseModel):
 @app.post("/import_workspace")
 def import_workspace(import_data: ImportModelData):
     USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
-
     chosen_directory = Path(import_data.directoryPath)
-    metadata_path = chosen_directory / 'metadata.json'
-    
-    if not metadata_path.exists():
-        if chosen_directory.suffix == '.ndb':
-            new_workspaceID = str(uuid4())
-            destination_folder = USER_WORKSPACE_CACHE / new_workspaceID
-            destination_folder.mkdir(parents=True, exist_ok=True)
 
-            metadata = {}
+    if chosen_directory.suffix == '.ndb':
+        new_workspaceID = str(uuid4())
+        destination_folder = USER_WORKSPACE_CACHE / new_workspaceID
+        destination_folder.mkdir(parents=True, exist_ok=True)
 
-            model_ndb_path = destination_folder / 'model.ndb'
-            shutil.copytree(chosen_directory, model_ndb_path)
-            
-            # Create and populate metadata.json
-            metadata = {
-                "workspaceID": new_workspaceID,
-                "workspaceName": chosen_directory.stem,  # Use the name of the .ndb file
-                "model_info": {
-                    "author_name": "thirdai",
-                    "model_name": "Default model"
-                },
-                "documents": [],
-                "last_modified": datetime.utcnow().isoformat()
-            }
-            
-            # Iterate inside .ndb/documents folder
-            documents_folder = model_ndb_path / 'documents'
-            if documents_folder.exists() and documents_folder.is_dir():
-                for subfolder in documents_folder.iterdir():
+        metadata = {}
+
+        model_ndb_path = destination_folder / 'model.ndb'
+        shutil.copytree(chosen_directory, model_ndb_path)
+        
+        # Create and populate metadata.json
+        metadata = {
+            "workspaceID": new_workspaceID,
+            "workspaceName": chosen_directory.stem,  # Use the name of the .ndb file
+            "model_info": {
+                "author_name": "thirdai",
+                "model_name": "Default model"
+            },
+            "documents": [],
+            "last_modified": datetime.utcnow().isoformat()
+        }
+        
+        # Iterate inside .ndb/documents folder
+        documents_folder = model_ndb_path / 'documents'
+        if documents_folder.exists() and documents_folder.is_dir():
+            for subfolder in documents_folder.iterdir():
+                if subfolder.is_dir(): # Check if the item is a directory
                     for file in subfolder.iterdir():
                         file_info = {
                             "fileName": file.name,
@@ -613,15 +611,15 @@ def import_workspace(import_data: ImportModelData):
                             "isSaved": True
                         }
                         metadata["documents"].append(file_info)
-            
-            # Write the metadata.json file in the destination folder
-            with open(destination_folder / 'metadata.json', 'w') as meta_file:
-                json.dump(metadata, meta_file, indent=4)
-            
-            return {'success': True, 'metadata': metadata}
-        else:
-            raise HTTPException(status_code=400, detail="Unsupported workspace type.")
-    else:
+        
+        # Write the metadata.json file in the destination folder
+        with open(destination_folder / 'metadata.json', 'w') as meta_file:
+            json.dump(metadata, meta_file, indent=4)
+        
+        return {'success': True, 'metadata': metadata}
+    elif chosen_directory.suffix == '.neural-workspace':
+        metadata_path = chosen_directory / 'metadata.json'
+
         with open(metadata_path, 'r') as meta_file:
             metadata = json.load(meta_file)
 
@@ -644,6 +642,8 @@ def import_workspace(import_data: ImportModelData):
             json.dump(metadata, meta_file)
 
         return {'success': True, 'metadata': metadata}
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported workspace type.")
 
 class UpdateWorkspaceNameRequest(BaseModel):
     workspaceID: str

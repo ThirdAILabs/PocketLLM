@@ -21,7 +21,8 @@ export default function Clearification( {setRead, clarifyItem} : Clearification)
                     <div className='d-flex justify-content-center mb-3'>Are you sure to send email content to GPT3.5-Turbo model?</div>
                         <div className="form-check font-sm d-flex justify-content-center mt-4 mb-2">
                             <input className="form-check-input me-2" type="checkbox" value="" id="flexCheckDefault" 
-                            checked={checked} onClick={()=>setChecked(!checked)}/>
+                            checked={checked} onClick={()=>setChecked(!checked)}
+                            readOnly/>
                             <label className="form-check-label" htmlFor="flexCheckDefault">
                                 I agree with the <a target='_blank' href='https://www.thirdai.com/privacy-policy-pocketllm/'>privacy notice</a>
                             </label>

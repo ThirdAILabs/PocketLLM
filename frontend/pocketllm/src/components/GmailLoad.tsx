@@ -255,7 +255,9 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
                                 <div className='font-sm'>Only selected text data from your emails will be downloaded to this local computer.</div>
                                 <div className="form-check font-sm d-flex justify-content-center mt-5">
                                     <input className="form-check-input me-2" type="checkbox" value="" id="flexCheckDefault" 
-                                    checked={checked} onClick={()=>setChecked(!checked)}/>
+                                    checked={checked} onClick={()=>setChecked(!checked)}
+                                    readOnly
+                                    />
                                     <label className="form-check-label" htmlFor="flexCheckDefault">
                                         I agree with the <a target='_blank' href='https://www.thirdai.com/privacy-policy-pocketllm/'>privacy notice</a>
                                     </label>
