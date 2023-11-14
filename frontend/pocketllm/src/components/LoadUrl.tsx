@@ -7,6 +7,7 @@ import { usePort } from '../PortContext'
 import ProgressBar from './ProgressBar';
 import { WorkSpaceMetadata } from '../App'
 import { ModelDisplayInfo } from '../App'
+import Tooltip from '@mui/material/Tooltip';
 
 type LoadUrlProps = {
   curWorkSpaceID: string|null,
@@ -55,7 +56,7 @@ export default function LoadUrl({curWorkSpaceID, setWorkSpaceMetadata, setCurWor
       console.log(`${data.progress}% - ${data.message}`)
 
       // Handle the received data (e.g., display progress or error messages)
-      if (data.progress === 100) {
+      if (data.complete === true) {
         if (curWorkSpaceID === null) {
           // Create a new workspace
           const newWorkSpaceID = uuidv4()   // Generate a new unique workspace ID
@@ -138,10 +139,13 @@ export default function LoadUrl({curWorkSpaceID, setWorkSpaceMetadata, setCurWor
 
   return (
     <>
-      <button type="button" className="btn btn-general mx-1 h-100" aria-describedby={id} onClick={handleClick}>
-            <i className="bi bi-link-45deg font-lg"></i>
-            <div className='font-sm'>Url</div>
-      </button>
+      <Tooltip title="URL">
+        <button type="button" className="btn btn-general mx-1 h-100" aria-describedby={id} onClick={handleClick}>
+              <i className="bi bi-link-45deg font-lg"></i>
+              {/* <div className='font-sm'>Url</div> */}
+        </button>
+      </Tooltip>
+      
       <Popover id={id} open={open} anchorEl={anchorEl} onClose={handleClose} 
           anchorOrigin={{
             vertical: 'bottom',

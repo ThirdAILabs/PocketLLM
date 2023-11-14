@@ -1,7 +1,7 @@
 import { useState, FormEvent } from "react";
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useElements, useStripe } from '@stripe/react-stripe-js';
-import SpecifySummarizerNotice from "./SpecifySummarizerNotice";
+import SpecifyPaymentNotice from "./SpecifyPaymentNotice";
 import { SubscriptionPlan } from '../App'
 
 const stripePromise = loadStripe('pk_live_51O25b4E7soCP48YBHZshJy5P2LBBoKxdmohhpWXt0vHqQr9wXj1c729heMtDNCLghWUWO30yp6ubJqGuRgoreZlY00f9C88gFs')
@@ -20,11 +20,11 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
   // giveNotice("sucess", "Subscribed. You've unlocked the premium features.")
   function giveNotice(noticeType: String, noticeInfo: String) {
       setNotice(
-          <SpecifySummarizerNotice noticeType={noticeType} noticeInfo={noticeInfo}/>
+          <SpecifyPaymentNotice noticeType={noticeType} noticeInfo={noticeInfo}/>
       )
       setTimeout(()=>{
           setNotice(<></>);
-      }, 5000)
+      }, 1500)
   }
 
   const PaymentForm = () => {
@@ -51,6 +51,7 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
       });
   
       if (error) {
+        giveNotice("warning", "Card declined")
         console.log('[error]', error);
         return;
       }
@@ -59,6 +60,7 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
         console.log(` paymentMethod.id: ${ paymentMethod.id}`)
         handleSubscription(paymentMethod.id)
       } else {
+        giveNotice("warning", "Subscription failed")
         console.log('Payment method creation failed');
       }
     };
@@ -77,6 +79,10 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
   
 
   const handleSubscription = async (paymentMethodId: string) => {
+    setNotice(
+      <SpecifyPaymentNotice noticeType={"loading"} noticeInfo={"Processing..."}/>
+    )
+    
     const stripe = await stripePromise;
     if (!stripe) {
       console.error('Stripe failed to initialize');
@@ -111,7 +117,8 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
           
           if (subscriptionResponse.error) {
               console.error('Subscription error:', subscriptionResponse.error);
-          } else {
+              giveNotice("warning", "Subscription failed")
+          } else if (subscriptionResponse.success) {
               console.log('Payment successful and subscription created!')
               giveNotice("sucess", "Subscribed.")
 
@@ -136,9 +143,13 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
                   }
                 })
               }
+          } else {
+            console.error('Subscription status is incomplete or pending')
+            giveNotice("warning", "Subscription incomplete")
           }
       } catch (error) {
         console.error('Error:', error);
+        giveNotice("warning", "Subscription failed")
       }
   }
 

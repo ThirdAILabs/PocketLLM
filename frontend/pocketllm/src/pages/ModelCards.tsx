@@ -57,7 +57,7 @@ export default function ModelCards({ setCurrentModel, setCurWorkSpaceID,
           <h2 className='fw-bold mb-5'>New Workspace</h2>
           <div className='d-flex'>
             <ModelCardMini 
-                  name="Quick workspace" 
+                  name="Basic workspace" 
                   modelName="Default model"
                   author="thirdai"
                   description="Lightweight, fast for simple use cases."

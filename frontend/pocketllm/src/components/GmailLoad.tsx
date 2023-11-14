@@ -6,6 +6,9 @@ import { usePort } from '../PortContext'
 import axios from 'axios'
 import ProgressBarWithLabel from './ProgressBarWithLabel';
 import { ModelDisplayInfo, WorkSpaceMetadata } from '../App';
+import googleLogo from "../assets/web_neutral_rd_na.svg";
+import googleContinue from "../assets/web_neutral_sq_ctn.svg";
+import Tooltip from '@mui/material/Tooltip';
 
 type LoadGmailProps = {
     setCurWorkSpaceID: React.Dispatch<React.SetStateAction<string|null>>,
@@ -90,7 +93,7 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
                 setTimeout(() => {
                     setLabel("Training...");
                 }, 700)
-            } else if (data.progress == 100 && labelRef.current == "Training...") {
+            } else if (data.complete === true && labelRef.current == "Training...") {
                 setLabel("Finished")
                 setTimeout(()=>{
                     closeRef.current?.click()
@@ -169,16 +172,16 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
 
   return (
     <>
-        <button type="button" 
-            className='btn btn-general mx-1 h-100'  
-            data-bs-toggle="modal" data-bs-target="#gmailModal"
-            onClick={(e)=>e.preventDefault()}
-        >
-            <i className="bi bi-google"></i>
-            <div className='font-sm'>Gmail</div>
-        </button>
+        <Tooltip title="Gmail">
+            <button type="button" 
+                className='btn mx-1 p-0 rounded-circle'  
+                data-bs-toggle="modal" data-bs-target="#gmailModal"
+                onClick={(e)=>e.preventDefault()}
+            >
+                <img src={googleLogo} placeholder='Gmail'/>
+            </button>
+        </Tooltip>
         
-
         <form onSubmit={(e)=>e.preventDefault()} className="modal fade" id="gmailModal" tabIndex={-1} aria-hidden="true">
             <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content">
@@ -265,10 +268,14 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
                                 <div className='d-flex justify-content-center mt-2'>
                                     <button type="button"
                                             disabled={!checked}
-                                            className='btn bg-secondary bg-opacity-50 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
-                                            onClick={ logInGmail } >
+                                            className='btn btn-sm p-0 border-0 mx-1'
+                                            onClick={ logInGmail } 
+                                            style={{
+                                                opacity: `${!checked? "50%" : "100%"}`
+                                            }}
+                                    >
 
-                                        Connect to Gmail
+                                        <img src={googleContinue} placeholder='Continue with Google'/>
                                     </button>
                                 </div>
                             </div>

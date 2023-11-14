@@ -147,7 +147,7 @@ async def index_files(websocket: WebSocket):
         async def async_on_progress(fraction):
             progress = int(100 * fraction)
             message = "Indexing in progress"
-            await websocket.send_json({"progress": progress, "message": message})
+            await websocket.send_json({"progress": progress, "message": message, "complete": False})
 
         def on_progress(fraction):
             loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
@@ -159,7 +159,7 @@ async def index_files(websocket: WebSocket):
             # Turn off Gmail query switch
             backend_instance.gmail_query_switch = False
 
-            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed"}))
+            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
 
         try:
             loop = asyncio.get_running_loop()
@@ -1342,7 +1342,7 @@ async def  gmail_download_train(websocket: WebSocket):
         async def async_on_progress(fraction):
             progress = int(100 * fraction)
             message = "Indexing in progress"
-            await websocket.send_json({"progress": progress, "message": message})
+            await websocket.send_json({"progress": progress, "message": message, "complete": False})
 
         def on_progress(fraction):
             loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
@@ -1353,7 +1353,7 @@ async def  gmail_download_train(websocket: WebSocket):
         def on_success():
             # Turn on Gmail query switch
             backend_instance.gmail_query_switch = True
-            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed"}))
+            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
 
         try:
             loop = asyncio.get_running_loop()
@@ -1379,7 +1379,7 @@ async def url_train(websocket: WebSocket):
     async def async_on_progress(fraction):
         progress = int(100 * fraction)
         message = "Indexing in progress"
-        await websocket.send_json({"progress": progress, "message": message})
+        await websocket.send_json({"progress": progress, "message": message, "complete": False})
 
     def on_progress(fraction):
         loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
@@ -1390,7 +1390,7 @@ async def url_train(websocket: WebSocket):
     def on_success():
         # Turn off Gmail query switch
         backend_instance.gmail_query_switch = False
-        loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed"}))
+        loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
 
     async for message in websocket.iter_text():
         data = json.loads(message)

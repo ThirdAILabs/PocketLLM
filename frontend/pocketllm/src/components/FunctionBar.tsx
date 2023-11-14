@@ -29,20 +29,20 @@ export default function FunctionBar({summarizer, setSummarizer, specifySummerize
     setCurrentUsage
   }: FunctionBarProps) {
 
-  const { isFeatureUsable } = useContext(FeatureUsableContext);
+  // const { isFeatureUsable } = useContext(FeatureUsableContext);
 
-  if (!isFeatureUsable) {
-      // Render a message or alternative UI
-      return (
-        <Tooltip title = "Feature not available due to exceeded workspace usage. Please check subscriptions for upgrades." placement='bottom'>
-          <button className='btn border-0 mx-1 mt-2 text-secondary text-opacity-75' onClick={(e)=>e.preventDefault()}>
-            <i className="bi bi-box-arrow-in-right fs-5"></i>
-              <div className='font-sm'>Upload</div>
-          </button>
-        </Tooltip>
+  // if (!isFeatureUsable) {
+  //     // Render a message or alternative UI
+  //     return (
+  //       <Tooltip title = "Feature not available due to exceeded workspace usage. Please check subscriptions for upgrades." placement='bottom'>
+  //         <button className='btn border-0 mx-1 mt-2 text-secondary text-opacity-75' onClick={(e)=>e.preventDefault()}>
+  //           <i className="bi bi-box-arrow-in-right fs-5"></i>
+  //             <div className='font-sm'>Upload</div>
+  //         </button>
+  //       </Tooltip>
       
-      );
-  }
+  //     );
+  // }
 
   const [selectedFiles, setSelectedFiles] = useState<WorkSpaceFile[]>([]);
   const [progress, setProgress] = useState(0);
@@ -64,12 +64,12 @@ export default function FunctionBar({summarizer, setSummarizer, specifySummerize
         onMouseEnter={()=>{setWidth(`${ref2.current?.clientWidth? (ref2.current.clientWidth): "195"}px`)}}
         onMouseLeave={()=>{setWidth(`${ref.current?.clientWidth? (ref.current.clientWidth): "55"}px`)}}
       >
-        <div className='d-flex align-items-end' ref={ref2}>
+        <div className='d-flex align-items-center' ref={ref2}>
           <button className='btn mx-1' ref={ref}>
             <i className="bi bi-box-arrow-in-right fs-5"></i>
               <div className='font-sm'>Upload</div>
           </button>
-          <div className='d-flex align-items-end bg-secondary bg-opacity-25 rounded-3 ms-1 p-1'>
+          <div className='d-flex align-items-center rounded-3 ms-1 p-1' style={{backgroundColor: "#F2F2F2"}}>
             <SelectFile
                     selectedFiles={selectedFiles}
                     setSelectedFiles={setSelectedFiles}

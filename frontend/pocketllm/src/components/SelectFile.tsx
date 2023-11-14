@@ -6,6 +6,7 @@ import { WorkSpaceFile } from '../App'
 import useTelemetry from '../hooks/useTelemetry'
 import { WorkSpaceMetadata } from '../App'
 import { ModelDisplayInfo } from '../App'
+import Tooltip from '@mui/material/Tooltip';
 
 interface SelectFileProps {
     selectedFiles: WorkSpaceFile[];
@@ -107,7 +108,7 @@ export default function SelectFile(props: SelectFileProps) {
                 setProgress(data.progress);
                 console.log(data.progress, data.message)
 
-                if (data.progress === 100) {
+                if (data.complete === true) {
                     if (curWorkSpaceID === null) {
                         // Create a new workspace
                         const newWorkSpaceID = uuidv4()   // Generate a new unique workspace ID
@@ -180,21 +181,23 @@ export default function SelectFile(props: SelectFileProps) {
 
   return (
     <>
-  
-        <button onClick={(_) => 
-                    recordEvent({
-                        UserAction: 'Click',
-                        UIComponent: 'add-file button',
-                        UI: 'SelectFile',
-                    })}
-                type="button" 
-                className="btn btn-general mx-1 pt-0 h-100" 
-                id="select-file-btn" 
-                data-bs-toggle="modal" 
-                data-bs-target="#exampleModal">
-            <i className="bi bi-file-earmark fs-6"></i>
-            <div className='font-sm'>File</div>
-        </button>
+        <Tooltip title="File">
+            <button onClick={(_) => 
+                        recordEvent({
+                            UserAction: 'Click',
+                            UIComponent: 'add-file button',
+                            UI: 'SelectFile',
+                        })}
+                    type="button" 
+                    className="btn btn-general mx-1 pt-0 h-100" 
+                    id="select-file-btn" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#exampleModal">
+                <i className="bi bi-file-earmark fs-6"></i>
+                {/* <div className='font-sm'>File</div> */}
+            </button>
+        </Tooltip>
+        
  
 
         <div className="modal fade" id="exampleModal" tabIndex={-1} aria-labelledby="exampleModalLabel" aria-hidden="true">

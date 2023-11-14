@@ -7,6 +7,7 @@ import GeneralAccountProfile from './GeneralAccountProfile'
 import ProgressBar from './ProgressBar'
 import { WorkSpaceMetadata } from '../App'
 import { SubscriptionPlan } from '../App'
+import loginLogo from '../assets/web_neutral_sq_SI.svg'
 
 type titleBarProps = {
     workSpaceMetadata: WorkSpaceMetadata[],
@@ -122,8 +123,8 @@ export default function TitleBar({ workSpaceMetadata, subscribeTrigger, saveWork
                         user ?
                         <GeneralAccountProfile user={user} setUser = {setUser} subscribeTrigger={subscribeTrigger}/>
                         :
-                        <button onClick={handleLoginClick} className='btn border bg-white border-light-subtle border-shadow text-secondary font-sm ms-2 no-drag btn-general2'>
-                            Login with Gmail
+                        <button onClick={handleLoginClick} className='btn border-0 p-0 bg-white text-secondary font-sm ms-2 no-drag btn-general2'>
+                            <img src={loginLogo} placeholder='log in with Gmail'/>
                         </button>
                     }
                     
