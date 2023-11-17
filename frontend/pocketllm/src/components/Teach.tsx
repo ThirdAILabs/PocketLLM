@@ -1,10 +1,18 @@
-import { useState, ChangeEvent, FormEvent } from 'react'
+import { useState, ChangeEvent, FormEvent, useRef } from 'react'
 import axios from 'axios'
 import { usePort } from '../PortContext'
 import Toast from './Toast'
+import { WorkSpaceMetadata } from '../App'
 
-export default function Teach() {
+type TeachProps = {
+    curWorkSpaceID: string|null,
+    setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
+  };
+
+export default function Teach({curWorkSpaceID, setWorkSpaceMetadata}: TeachProps) {
     const { port } = usePort()
+
+    const closeBtn = useRef<HTMLButtonElement>(null)
 
     const [source, setSource] = useState('')
     const [target, setTarget] = useState('')
@@ -36,10 +44,20 @@ export default function Teach() {
 
             if (response.data.success) {
                 console.log('teach success')
-                // Update UI here
+                
+                // Mark the workspace as unsaved
+                setWorkSpaceMetadata(prevMetaData => prevMetaData.map(workspace => 
+                    workspace.workspaceID === curWorkSpaceID 
+                    ? { ...workspace, isWorkSpaceSaved: false } 
+                    : workspace
+                ))
+
+                setTimeout(() => {
+                    closeBtn.current?.click()
+                }, 500)
+
             } else {
                 console.log('teach failed')
-                // Update UI here
             }
 
         } catch (error) {
@@ -58,7 +76,7 @@ export default function Teach() {
             <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content">
                     <div className="modal-header border-0 ">
-                        <button type="button" className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button ref = {closeBtn} type="button" className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div className="modal-body pt-0">
                         <div className='mb-2 rounded-3 bg-secondary bg-opacity-25 p-2' style={{minHeight: "70px"}}>

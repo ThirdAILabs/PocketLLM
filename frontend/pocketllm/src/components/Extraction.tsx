@@ -3,15 +3,18 @@ import { SearchResult } from '../pages/MainPage'
 import axios from 'axios'
 import { usePort } from '../PortContext'
 import Tooltip from '@mui/material/Tooltip';
+import { WorkSpaceMetadata } from '../App'
 
 import Clearification from './Clearification'
 
 interface ExtractionProps {
-  searchResults: SearchResult[]
-  openAISetKeyNotice: () => void
+  searchResults: SearchResult[],
+  openAISetKeyNotice: () => void,
+  curWorkSpaceID: string|null,
+  setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
 }
 
-export default function Extraction({ searchResults, openAISetKeyNotice }: ExtractionProps) {
+export default function Extraction({ searchResults, openAISetKeyNotice, curWorkSpaceID, setWorkSpaceMetadata }: ExtractionProps) {
   const { port } = usePort()
 
   const [readNotification, setRead] = useState<boolean>(false)
@@ -126,6 +129,14 @@ export default function Extraction({ searchResults, openAISetKeyNotice }: Extrac
 
         if (response.data.success) {
           console.log('upweight success')
+
+          // Mark the workspace as unsaved
+          setWorkSpaceMetadata(prevMetaData => prevMetaData.map(workspace => 
+            workspace.workspaceID === curWorkSpaceID 
+              ? { ...workspace, isWorkSpaceSaved: false } 
+              : workspace
+          ))
+          
         } else {
           console.log('upweight fail')
         }

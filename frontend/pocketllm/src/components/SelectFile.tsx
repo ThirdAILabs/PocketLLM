@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { usePort } from '../PortContext'
 import ProgressBar from './ProgressBar'
@@ -31,6 +31,8 @@ export default function SelectFile(props: SelectFileProps) {
         currentModel,
         setCurrentUsage
     } = props;
+
+    const closeBtn = useRef<HTMLButtonElement>(null)
 
     const [draggover, setDraggover] = useState(false);
 
@@ -151,6 +153,9 @@ export default function SelectFile(props: SelectFileProps) {
                         setProgress(0)
 
                         setSelectedFiles([])
+
+                        // Close the training UI
+                        closeBtn.current?.click()
                     }, 500);
                 }
             };
@@ -204,10 +209,15 @@ export default function SelectFile(props: SelectFileProps) {
             <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content">
                     <div className="modal-header border-0 ">
-                        <button type="button" className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button ref = {closeBtn} type="button" className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div className="modal-body pt-0">
                        
+                       {
+                        startProgress 
+                        ?
+                        <></>
+                        :
                         <div onDrop={onDrop} onDragOver={(e) => {e.preventDefault(); setDraggover(true)}} 
                             onDragLeave={(e) => {e.preventDefault(); setDraggover(false)}}
                             className={`drop-zone drop-zone-wrapper ${ draggover? " drop-zone-drag" : ""}`} 
@@ -215,6 +225,7 @@ export default function SelectFile(props: SelectFileProps) {
                             <i className="bi bi-upload fs-2 text-secondary mb-2"></i>
                             Drop files here or click to select files.
                         </div>
+                       }
 
                         {
                             startProgress ?

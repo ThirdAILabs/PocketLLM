@@ -114,7 +114,7 @@ export default function ModelCardMini({name, author, description, modelName, cac
                 console.log(data.progress, data.message);
     
                 // Once download completes
-                if (data.progress === 100) {
+                if (data.progress === 100 && data.message.startsWith("Model downloaded at ")) {
                     setIsDownloaded(true)
 
                     setTimeout(() => {

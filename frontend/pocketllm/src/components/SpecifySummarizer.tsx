@@ -8,16 +8,17 @@ type SpecifyModelProps = {
     summarizer: string | null, setSummarizer: (model: string | null) => void
     trigger: React.RefObject<HTMLButtonElement>;
     formTrigger: React.RefObject<HTMLButtonElement>;
+    cachedOpenAIKey: string
 };
 
-export default function SpecifySummarizer( {summarizer , setSummarizer, trigger, formTrigger}: SpecifyModelProps ) {
+export default function SpecifySummarizer( {summarizer , setSummarizer, trigger, formTrigger, cachedOpenAIKey}: SpecifyModelProps ) {
     const { port } = usePort()
 
     const [value, setValue] = useState<string|null>(null);
 
     const [notice, setNotice] = useState(<></>);
 
-    const [openAiApiKey, setOpenAiApiKey] = useState("");
+    const [openAiApiKey, setOpenAiApiKey] = useState(cachedOpenAIKey);
 
     const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -37,14 +38,16 @@ export default function SpecifySummarizer( {summarizer , setSummarizer, trigger,
     const handleContinue = async (e: FormEvent) => {
         e.preventDefault();
 
-        if (value === "OpenAI" && openAiApiKey == "") {
+        const trimmedOpenAiApiKey = openAiApiKey.trim()
+
+        if (value === "OpenAI" && trimmedOpenAiApiKey == "") {
             giveNotice("warning", "Please set OpenAPI key below.");
             return;
         }
 
         const payload = {
             model_preference: value,
-            open_ai_api_key: value === "OpenAI" ? openAiApiKey : "",
+            open_ai_api_key: value === "OpenAI" ? trimmedOpenAiApiKey : "",
         };
 
         try {
@@ -123,7 +126,7 @@ export default function SpecifySummarizer( {summarizer , setSummarizer, trigger,
 
                                 <div className='d-flex justify-content-between align-items-center' style={{visibility: `${summarizer == "OpenAI" ? "visible" : "hidden"}`}}>
                                     <span>OpenAI API key</span>
-                                    <input className="form-control form-control-sm api-input" type="text" onChange={(e) => setOpenAiApiKey(e.target.value)} required/>
+                                    <input className="form-control form-control-sm api-input" type="text" value={openAiApiKey} onChange={(e) => setOpenAiApiKey(e.target.value)} required/>
                                 </div>
 
                             </div>

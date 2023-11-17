@@ -12,7 +12,8 @@ import Subscribe from "./components/Subscribe";
 import SaveNotice from './components/SaveNotice';
 import { SearchResult } from './pages/MainPage'
 import { FeatureUsableContext } from './contexts/FeatureUsableContext';
-
+import { SetAlertMessageProvider } from './contexts/SetAlertMessageContext'
+import CustomAlertWrapper from './components/CustomAlertWrapper';
 import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap/dist/js/bootstrap.bundle.js";
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -76,6 +77,9 @@ function App() {
   // Trigger for subscription
   const subscribeTrigger = useRef<HTMLButtonElement>(null);
 
+  // Alert trigger
+  const [alertMessage, setAlertMessage] = useState<string>("");
+
   // Trigger for save workspace notice
   // afterSaveResetCurWorkspace controls if setCurWorkSpaceID(null) happens inside <SaveNotice/> after user clicks save
   // allowUnsave controls if Delete button will appear inside <SaveNotice/>
@@ -107,6 +111,14 @@ function App() {
   // User can / cannot continue using the app
   const [isFeatureUsable, setIsFeatureUsable] = useState(true)
 
+  // Used inside <FunctionBar> to keep track of training progress
+  const [selectedFiles, setSelectedFiles] = useState<WorkSpaceFile[]>([]);
+  const [progress, setProgress] = useState(0);
+  const [startProgress, setStartProgress] = useState(false);
+
+  // User cached OpenAI key
+  const [cachedOpenAIKey, setCachedOpenAIKey] = useState<string>('')
+
   useEffect(()=>{
     setTimeout(()=>{
       setLanding(<></>)
@@ -132,16 +144,23 @@ function App() {
   }, [workSpaceMetadata]);
 
   // Triggered when a different workspace is loaded or
-  // An existing workspace is changed (e.g. index new files)
+  // An existing workspace is changed (e.g. index new files, upvoted, teaching)
   useEffect(() => {
-    setSearchResults([])
-    setSummaryResult('')
 
     // If workspace is not null, load the workspace's info
     if (curWorkSpaceID) {
         const currentWorkspace = workSpaceMetadata.find(ws => ws.workspaceID === curWorkSpaceID)
         if (currentWorkspace) {
             const files = currentWorkspace.documents
+            if (files.length === indexFiles.length) {
+              // Upvote, teaching
+              console.log('Workspace change: Upvote, teaching')
+            } else {
+              // index new files
+              console.log('Workspace change: index new files')
+              setSearchResults([])
+              setSummaryResult('')
+            }
             setIndexFiles(files)
             setCurrentModel(currentWorkspace.model_info)
         }
@@ -149,6 +168,8 @@ function App() {
         // Otherwise, set everything back to not set
         setIndexFiles([])
         setCurrentModel(null)
+        setSearchResults([])
+        setSummaryResult('')
     }
   }, [curWorkSpaceID, workSpaceMetadata])
 
@@ -223,6 +244,17 @@ function App() {
               console.error('Error:', error)
           }
         }
+
+        // Try to get the OpenAI key
+        try {
+          const response = await axios.get(`http://localhost:${port}/get_cached_openai_key`);
+          const openAiKey = response.data.openai_key;
+
+          setCachedOpenAIKey(openAiKey)
+          console.log(`OpenAI cached key = ${openAiKey}`)
+        } catch (error) {
+          console.error('Error fetching OpenAI key:', error);
+        }
       }
   
       window.electron.on('server-ready', handleServerReady)
@@ -256,6 +288,7 @@ function App() {
 
   return (
     <FeatureUsableContext.Provider value={{ isFeatureUsable }}>
+    <SetAlertMessageProvider setAlertMessage={setAlertMessage}>
 
       <div className='full-page-setup p-0'>
       
@@ -278,7 +311,15 @@ function App() {
                 
                 <Route path="/" 
                 element = {
-                  <MainPage currentModel={currentModel} 
+                  <MainPage 
+                            
+                            selectedFiles={selectedFiles}
+                            setSelectedFiles={setSelectedFiles}
+                            progress={progress}
+                            setProgress={setProgress}
+                            startProgress={startProgress}
+                            setStartProgress={setStartProgress}
+                            currentModel={currentModel} 
                             specifySummerizerTrigger={specifySummerizerTrigger} 
                             specifySummarizerFormTrigger = {specifySummarizerFormTrigger}
                             indexFiles = {indexFiles}
@@ -292,6 +333,7 @@ function App() {
                             saveWorkSpaceTrigger = {saveTrigger}  
                             setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace} setAllowUnsave = {setAllowUnsave}
                             setCurrentUsage = {setCurrentUsage}
+                            cachedOpenAIKey = {cachedOpenAIKey}
                   />
                 }>
 
@@ -309,8 +351,11 @@ function App() {
                       currentUsage = {currentUsage}
                       />
           </Router>
+          <CustomAlertWrapper message={alertMessage} setMessage={setAlertMessage}/>
         {landing}
       </div>
+    
+    </SetAlertMessageProvider>
     </FeatureUsableContext.Provider>
 
   )

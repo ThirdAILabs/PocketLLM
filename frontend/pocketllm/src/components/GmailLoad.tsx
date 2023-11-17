@@ -6,7 +6,7 @@ import { usePort } from '../PortContext'
 import axios from 'axios'
 import ProgressBarWithLabel from './ProgressBarWithLabel';
 import { ModelDisplayInfo, WorkSpaceMetadata } from '../App';
-import googleLogo from "../assets/web_neutral_rd_na.svg";
+// import googleLogo from "../assets/web_neutral_rd_na.svg";
 import googleContinue from "../assets/web_neutral_sq_ctn.svg";
 import Tooltip from '@mui/material/Tooltip';
 
@@ -172,13 +172,15 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
 
   return (
     <>
-        <Tooltip title="Gmail">
+        <Tooltip title="Upcoming">
             <button type="button" 
-                className='btn mx-1 p-0 rounded-circle'  
-                data-bs-toggle="modal" data-bs-target="#gmailModal"
+                // className='btn mx-1 p-0 rounded-circle'  
+                className="btn mx-1 h-100"
+                // data-bs-toggle="modal" data-bs-target="#gmailModal"
                 onClick={(e)=>e.preventDefault()}
             >
-                <img src={googleLogo} placeholder='Gmail'/>
+                <i className="bi bi-google text-secondary text-opacity-75"></i>
+                {/* <img src={googleLogo} placeholder='Gmail'/> */}
             </button>
         </Tooltip>
         

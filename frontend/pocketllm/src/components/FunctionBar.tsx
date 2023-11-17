@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from 'react'
-import Tooltip from '@mui/material/Tooltip';
+import { Tooltip } from '@mui/material'
 
 import { WorkSpaceFile } from '../App'
 import Teach from "./Teach"
@@ -9,9 +9,15 @@ import SpecifySummarizer from './SpecifySummarizer'
 import SelectFile from './SelectFile'
 import { WorkSpaceMetadata } from '../App'
 import { ModelDisplayInfo } from '../App'
-import { FeatureUsableContext } from '../contexts/FeatureUsableContext';
+import { FeatureUsableContext } from '../contexts/FeatureUsableContext'
 
 type FunctionBarProps = {
+  selectedFiles: WorkSpaceFile[];
+  setSelectedFiles: React.Dispatch<React.SetStateAction<WorkSpaceFile[]>>;
+  progress: number;
+  setProgress: React.Dispatch<React.SetStateAction<number>>;
+  startProgress: boolean;
+  setStartProgress: React.Dispatch<React.SetStateAction<boolean>>;
   currentModel: ModelDisplayInfo | null,
   specifySummerizerTrigger: React.RefObject<HTMLButtonElement>,
   summerizeFormTrigger: React.RefObject<HTMLButtonElement>,
@@ -20,33 +26,34 @@ type FunctionBarProps = {
   setCurWorkSpaceID: React.Dispatch<React.SetStateAction<string|null>>,
   setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
   summarizer: string | null, setSummarizer: (model: string | null) => void
-  setCurrentUsage: React.Dispatch<React.SetStateAction<number>>
+  setCurrentUsage: React.Dispatch<React.SetStateAction<number>>,
+  cachedOpenAIKey: string
 };
 
-export default function FunctionBar({summarizer, setSummarizer, specifySummerizerTrigger, summerizeFormTrigger, queryEnabled,  
+export default function FunctionBar({selectedFiles, setSelectedFiles, 
+                                    progress, setProgress, 
+                                    startProgress, setStartProgress,
+                                    summarizer, setSummarizer, specifySummerizerTrigger, summerizeFormTrigger, queryEnabled,  
     curWorkSpaceID, setCurWorkSpaceID, setWorkSpaceMetadata,
     currentModel,
-    setCurrentUsage
+    setCurrentUsage,
+    cachedOpenAIKey
   }: FunctionBarProps) {
 
-  // const { isFeatureUsable } = useContext(FeatureUsableContext);
+  const { isFeatureUsable } = useContext(FeatureUsableContext);
 
-  // if (!isFeatureUsable) {
-  //     // Render a message or alternative UI
-  //     return (
-  //       <Tooltip title = "Feature not available due to exceeded workspace usage. Please check subscriptions for upgrades." placement='bottom'>
-  //         <button className='btn border-0 mx-1 mt-2 text-secondary text-opacity-75' onClick={(e)=>e.preventDefault()}>
-  //           <i className="bi bi-box-arrow-in-right fs-5"></i>
-  //             <div className='font-sm'>Upload</div>
-  //         </button>
-  //       </Tooltip>
+  if (!isFeatureUsable) {
+      // Render a message or alternative UI
+      return (
+        <Tooltip title = "Feature not available due to exceeded workspace usage. Please check subscriptions for upgrades." placement='bottom'>
+          <button className='btn border-0 mx-1 mt-2 text-secondary text-opacity-75' onClick={(e)=>e.preventDefault()}>
+            <i className="bi bi-box-arrow-in-right fs-5"></i>
+              <div className='font-sm'>Upload</div>
+          </button>
+        </Tooltip>
       
-  //     );
-  // }
-
-  const [selectedFiles, setSelectedFiles] = useState<WorkSpaceFile[]>([]);
-  const [progress, setProgress] = useState(0);
-  const [startProgress, setStartProgress] = useState(false);
+      );
+  }
 
   // input animation
   const ref = useRef<HTMLButtonElement>(null);
@@ -99,9 +106,9 @@ export default function FunctionBar({summarizer, setSummarizer, specifySummerize
       {
         queryEnabled ?
         <>
-          <SpecifySummarizer summarizer={summarizer} setSummarizer={setSummarizer}  trigger={specifySummerizerTrigger} formTrigger = {summerizeFormTrigger}/>
+          <SpecifySummarizer cachedOpenAIKey = {cachedOpenAIKey} summarizer={summarizer} setSummarizer={setSummarizer}  trigger={specifySummerizerTrigger} formTrigger = {summerizeFormTrigger}/>
           <div className='short-vertical-line-xs mb-2 mx-2'></div>
-          <Teach/>
+          <Teach curWorkSpaceID = {curWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}/>
         </>
         :
         <></>

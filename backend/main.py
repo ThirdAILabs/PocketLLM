@@ -34,6 +34,16 @@ from uuid import uuid4
 from highlight import highlight_ref as hl
 from shutil import move
 
+from thirdai import licensing
+if getattr(sys, 'frozen', False):
+    application_path = sys._MEIPASS
+else:
+    application_path = os.path.dirname(os.path.abspath(__file__))
+
+license_path = os.path.join(application_path, 'license_may_11_2024.serialized')
+
+licensing.set_path(license_path)
+
 WORKING_FOLDER = Path(os.path.dirname(__file__)) / "data"
 BAZAAR_CACHE = WORKING_FOLDER / "bazaar_cache"
 BAZAAR_URL = "https://staging-modelzoo.azurewebsites.net/api/"
@@ -192,7 +202,7 @@ def query(query_model: QueryModel):
     query, _ = parse_prompt(search_str)
 
     references = backend_instance.backend.search(
-        query=query, top_k=10, on_error=lambda s: print(f"backend: {s}")
+        query=query, top_k=100, rerank = True
     )
 
     backend_instance.current_results = references
@@ -241,7 +251,7 @@ def teach(teach_model: TeachModel):
 
     try:
         references = backend_instance.backend.search(
-            query=target_str, top_k=2, on_error=lambda s: print(f"backend: {s}")
+            query=target_str, top_k=2
         )
         references.sort(key=lambda ref: ref._score)
         for reference in references:
@@ -792,6 +802,15 @@ def use_model(useInfo: UseInfoModel):
 def fetch_meta_cache_model():
     return backend_instance.bazaar.fetch_meta_cache_model()
 
+@app.get("/get_cached_openai_key")
+def get_cached_openai_key():
+    key_file_path = WORKING_FOLDER / 'user_openai_key.txt'
+    if key_file_path.exists():
+        with open(key_file_path, 'r') as key_file:
+            return {"openai_key": key_file.read()}
+    else:
+        return {"openai_key": ""}
+
 class SettingInput(BaseModel):
     model_preference: str
     open_ai_api_key: str
@@ -801,6 +820,16 @@ def setting(input_data: SettingInput):
     global backend_instance
     backend_instance.open_ai_api_key = input_data.open_ai_api_key
     backend_instance.preferred_summary_model = input_data.model_preference
+    
+    # Check if the preferred summary model is 'OpenAI'
+    if input_data.model_preference == "OpenAI":
+        # Ensure the cache directory exists
+        WORKING_FOLDER.mkdir(parents=True, exist_ok=True)
+
+        # Write the OpenAI API key to the file
+        with open(WORKING_FOLDER / 'user_openai_key.txt', 'w') as key_file:
+            key_file.write(input_data.open_ai_api_key)
+
     return {"success": True, 
             "msg": f'Settings updated: open_ai_api_key: {backend_instance.open_ai_api_key} | model_preference: {backend_instance.preferred_summary_model}'}
 
@@ -825,7 +854,7 @@ def summarize():
         results = model.answer(
             prompt=summary_prompt,
             question=summary_query,
-            context="\n".join([ref.text for ref in backend_instance.current_results]),
+            context="\n".join([ref.text for ref in backend_instance.current_results[:10]]),
             on_error=reset_summarizers,
         )
 
@@ -851,7 +880,7 @@ async def websocket_summarize(websocket: WebSocket):
         await model.stream_answer(
             prompt=summary_prompt,
             question=summary_query,
-            context="\n".join([ref.text for ref in backend_instance.current_results]),
+            context="\n".join([ref.text for ref in backend_instance.current_results[:10]]),
             websocket=websocket,
             on_error=reset_summarizers,
         )
@@ -1430,4 +1459,10 @@ if __name__ == "__main__":
     print(f'backend: port_number = {port_number}')
     print(f'backend: WORKING_FOLDER = {WORKING_FOLDER}')
 
-    uvicorn.run(app, host="0.0.0.0", port=port_number)
+    # Configure WebSocket ping interval and timeout
+    websocket_ping_interval = 300  # Ping every 5 minutes
+    websocket_ping_timeout = 1200   # Timeout after 20 minutes of no response
+
+    uvicorn.run(app, host="0.0.0.0", port=port_number,
+                ws_ping_interval=websocket_ping_interval,
+                ws_ping_timeout=websocket_ping_timeout)

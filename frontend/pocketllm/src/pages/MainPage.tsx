@@ -19,6 +19,12 @@ export interface SearchResult {
 }
 
 type MainPageProps = {
+  selectedFiles: WorkSpaceFile[];
+  setSelectedFiles: React.Dispatch<React.SetStateAction<WorkSpaceFile[]>>;
+  progress: number;
+  setProgress: React.Dispatch<React.SetStateAction<number>>;
+  startProgress: boolean;
+  setStartProgress: React.Dispatch<React.SetStateAction<boolean>>;
   currentModel: ModelDisplayInfo | null,
   specifySummerizerTrigger: React.RefObject<HTMLButtonElement>,
   specifySummarizerFormTrigger: React.RefObject<HTMLButtonElement>,
@@ -32,10 +38,14 @@ type MainPageProps = {
   summaryResult: string, setSummaryResult: (result: string) => void,
   saveWorkSpaceTrigger: React.RefObject<HTMLButtonElement>,
   setAfterSaveResetCurWorkspace: React.Dispatch<React.SetStateAction<boolean>>, setAllowUnsave: React.Dispatch<React.SetStateAction<boolean>>,
-  setCurrentUsage: React.Dispatch<React.SetStateAction<number>>
+  setCurrentUsage: React.Dispatch<React.SetStateAction<number>>,
+  cachedOpenAIKey: string
 }
 
-export default function MainPage({currentModel, specifySummerizerTrigger,specifySummarizerFormTrigger, 
+export default function MainPage({selectedFiles, setSelectedFiles, 
+                                  progress, setProgress, 
+                                  startProgress, setStartProgress,
+                                  currentModel, specifySummerizerTrigger,specifySummarizerFormTrigger, 
                                   indexFiles, 
                                   queryEnabled,
                                   curWorkSpaceID, setCurWorkSpaceID, workSpaceMetadata, setWorkSpaceMetadata,
@@ -43,7 +53,8 @@ export default function MainPage({currentModel, specifySummerizerTrigger,specify
                                   searchResults, setSearchResults,
                                   summaryResult, setSummaryResult,
                                   saveWorkSpaceTrigger, setAfterSaveResetCurWorkspace, setAllowUnsave,
-                                  setCurrentUsage
+                                  setCurrentUsage,
+                                  cachedOpenAIKey
                                 }: MainPageProps) {
 
   function openAISetKeyNotice() {
@@ -93,17 +104,25 @@ export default function MainPage({currentModel, specifySummerizerTrigger,specify
                             setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace}
                             setAllowUnsave = {setAllowUnsave}/>
 
-          <FunctionBar  summarizer={summarizer} setSummarizer={setSummarizer} 
+          <FunctionBar  selectedFiles = {selectedFiles}
+                        setSelectedFiles = {setSelectedFiles}
+                        progress = {progress}
+                        setProgress = {setProgress}
+                        startProgress = {startProgress}
+                        setStartProgress = {setStartProgress}
+                        summarizer={summarizer} setSummarizer={setSummarizer} 
                         specifySummerizerTrigger={specifySummerizerTrigger} summerizeFormTrigger = {specifySummarizerFormTrigger} queryEnabled={queryEnabled}
                         curWorkSpaceID = {curWorkSpaceID} setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
                         currentModel = {currentModel}
-                        setCurrentUsage = {setCurrentUsage}/>
+                        setCurrentUsage = {setCurrentUsage}
+                        cachedOpenAIKey = {cachedOpenAIKey}/>
 
           <SearchBar onSearch = {setSearchResults} onSummary = {setSummaryResult} summarizer={summarizer} queryEnabled={queryEnabled}/>
 
           <div style={{minWidth: "60vw", maxWidth: "70vw"}}>
             <Summary summary = {summaryResult}/>
-            <Extraction searchResults={searchResults} openAISetKeyNotice={openAISetKeyNotice}/>
+            <Extraction searchResults={searchResults} openAISetKeyNotice={openAISetKeyNotice}
+                        curWorkSpaceID = {curWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}/>
           </div>
         </div>
             

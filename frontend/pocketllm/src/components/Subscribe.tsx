@@ -1,8 +1,9 @@
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useContext } from "react";
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import SpecifyPaymentNotice from "./SpecifyPaymentNotice";
 import { SubscriptionPlan } from '../App'
+import { SetAlertMessageContext } from '../contexts/SetAlertMessageContext';
 
 const stripePromise = loadStripe('pk_live_51O25b4E7soCP48YBHZshJy5P2LBBoKxdmohhpWXt0vHqQr9wXj1c729heMtDNCLghWUWO30yp6ubJqGuRgoreZlY00f9C88gFs')
 
@@ -16,6 +17,8 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
   const [paymentType, setPaymentType] = useState(0) // 0 - don't, 1 - monthly, 2 - yearly
 
   const [notice, setNotice] = useState(<></>);
+
+  const setAlertMessage = useContext(SetAlertMessageContext)
 
   // giveNotice("sucess", "Subscribed. You've unlocked the premium features.")
   function giveNotice(noticeType: String, noticeInfo: String) {
@@ -35,6 +38,7 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
       event.preventDefault();
   
       if (!stripe || !elements) {
+        setAlertMessage('Stripe is not loaded correctly. Please restart app and try again.')
         return;
       }
   
@@ -42,6 +46,7 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
   
       if (!cardElement) {
         console.log('Card Element not found');
+        setAlertMessage('Card Element not found. Please restart app and try again.')
         return;
       }
   
@@ -86,12 +91,14 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
     const stripe = await stripePromise;
     if (!stripe) {
       console.error('Stripe failed to initialize');
+      setAlertMessage('Stripe failed to initialize. Please restart app and try again.')
       return;
     }
 
     // Check if paymentType is valid
     if (paymentType === 0) {
       console.error('Invalid subscription type')
+      setAlertMessage('Invalid subscription type. Please restart app and try again.')
       // Handle the error - e.g., show a message to the user
       return
     }
@@ -198,10 +205,10 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
                                   <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
                                   <div className='mt-2'>Limited access to PDF URL Gmail workspace</div>
                                 </div>
-                                <div className='d-flex align-items-start'>
+                                {/* <div className='d-flex align-items-start'>
                                   <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
                                   <div className='mt-2'>OpenAI key not included</div>
-                                </div>
+                                </div> */}
                               </div>
                             </div>
                           </div>
@@ -221,12 +228,12 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
                                 </div>
                                 <div className='d-flex align-items-start'>
                                   <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>Unlimited Gmail workspace search</div>
+                                  <div className='mt-2'>Unlimited Gmail workspace search (coming soon)</div>
                                 </div>
-                                <div className='d-flex align-items-start'>
+                                {/* <div className='d-flex align-items-start'>
                                   <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
                                   <div className='mt-2'>OpenAI key not included</div>
-                                </div>
+                                </div> */}
                               </div>
                             </div>
                             
