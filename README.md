@@ -77,6 +77,7 @@ Follow the steps below to set up and run the project.
    <code>Menu.setApplicationMenu(Menu.buildFromTemplate([]));</code>
    </pre>
 
+### Mac-arm64
 2. **Sign Python Binaries**:
    Before notarizing, it's essential to ensure all executable Python binaries are signed. Typically, the Python binaries are inside the `main` folder, which was compiled using PyInstaller.
    
@@ -117,3 +118,13 @@ Follow the steps below to set up and run the project.
    <code>xcrun stapler staple pocketllm.app</code>
    </pre>
 > **Note**: Notarization produces a ticket that tells Gatekeeper that your app is notarized. After notarization completes, the next time any user attempts to run your app on macOS 10.14 or later, Gatekeeper finds the ticket online. This includes users who downloaded your app before notarization. Whereas stapler ensures that Apple Gatekeeper can find the ticket even when a network connection isn’t available. [Check this post](https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/customizing_the_notarization_workflow#3178137)
+
+### Mac-intel
+   2. In `frontend/pocketllm/package.json`, change `"repo": "pocketllm-release"`  to `"repo": "pocketllm-release-mac-intel"`
+   3. Everything else same as Mac-arm64
+
+### Windows
+   2. **Package the Frontend**:
+      Same as Mac
+   3. Rename `/dist/PocketLLM Setup.exe` to `/dist/PocketLLM-Setup.exe` (replace all in-between space with hyphen)
+   4. Submit to [link](https://www.microsoft.com/en-us/wdsi/filesubmission) fill out the form.
