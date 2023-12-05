@@ -4,6 +4,7 @@ import { Elements, CardElement, useElements, useStripe } from '@stripe/react-str
 import SpecifyPaymentNotice from "./SpecifyPaymentNotice";
 import { SubscriptionPlan } from '../App'
 import { SetAlertMessageContext } from '../contexts/SetAlertMessageContext';
+import stripeLogo from "../assets/stripe.png";
 
 const stripePromise = loadStripe('pk_live_51O25b4E7soCP48YBHZshJy5P2LBBoKxdmohhpWXt0vHqQr9wXj1c729heMtDNCLghWUWO30yp6ubJqGuRgoreZlY00f9C88gFs')
 
@@ -71,7 +72,10 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
     };
   
     return (
-      <form onSubmit={handleSubmit} className="m-4">
+      <form onSubmit={handleSubmit} className="m-4 mt-3">
+        <div className="d-flex align-items-center mb-4">Powered by 
+          <img src={stripeLogo} placeholder="Stripe Logo" style={{width: "60px"}}/>
+        </div>
         <CardElement/>
         <div className="d-flex mt-5 justify-content-center">
           <button className="btn btn-general bg-secondary bg-opacity-25 font-sm me-2" type="button" onClick={()=>setPaymentType(0)}>Back</button>
@@ -228,7 +232,19 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
                                 </div>
                                 <div className='d-flex align-items-start'>
                                   <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>Unlimited Gmail workspace search (coming soon)</div>
+                                  <div className='mt-2'>Unlimited Gmail workspace search</div>
+                                </div>
+                                <div className='d-flex align-items-start'>
+                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
+                                  <div className='mt-2'>Unlimited Outlook workspace search</div>
+                                </div>
+                                <div className='d-flex align-items-start'>
+                                  <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
+                                  <div className='mt-2'>Unlimited Github workspace search (upcoming)</div>
+                                </div>
+                                <div className='d-flex align-items-start'>
+                                  <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
+                                  <div className='mt-2'>Unlimited Slack workspace search (upcoming)</div>
                                 </div>
                                 {/* <div className='d-flex align-items-start'>
                                   <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
@@ -249,7 +265,7 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
                                 user.subscription_plan ==  SubscriptionPlan.PREMIUM ?
                                 <div>
                                   <div className='btn bg-info bg-opacity-25 btn-sm grey-btn px-3 rounded-3 mx-1' style={{cursor: "default"}}>
-                                            Subscribed
+                                            Cancel
                                   </div>
                                 </div>
                                 
@@ -326,6 +342,7 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
                       </>
                     }
                        
+                    <div className="font-sm mt-4 text-secondary">Have questions? Reach us at contact@thirdai.com</div>
                     </div>
                     {notice}
                 </div>

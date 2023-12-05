@@ -349,6 +349,7 @@ function App() {
                       setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace} setAllowUnsave = {setAllowUnsave}
                       user = {user} setUser = {setUser}
                       currentUsage = {currentUsage}
+                      setCurrentUsage = {setCurrentUsage}
                       />
           </Router>
           <CustomAlertWrapper message={alertMessage} setMessage={setAlertMessage}/>

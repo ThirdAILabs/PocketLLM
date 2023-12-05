@@ -3,8 +3,12 @@ import { Tooltip } from '@mui/material'
 
 import { WorkSpaceFile } from '../App'
 import Teach from "./Teach"
-import LoadGmail from './GmailLoad'
+import LoadGmailDump from './GmailDump'
+// import LoadGmail from './GmailLoad'
+import LoadOutlook from './OutlookLoad'
 import LoadUrl from './LoadUrl'
+import LoadGithub from './LoadGithub'
+import LoadSlack from './LoadSlack'
 import SpecifySummarizer from './SpecifySummarizer'
 import SelectFile from './SelectFile'
 import { WorkSpaceMetadata } from '../App'
@@ -93,11 +97,30 @@ export default function FunctionBar({selectedFiles, setSelectedFiles,
                     currentModel = {currentModel}
                     setCurrentUsage = {setCurrentUsage}
             />
-            <LoadGmail
+            <LoadOutlook
                     setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
                     currentModel = {currentModel}
                     setCurrentUsage = {setCurrentUsage}
             />
+            <LoadGmailDump setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                    currentModel = {currentModel}
+                    setCurrentUsage = {setCurrentUsage}
+            />
+            <LoadGithub
+                    setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                    currentModel = {currentModel}
+                    setCurrentUsage = {setCurrentUsage}
+            />
+            <LoadSlack
+                    setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                    currentModel = {currentModel}
+                    setCurrentUsage = {setCurrentUsage}
+            />
+            {/* <LoadGmail
+                    setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                    currentModel = {currentModel}
+                    setCurrentUsage = {setCurrentUsage}
+            /> */}
           </div>
           
         </div>

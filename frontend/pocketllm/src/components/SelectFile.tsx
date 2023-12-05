@@ -220,10 +220,10 @@ export default function SelectFile(props: SelectFileProps) {
                         :
                         <div onDrop={onDrop} onDragOver={(e) => {e.preventDefault(); setDraggover(true)}} 
                             onDragLeave={(e) => {e.preventDefault(); setDraggover(false)}}
-                            className={`drop-zone drop-zone-wrapper ${ draggover? " drop-zone-drag" : ""}`} 
+                            className={`drop-zone drop-zone-innerwrapper drop-zone-wrapper ${ draggover? " drop-zone-drag" : ""}`} 
                             onClick={ selectFiles}>
                             <i className="bi bi-upload fs-2 text-secondary mb-2"></i>
-                            Drop files here or click to select files.
+                            Drop files (.PDF .DOCX .CSV) or click to select files.
                         </div>
                        }
 
@@ -257,9 +257,9 @@ export default function SelectFile(props: SelectFileProps) {
                                 }
                                 </ul>
                                 <div className='d-flex justify-content-center'>
-                                    <button className='btn bg-secondary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
+                                    <button className='btn bg-primary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
                                             onClick={ addModel }>
-                                        Add to model
+                                        Add to workspace
                                     </button>
                                 </div>
                             </div>

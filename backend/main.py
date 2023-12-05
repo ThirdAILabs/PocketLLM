@@ -33,6 +33,13 @@ import io
 from uuid import uuid4
 from highlight import highlight_ref as hl
 from shutil import move
+from copy import deepcopy
+
+import webbrowser
+from urllib.parse import urlencode
+
+import pandas as pd
+from concurrent.futures import ThreadPoolExecutor
 
 from thirdai import licensing
 if getattr(sys, 'frozen', False):
@@ -73,6 +80,8 @@ class Backend:
         self.thirdai_summarizer = None
         self.gmail_auth_services = {}
         self.gmail_query_switch = False
+        self.outlook_access_token = None
+        self.outlook_query_switch = False
     
     def reset_neural_db(self):
         self.backend = ndb.NeuralDB(
@@ -140,6 +149,9 @@ async def index_files(websocket: WebSocket):
     if backend_instance.gmail_query_switch:
         backend_instance.reset_neural_db()
 
+    if backend_instance.outlook_query_switch:
+        backend_instance.reset_neural_db()
+
     async for message in websocket.iter_text():
         data = json.loads(message)
         filePaths = data.get("filePaths", [])
@@ -168,6 +180,7 @@ async def index_files(websocket: WebSocket):
         def on_success():
             # Turn off Gmail query switch
             backend_instance.gmail_query_switch = False
+            backend_instance.outlook_query_switch = False
 
             loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
 
@@ -218,6 +231,15 @@ def query(query_model: QueryModel):
             email_content = ref_text[email_content_index + len('Email Content:'):].strip()
 
             results.append({"result_type": "Gmail", "result_text": email_content, "result_source": f'https://mail.google.com/mail/u/0/?tab=rm&ogbl#inbox/{msg_id}'})
+    elif backend_instance.outlook_query_switch:
+        for ref in references:
+            ref_text = ref.text
+
+            email_content_index = ref_text.find("Email Content:")
+            msg_id = ref_text[len('Message ID: '): email_content_index].strip()
+            email_content = ref_text[email_content_index + len('Email Content:'):].strip()
+
+            results.append({"result_type": "Outlook", "result_text": email_content, "result_source": f'https://outlook.live.com/mail/0/inbox/id/{msg_id}'})
     else:
         results = [
             {
@@ -444,8 +466,11 @@ def load_by_id(model_data: LoadModelByID):
             documents = metadata.get('documents', [])
             if len(documents) == 1 and documents[0].get('fileName') == 'gmail_inbox_data.csv':
                 backend_instance.gmail_query_switch = True
+            elif len(documents) == 1 and documents[0].get('fileName') == 'outlook_inbox_data.csv':
+                backend_instance.outlook_query_switch = True
             else:
                 backend_instance.gmail_query_switch = False
+                backend_instance.outlook_query_switch = False
         except json.JSONDecodeError as e:
             print(f"Error parsing metadata.json: {e}")
             raise HTTPException(status_code=500, detail="Error parsing metadata.json")
@@ -454,6 +479,7 @@ def load_by_id(model_data: LoadModelByID):
             raise HTTPException(status_code=500, detail="Unexpected error when checking workspace type")
     else:
         backend_instance.gmail_query_switch = False
+        backend_instance.outlook_query_switch = False
 
     return {'success': True}
 
@@ -1395,14 +1421,92 @@ async def  gmail_download_train(websocket: WebSocket):
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
 
+@app.websocket("/gmail_train_from_csv")
+async def gmail_train_from_csv(websocket: WebSocket):
+    global backend_instance
+
+    await websocket.accept()
+
+    async for message in websocket.iter_text():
+        data = json.loads(message)
+        
+        csv_file_path = data.get('csv_file_path', 'me')
+
+        # TODO optimize: reading, editing, and writing is time consuming for large CSV gmail file.
+            # One quick optimization is to allow neuraldb to take into df as variable
+
+        # Load CSV into memory and rename columns
+        df = pd.read_csv(csv_file_path)
+        df.rename(columns={'ID': 'Message ID', 'Snippet': 'Email Content'}, inplace=True)
+
+        # Specify the temporary folder using the WORKING_FOLDER path
+        USER_GMAIL_INBOX_TEMP_CACHE = WORKING_FOLDER / "user_gmail_inbox_temp_cache"
+
+        # Check if USER_GMAIL_INBOX_TEMP_CACHE exists, if so, delete it
+        if USER_GMAIL_INBOX_TEMP_CACHE.exists():
+            shutil.rmtree(USER_GMAIL_INBOX_TEMP_CACHE)
+
+        USER_GMAIL_INBOX_TEMP_CACHE.mkdir(parents=True, exist_ok=True)
+
+        # Create a CSV file within this temporary folder
+        temp_file_location = USER_GMAIL_INBOX_TEMP_CACHE / "gmail_inbox_data.csv"
+        df.to_csv(temp_file_location, index=False)
+
+        # Reset neuraldb to make sure previously trained files are not included.
+        backend_instance.reset_neural_db()
+
+        documents = [ndb.CSV(temp_file_location, strong_columns = ['Subject'], weak_columns=['Email Content'], reference_columns = ['Message ID', 'Email Content'])]
+
+        async def async_on_progress(fraction):
+            progress = int(100 * fraction)
+            message = "Indexing in progress"
+            await websocket.send_json({"progress": progress, "message": message, "complete": False})
+
+        def on_progress(fraction):
+            loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
+
+        def on_error(error_msg):
+            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"error": True, "message": error_msg}))
+
+        def on_success():
+            # Turn on Gmail query switch
+            backend_instance.gmail_query_switch = True
+            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
+
+        try:
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, lambda: backend_instance.backend.insert(
+                sources=documents,
+                on_progress=on_progress,
+                on_error=on_error,
+                on_success=on_success,
+            ))
+        except Exception as e:
+            await websocket.send_json({"error": True, "message": str(e)})
+
 @app.websocket("/url_train")
 async def url_train(websocket: WebSocket):
+    def process_url(url):
+        try:
+            response = requests.get(url)
+            return response
+        except Exception as e:
+            return None
+    def safe_create_url(url, response):
+        try:
+            return ndb.URL(url=url, url_response=response)
+        except Exception as e:
+            return None
+
     await websocket.accept()
 
     global backend_instance
 
     # If previously trained on Gmail, reset neuraldb
     if backend_instance.gmail_query_switch:
+        backend_instance.reset_neural_db()
+
+    if backend_instance.outlook_query_switch:
         backend_instance.reset_neural_db()
 
     async def async_on_progress(fraction):
@@ -1419,14 +1523,27 @@ async def url_train(websocket: WebSocket):
     def on_success():
         # Turn off Gmail query switch
         backend_instance.gmail_query_switch = False
+        backend_instance.outlook_query_switch = False
+
         loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
 
     async for message in websocket.iter_text():
         data = json.loads(message)
 
-        url = data.get('url')
+        urls = data.get('urls')
+        urls = [url for url in urls if not url.startswith('http://localhost') and url]
 
-        documents = [ndb.URL(url = url)]
+        with ThreadPoolExecutor(max_workers=100) as executor:
+            results = list(executor.map(process_url, urls))
+
+        url_response_pairs = list(zip(urls, results))
+        filtered_pairs = [(url, response) for url, response in url_response_pairs if response is not None and url]
+
+        documents = []
+        for (url, response) in filtered_pairs:
+            document = safe_create_url(url, response)
+            if document:
+                documents.append(document)
 
         try:
             loop = asyncio.get_running_loop()
@@ -1439,6 +1556,93 @@ async def url_train(websocket: WebSocket):
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
 
+# @app.websocket("/url_train")
+# async def url_train(websocket: WebSocket):
+#     def process_url(url):
+#         try:
+#             response = requests.get(url)
+#             return response
+#         except Exception as e:
+#             return None
+#     def safe_create_url(url, response):
+#         try:
+#             return ndb.URL(url=url, url_response=response)
+#         except Exception as e:
+#             return None
+
+#     await websocket.accept()
+
+#     global backend_instance
+
+#     # If previously trained on Gmail, reset neuraldb
+#     if backend_instance.gmail_query_switch:
+#         backend_instance.reset_neural_db()
+
+#     if backend_instance.outlook_query_switch:
+#         backend_instance.reset_neural_db()
+
+#     async def async_on_progress(fraction):
+#         progress = int(100 * fraction)
+#         message = "Indexing in progress"
+#         await websocket.send_json({"progress": progress, "message": message, "complete": False})
+
+#     def on_progress(fraction):
+#         loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
+
+#     def on_error(error_msg):
+#         loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"error": True, "message": error_msg}))
+
+#     def on_success():
+#         # Turn off Gmail query switch
+#         backend_instance.gmail_query_switch = False
+#         backend_instance.outlook_query_switch = False
+
+#         loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
+
+#     async for message in websocket.iter_text():
+#         data = json.loads(message)
+
+#         # urls = data.get('urls')
+#         urls = []
+#         csv_file_path = data.get('csv_file_path')
+       
+#         with open(csv_file_path, newline='') as csvfile:
+#             reader = csv.DictReader(csvfile)
+#             for row in reader:
+#                 url = row['url']
+#                 urls.append(url)
+#         urls = [url for url in urls if not url.startswith('http://localhost') and url]
+
+#         print('finished url', len(urls))
+
+#         with ThreadPoolExecutor(max_workers=10) as executor:
+#             results = list(executor.map(process_url, urls))
+
+#         url_response_pairs = list(zip(urls, results))
+
+#         filtered_pairs = [(url, response) for url, response in url_response_pairs if response is not None and url]
+
+#         print('finished filtered_pairs', len(filtered_pairs))
+
+#         documents = []
+#         for (url, response) in filtered_pairs:
+#             document = safe_create_url(url, response)
+#             if document:
+#                 documents.append(document)
+
+#         print('finished documents', len(documents))
+
+#         try:
+#             loop = asyncio.get_running_loop()
+#             await loop.run_in_executor(None, lambda: backend_instance.backend.insert(
+#                 sources=documents,
+#                 on_progress=on_progress,
+#                 on_error=on_error,
+#                 on_success=on_success,
+#             ))
+#         except Exception as e:
+#             await websocket.send_json({"error": True, "message": str(e)})
+
 @app.post("/reset_neural_db")
 def reset_neural_db():
     global backend_instance
@@ -1447,22 +1651,210 @@ def reset_neural_db():
 
     return {"success": True, 'msg': 'Neural DB reset successful'}
 
-class SubTypeModel(BaseModel):
-    subscriptionType: int
+OUTLOOK_CLIENT_ID = "a0e83608-a426-46ba-be71-040486d5c230"
+OUTLOOK_TENANT_ID = "f8cdef31-a31e-4b4a-93e4-5f571e91255a"
+OUTLOOK_CLIENT_SECRET = "xFT8Q~C1t-nUTGvf4Brmh5vr5tvwt5cdAgrhecL4"
+OUTLOOK_SCOPES = ["https://graph.microsoft.com/Mail.Read"]
+
+@app.get("/outlook_auth")
+def outlook_auth():
+    # Helper function to generate the Microsoft OAuth URL
+    def get_microsoft_auth_url():
+        params = {
+            "client_id": OUTLOOK_CLIENT_ID,
+            "response_type": "code",
+            "redirect_uri": OUTLOOK_REDIRECT_URI,
+            "response_mode": "query",
+            "scope": " ".join(OUTLOOK_SCOPES)
+        }
+        return f"https://login.microsoftonline.com/common/oauth2/v2.0/authorize?{urlencode(params)}"
+    
+    auth_url = get_microsoft_auth_url()
+    webbrowser.open(auth_url)  # Try to open the browser
+    return {"message": "Check your browser to login", "url": auth_url}
+
+# Global variable to store the outlook authentication status for Electron frontend Polling
+auth_status = {"is_authenticated": False, 'total_emails': None}
+
+@app.get("/get_outlook_auth_status")
+def get_outlook_auth_status():
+    global auth_status
+
+    current_status = deepcopy(auth_status)
+
+    auth_status = {"is_authenticated": False, 'total_emails': None}
+
+    return current_status
+
+@app.get("/outlook_callback")
+def outlook_callback(code: str = None):
+    global auth_status
+
+    def exchange_code_for_token(code):
+        token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        data = {
+            "client_id": OUTLOOK_CLIENT_ID,
+            "scope": " ".join(OUTLOOK_SCOPES),
+            "code": code,
+            "redirect_uri": OUTLOOK_REDIRECT_URI,
+            "grant_type": "authorization_code",
+        }
+        response = requests.post(token_url, headers=headers, data=data)
+        return response.json()
+
+    def get_email_count(access_token):
+        graph_url = "https://graph.microsoft.com/v1.0/me/mailFolders/Inbox/messages?$count=true"
+        headers = {"Authorization": f"Bearer {access_token}", "ConsistencyLevel": "eventual"}
+        response = requests.get(graph_url, headers=headers)
+        return response.json().get('@odata.count', 0)
+
+    if not code:
+        raise HTTPException(status_code=400, detail="Missing authorization code")
+    
+    # Exchange code for token
+    token_response = exchange_code_for_token(code)
+    access_token = token_response.get("access_token")
+
+    if not access_token:
+        raise HTTPException(status_code=500, detail="Failed to obtain access token")
+
+    backend_instance.outlook_access_token = access_token
+
+    total_emails = get_email_count(access_token)
+
+    auth_status["is_authenticated"] = True
+    auth_status["total_emails"] = total_emails
+
+    return {'message': 'The authentication has succeeded. Please go back to PocketLLM.'}
+
+@app.websocket("/outlook_download_train")
+async def outlook_download_train(websocket: WebSocket):
+
+    ##############################################  Download  ##########################################
+
+    async def get_user_emails(access_token, max_emails, websocket):
+        total_emails_url = "https://graph.microsoft.com/v1.0/me/mailFolders/Inbox/messages?$count=true"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        total_response = requests.get(total_emails_url, headers=headers)
+        total_count = total_response.json().get('@odata.count', 0)
+
+        emails = []
+        processed = 0
+        skip = 0
+        while processed < total_count and processed < max_emails:
+            batch_url = f"https://graph.microsoft.com/v1.0/me/messages?$top={min(max_emails, 50)}&$skip={skip}"
+            batch_response = requests.get(batch_url, headers=headers)
+            batch_emails = batch_response.json().get('value', [])
+            emails.extend(batch_emails)
+            processed += len(batch_emails)
+            skip += len(batch_emails)
+
+            # Send progress update
+            progress = (processed / min(total_count, max_emails)) * 100
+            await websocket.send_json({"progress": progress, "message": f"Downloaded {processed}/{min(total_count, max_emails)} emails", "complete": False})
+
+            if len(batch_emails) == 0:
+                break  # No more emails to fetch
+
+        return emails
+
+    def extract_email_data(emails):
+        # Helper function to convert HTML to plain text
+        def html_to_text(html):
+            soup = BeautifulSoup(html, "html.parser")
+            return soup.get_text()
+
+        emails_data = []
+        for email in emails:
+            email_id = email.get('conversationId')
+            subject = email.get('subject')
+            html_content = email.get('body', {}).get('content')
+            plain_text_content = html_to_text(html_content)
+            emails_data.append((email_id, subject, plain_text_content))
+        return emails_data
+
+
+    await websocket.accept()
+
+    async for message in websocket.iter_text():
+        data = json.loads(message)
+
+        # Number of emails to download
+        num_emails = data.get("num_emails", 10)
+
+        # Fetch emails using the access token
+        emails = await get_user_emails(backend_instance.outlook_access_token, num_emails, websocket)
+        emails_data = extract_email_data(emails)
+        
+        # Specify and prepare the folder for CSV file
+        USER_OUTLOOK_INBOX_TEMP_CACHE = WORKING_FOLDER / "user_outlook_inbox_temp_cache"
+        if USER_OUTLOOK_INBOX_TEMP_CACHE.exists():
+            shutil.rmtree(USER_OUTLOOK_INBOX_TEMP_CACHE)
+        USER_OUTLOOK_INBOX_TEMP_CACHE.mkdir(parents=True, exist_ok=True)
+
+        # CSV file location
+        temp_file_location = USER_OUTLOOK_INBOX_TEMP_CACHE / "outlook_inbox_data.csv"
+
+        # Write to CSV
+        with open(temp_file_location, mode='w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['Message ID', 'Subject', 'Email Content'])
+
+            for email_id, subject, html_content in emails_data:
+                writer.writerow([email_id, subject, html_content])
+
+            await websocket.send_json({"progress": 100, "message": f"Emails saved to CSV at {str(temp_file_location)}",  "complete": True})
+
+        ##############################################  Train  ##########################################
+
+        # Reset neuraldb to make sure previously trained files are not included.
+        backend_instance.reset_neural_db()
+
+        documents = [ndb.CSV(temp_file_location, strong_columns = ['Subject'], weak_columns=['Email Content'], reference_columns = ['Message ID', 'Email Content'])]
+
+        async def async_on_progress(fraction):
+            progress = int(100 * fraction)
+            message = "Indexing in progress"
+            await websocket.send_json({"progress": progress, "message": message, "complete": False})
+
+        def on_progress(fraction):
+            loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
+
+        def on_error(error_msg):
+            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"error": True, "message": error_msg}))
+
+        def on_success():
+            # Turn on Outlook query switch
+            backend_instance.outlook_query_switch = True
+            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
+
+        try:
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, lambda: backend_instance.backend.insert(
+                sources=documents,
+                on_progress=on_progress,
+                on_error=on_error,
+                on_success=on_success,
+            ))
+        except Exception as e:
+            await websocket.send_json({"error": True, "message": str(e)})
 
 if __name__ == "__main__":
     backend_instance = Backend()
 
-    port_number = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
+    FASTAPI_LOCALHOST_PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
     WORKING_FOLDER = Path(sys.argv[2]) if len(sys.argv) > 2 else WORKING_FOLDER
 
-    print(f'backend: port_number = {port_number}')
+    OUTLOOK_REDIRECT_URI = f"http://localhost:{FASTAPI_LOCALHOST_PORT}/outlook_callback"
+
+    print(f'backend: FASTAPI_LOCALHOST_PORT = {FASTAPI_LOCALHOST_PORT}')
     print(f'backend: WORKING_FOLDER = {WORKING_FOLDER}')
 
     # Configure WebSocket ping interval and timeout
     websocket_ping_interval = 300  # Ping every 5 minutes
     websocket_ping_timeout = 1200   # Timeout after 20 minutes of no response
 
-    uvicorn.run(app, host="0.0.0.0", port=port_number,
+    uvicorn.run(app, host="0.0.0.0", port=FASTAPI_LOCALHOST_PORT,
                 ws_ping_interval=websocket_ping_interval,
                 ws_ping_timeout=websocket_ping_timeout)

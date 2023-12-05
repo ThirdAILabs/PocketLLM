@@ -248,6 +248,9 @@ function createWindow() {
   ipcMain.on('open-file-dialog', (event) => {
     dialog.showOpenDialog(win!, {
       properties: ['openFile', 'multiSelections'],
+      filters: [
+        { name: 'Documents', extensions: ['pdf', 'csv', 'docx'] }
+      ]
     }).then(result => {
       if (!result.canceled && result.filePaths.length > 0) {
         // Map through each file path and get file details including size
@@ -266,6 +269,56 @@ function createWindow() {
       console.log(err);
     })
   })
+
+  ipcMain.on('open-csv-file-dialog', (event) => {
+    const urlRegex = /https?:\/\/[^\s,]+/g; // Regular expression for URL validation
+
+    // Function to validate and extract URLs from a string
+    const extractUrls = (text: string): string[] => {
+      const urls = text.match(urlRegex);
+      return urls || [];
+    };
+
+    dialog.showOpenDialog(win!, {
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'CSV', extensions: ['csv'] }]
+    }).then(result => {
+      if (!result.canceled && result.filePaths.length > 0) {
+        // Annotate allExtractedUrls as an array of strings
+        const allExtractedUrls: string[] = [];
+  
+        result.filePaths.forEach(filePath => {
+          try {
+            const fileContent = fs.readFileSync(filePath, 'utf8');
+            const extractedUrls = extractUrls(fileContent);
+            allExtractedUrls.push(...extractedUrls);
+          } catch (err) {
+            console.error('Error reading file:', err);
+          }
+        });
+  
+        event.sender.send('extracted-urls', allExtractedUrls);
+      }
+    }).catch(err => {
+      console.log(err);
+    });
+  });
+
+  ipcMain.on('open-single-csv-file-dialog', (event) => {
+
+    dialog.showOpenDialog(win!, {
+      properties: ['openFile'],
+      filters: [{ name: 'CSV', extensions: ['csv'] }]
+    }).then(result => {
+      if (!result.canceled && result.filePaths.length > 0) {
+        const filePath = result.filePaths[0]; // Since it's a single file selection
+  
+        event.sender.send('gmail-dump-csv', filePath)
+      }
+    }).catch(err => {
+      console.log(err);
+    });
+  });
 
   // Set up a listener for the 'open-folder-dialog' message
   ipcMain.on('open-folder-dialog', (event) => {
@@ -325,7 +378,7 @@ function createWindow() {
           event.sender.send('telemetry-data-save-result', 'error');
         } else {
           console.log(`Current telemetry data length: ${mergedDataWithUserID.length}`)
-          if (mergedDataWithUserID.length >= 20) {
+          if (mergedDataWithUserID.length >= 3) {
             sendToDatabase(mergedDataWithUserID);
           }
         }

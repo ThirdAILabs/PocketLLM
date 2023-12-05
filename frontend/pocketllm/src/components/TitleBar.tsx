@@ -1,13 +1,14 @@
 import { useEffect } from 'react'
-import { usePort } from '../PortContext'
 import axios from 'axios'
+import { Tooltip } from '@mui/material'
 
+import { usePort } from '../PortContext'
 import SideBar from './SideBar'
 import GeneralAccountProfile from './GeneralAccountProfile'
-import ProgressBar from './ProgressBar'
+
 import { WorkSpaceMetadata } from '../App'
 import { SubscriptionPlan } from '../App'
-import loginLogo from '../assets/web_neutral_sq_SI.svg'
+// import loginLogo from '../assets/web_neutral_sq_SI.svg'
 
 type titleBarProps = {
     workSpaceMetadata: WorkSpaceMetadata[],
@@ -18,13 +19,18 @@ type titleBarProps = {
     setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
     user : { email: string, name: string, subscription_plan: SubscriptionPlan  } | null,
     setUser: React.Dispatch<React.SetStateAction<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>>,
-    currentUsage: number
+    currentUsage: number, setCurrentUsage: React.Dispatch<React.SetStateAction<number>>,
+}
+
+function openLinkExternally(e: React.MouseEvent<HTMLAnchorElement>) {
+  e.preventDefault();
+  window.electron.openExternalUrl(e.currentTarget.href);
 }
 
 export default function TitleBar({ workSpaceMetadata, subscribeTrigger, saveWorkSpaceTrigger, curWorkSpaceID, setCurWorkSpaceID, setWorkSpaceMetadata,
                                     setAfterSaveResetCurWorkspace, setAllowUnsave,
                                     user, setUser,
-                                    currentUsage }:titleBarProps) {
+                                    currentUsage, setCurrentUsage }:titleBarProps) {
     const { port } = usePort()
 
     const handleLoginClick = async () => {
@@ -119,30 +125,29 @@ export default function TitleBar({ workSpaceMetadata, subscribeTrigger, saveWork
                              setCurWorkSpaceID = {setCurWorkSpaceID}
                              setWorkSpaceMetadata = {setWorkSpaceMetadata}
                              saveWorkSpaceTrigger = {saveWorkSpaceTrigger} setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace} setAllowUnsave = {setAllowUnsave}/>
-                    {
+                    {/* {
                         user ?
-                        <GeneralAccountProfile user={user} setUser = {setUser} subscribeTrigger={subscribeTrigger}/>
+                        <GeneralAccountProfile user={user} setUser = {setUser} subscribeTrigger={subscribeTrigger} setCurrentUsage = {setCurrentUsage}/>
                         :
                         <button onClick={handleLoginClick} className='btn border-0 p-0 bg-white text-secondary font-sm ms-2 no-drag btn-general2'>
                             <img src={loginLogo} placeholder='log in with Gmail'/>
                         </button>
-                    }
+                    } */}
+
+                    <GeneralAccountProfile user={user} setUser = {setUser} subscribeTrigger={subscribeTrigger}  setCurrentUsage = {setCurrentUsage} currentUsage={currentUsage} handleLoginClick = {handleLoginClick}/>
+                   
                     
-                    {
-                      (!user || (user && user.subscription_plan === SubscriptionPlan.FREE)) ? (
-                        <div className='ms-2 text-start'>
-                          <div className='font-x-sm mb-1 ms-3'>Current workspace usage ({Math.floor(Math.min(currentUsage, 200))}mb / 200mb)</div>
-                          <div style={{width: "250px"}}>
-                            <ProgressBar 
-                              progress={Math.floor(Math.min(currentUsage / 200 * 100, 100))} 
-                              color={Math.floor(currentUsage / 200 * 100) < 90 ? "secondary bg-opacity-50" : "warning bg-opacity-50"}
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <></>
-                      )
-                    }
+                    <Tooltip title="Join Community & get FREE usage coupons!" placement='right'>
+                      <button className='no-drag btn border-0 bg-transparent mt-1 p-0 ms-4'>
+                        <a target='_blank' onClick={openLinkExternally} href='https://discord.gg/thirdai'>
+                          <i className="bi bi-discord fs-5" style={{color: "#7289da"}}></i>
+                        </a>
+                      </button>
+                    </Tooltip>
+                    
+
+                    
+                    
                     
                     
                 </div>

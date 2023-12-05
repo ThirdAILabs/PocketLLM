@@ -95,14 +95,13 @@ export default function MainPage({selectedFiles, setSelectedFiles,
       <div className="w-100 h-100 mt-5 mb-2" style={{maxHeight: "95vh", overflowY: "auto"}}>
         <div className='d-flex flex-column align-items-center'>
           <div className='d-flex mb-3 align-items-center justify-content-center pt-5' style={{marginTop:'130px'}}>
-            <ModelName modelInfo = {currentModel}/>
+            <ModelName  modelInfo = {currentModel}
+                        curWorkSpaceID = {curWorkSpaceID} 
+                        workSpaceMetadata = {workSpaceMetadata}
+            />
           </div>
 
-          <SelectedFileList indexFiles = {indexFiles} queryEnabled={queryEnabled}
-                            workSpaceMetadata = {workSpaceMetadata} curWorkSpaceID = {curWorkSpaceID} 
-                            saveWorkSpaceTrigger = {saveWorkSpaceTrigger} 
-                            setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace}
-                            setAllowUnsave = {setAllowUnsave}/>
+          <SelectedFileList indexFiles = {indexFiles} queryEnabled={queryEnabled}/>
 
           <FunctionBar  selectedFiles = {selectedFiles}
                         setSelectedFiles = {setSelectedFiles}
@@ -127,7 +126,7 @@ export default function MainPage({selectedFiles, setSelectedFiles,
         </div>
             
       </div>
-      <div className='font-x-sm mb-3'>Terms of <a target='_blank' href="https://www.thirdai.com/terms-of-service-for-thirdai-pocketllm/">Service</a> and <a target='_blank' href="https://www.thirdai.com/privacy-policy-pocketllm/">Privacy Policy</a>.</div>
+      <div className='font-x-sm mb-3'>Your data stay local. Search works without Internet</div>
     </div>
     
   )

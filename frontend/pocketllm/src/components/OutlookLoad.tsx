@@ -1,23 +1,22 @@
 import { useState, useRef, useEffect } from 'react'
-// import DatePicker from "react-datepicker";
 import { v4 as uuidv4 } from 'uuid'
 import "react-datepicker/dist/react-datepicker.css";
+import useTelemetry from '../hooks/useTelemetry'
 import { usePort } from '../PortContext'
 import axios from 'axios'
 import ProgressBarWithLabel from './ProgressBarWithLabel';
 import { ModelDisplayInfo, WorkSpaceMetadata } from '../App';
-import googleLogo from "../assets/web_neutral_rd_na.svg";
-import googleContinue from "../assets/web_neutral_sq_ctn.svg";
+import outlookLogo from "../assets/outlook.svg";
 import Tooltip from '@mui/material/Tooltip';
 
-type LoadGmailProps = {
+type LoadOutLookProps = {
     setCurWorkSpaceID: React.Dispatch<React.SetStateAction<string|null>>,
     setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
     currentModel: ModelDisplayInfo | null,
     setCurrentUsage: React.Dispatch<React.SetStateAction<number>>
 }
 
-export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, currentModel, setCurrentUsage}: LoadGmailProps) {
+export default function LoadOutlook({setWorkSpaceMetadata, setCurWorkSpaceID, currentModel, setCurrentUsage}: LoadOutLookProps) {
     const { port } = usePort()
     const closeRef = useRef<HTMLButtonElement>(null)
     const [progress, setProgress] = useState(0)
@@ -25,11 +24,13 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
     const [label, setLabel] = useState("Begin Download");
     const labelRef = useRef<string>(label)
     const [loggedIn, setLoggedIn] = useState(false);
-    const [checked, setChecked] = useState(false);
     // const [startDate, setStartDate] = useState(new Date());
     // const [endDate, setEndDate] = useState(new Date());
     const [maxEmailNum, setMaxEmailNum] = useState<null | number>(null);
-    const [eDownloadNum, setEDownloadNum] = useState(maxEmailNum != null ? maxEmailNum : 0);
+    const [eDownloadNum, setEDownloadNum] = useState<number>(0);
+
+    // For telemetry
+    const recordEvent = useTelemetry()
 
     useEffect(() => {
         labelRef.current = label;
@@ -41,45 +42,46 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
         setEDownloadNum(e.target.valueAsNumber)
     }
 
-    const logInGmail = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const logInOutlook = (e: React.MouseEvent<HTMLButtonElement>) => {
         e.preventDefault()
         
-        axios.post(`http://localhost:${port}/gmail_auth`)
+        axios.get(`http://localhost:${port}/outlook_auth`)
         .then(response => {
-            if (response.data.success) {
-                console.log(response.data.msg);
-                axios.post(`http://localhost:${port}/gmail_total_emails`)
-                .then(response => {
-                    console.log('Total number of emails: ', response.data.total_emails)
+            console.log(`response.data.message: ${response.data.message}`)
+            console.log(`response.data.url: ${response.data.url}`)
 
-                    setMaxEmailNum(response.data.total_emails)
-                    setLoggedIn(true)
-                })
-                .catch(error => {
-                    console.error("Error during gmail_total_emails:", error);
-                })
-
-            } else {
-                console.error(response.data.msg);
-            }
+            // Start polling for authentication status
+            const intervalId = setInterval(() => {
+                axios.get(`http://localhost:${port}/get_outlook_auth_status`)
+                    .then(statusResponse => {
+                        if (statusResponse.data.is_authenticated) {
+                            console.log("Authentication complete")
+                            console.log(`Total number of emails: ${statusResponse.data.total_emails}`)
+                            setMaxEmailNum(statusResponse.data.total_emails)
+                            setEDownloadNum(statusResponse.data.total_emails)
+                            setLoggedIn(true)
+                            clearInterval(intervalId);  // Stop polling
+                        }
+                    })
+                    .catch(statusError => {
+                        console.error("Error checking authentication status:", statusError);
+                    });
+            }, 3000);  // Poll every 3 seconds
         })
         .catch(error => {
             console.error("Error during authentication:", error);
         })
     }
 
-    const downloadGmail = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const downloadOutlook = (e: React.MouseEvent<HTMLButtonElement>) => {
         e.preventDefault()
 
-        const ws = new WebSocket(`ws://localhost:${port}/gmail_download_train`);
+        const ws = new WebSocket(`ws://localhost:${port}/outlook_download_train`);
         
         ws.onopen = () => {
             setStartProgress(true);
             setLabel("Downloading...");
-            ws.send(JSON.stringify({
-                user_id: 'me',   
-                num_emails: eDownloadNum
-            }))
+            ws.send(JSON.stringify({num_emails: eDownloadNum}))
 
             setCurrentUsage(prevUsage => prevUsage + (5.3 / 1000 * eDownloadNum)) // This is only an estimate based on: 1000 emails = 5.3MB
         };
@@ -105,8 +107,8 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
 
                 const selectedFiles = [
                     {
-                        fileName: `Gmail latest ${eDownloadNum}`,
-                        filePath: `Gmail latest ${eDownloadNum}`,
+                        fileName: `Outlook latest ${eDownloadNum}`,
+                        filePath: `Outlook latest ${eDownloadNum}`,
                         fileSize: (5.3 / 1000 * eDownloadNum), // This is only an estimate based on: 1000 emails = 5.3MB
                         isSaved: false,
                         uuid: uuidv4(),
@@ -115,7 +117,7 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
 
                 const newWorkSpaceMetadata = {
                     workspaceID: newWorkSpaceID,
-                    workspaceName: `Gmail latest ${eDownloadNum}`,
+                    workspaceName: `Outlook latest ${eDownloadNum}`,
                     model_info: {
                         author_name: currentModel ? currentModel.author_name : 'thirdai',
                         model_name: currentModel ? currentModel.model_name : 'Default model',
@@ -156,15 +158,7 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
 
     const handleLogoutClick = async () => {
         try {
-            // Send delete request to backend
-            const response = await axios.post(`http://localhost:${port}/gmail_inbox_delete_credential`);
-    
-            // Check if the response indicates success
-            if (response.data && response.data.success) {
-                setLoggedIn(false);
-            } else {
-                console.warn("Credentials not deleted successfully:", response.data.message);
-            }
+            setLoggedIn(false);
         } catch (error) {
             console.error("Error deleting credentials:", error);
         }
@@ -172,19 +166,23 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
 
   return (
     <>
-        <Tooltip title="Gmail">
+        <Tooltip title="Outlook">
             <button type="button" 
-                className='btn mx-1 p-0 rounded-circle'  
-                // className="btn mx-1 h-100"
-                data-bs-toggle="modal" data-bs-target="#gmailModal"
-                onClick={(e)=>e.preventDefault()}
+                className="btn btn-general mx-1 h-100"
+                onClick={(_) => 
+                    recordEvent({
+                        UserAction: 'Click',
+                        UIComponent: 'add-Outlook button',
+                        UI: 'LoadOutlook',
+                })}  
+                data-bs-toggle="modal" 
+                data-bs-target="#outlookModal"
             >
-                {/* <i className="bi bi-google text-secondary text-opacity-75"></i> */}
-                <img src={googleLogo} placeholder='Gmail'/>
+                <img src={outlookLogo} style={{width: '20px'}} placeholder='Outlook'/>
             </button>
         </Tooltip>
         
-        <form onSubmit={(e)=>e.preventDefault()} className="modal fade" id="gmailModal" tabIndex={-1} aria-hidden="true">
+        <form onSubmit={(e)=>e.preventDefault()} className="modal fade" id="outlookModal" tabIndex={-1} aria-hidden="true">
             <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content">
                     <div className="modal-header border-0 ">
@@ -236,7 +234,7 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
                                     <div className='d-flex justify-content-center mt-4'>
                                         <button type="button"
                                                 className='btn bg-secondary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
-                                                onClick={ downloadGmail }
+                                                onClick={ downloadOutlook }
                                                 >
                                             {label}
                                         </button>
@@ -255,29 +253,34 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
                             :
                             <div className='py-5'>
                                 <div className='d-flex mb-2 justify-content-center align-items-center'>
-                                    <div>Privacy consent</div>
+                                    <div>Privacy Note</div>
                                 </div>
-                                <div className='font-sm'>Only selected text data from your emails will be downloaded to this local computer.</div>
-                                <div className="form-check font-sm d-flex justify-content-center mt-5">
-                                    <input className="form-check-input me-2" type="checkbox" value="" id="flexCheckDefault" 
+                                <div className='font-sm'>Your emails won't leave this PC. </div>
+                                <div className='font-sm'>Search will work without internet. </div>
+                                
+                                <div className="form-check font-sm d-flex justify-content-center mt-3">
+                                    {/* <input className="form-check-input me-2" type="checkbox" value="" id="outlookCheckbox" 
                                     checked={checked} onClick={()=>setChecked(!checked)}
                                     readOnly
                                     />
-                                    <label className="form-check-label" htmlFor="flexCheckDefault">
+                                    <label className="form-check-label" htmlFor="outlookCheckbox">
                                         I agree with the <a target='_blank' href='https://www.thirdai.com/privacy-policy-pocketllm/'>privacy notice</a>
-                                    </label>
+                                    </label> */}
                                 </div>
                                 <div className='d-flex justify-content-center mt-2'>
                                     <button type="button"
-                                            disabled={!checked}
-                                            className='btn btn-sm p-0 border-0 mx-1'
-                                            onClick={ logInGmail } 
+                                            className='btn btn-sm p-3 border-0 rounded-2 btn-general mx-1 d-flex'
+                                            onClick={ logInOutlook } 
                                             style={{
-                                                opacity: `${!checked? "50%" : "100%"}`
+                                                opacity: "100%",
+                                                backgroundColor: "#F2F2F2"
                                             }}
                                     >
 
-                                        <img src={googleContinue} placeholder='Continue with Google'/>
+                                        <img src={outlookLogo} style={{width: '20px'}} placeholder='Continue with Outlook'/>
+                                        <div className='ms-2'>
+                                            Continue with outlook
+                                        </div>
                                     </button>
                                 </div>
                             </div>

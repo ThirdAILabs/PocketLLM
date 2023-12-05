@@ -46,6 +46,18 @@
   }
   
 
+.url-scroll {
+    overflow-x: scroll;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none; 
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.url-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+
 #input-search:focus {
     border: inherit;
     outline: none !important;
@@ -53,6 +65,10 @@
     box-shadow: none;
     -moz-box-shadow: none;
     -webkit-box-shadow: none;
+}
+
+.cursor-pointer {
+    cursor: pointer;
 }
 
 .bi-login {
@@ -541,16 +557,19 @@ input:focus{
 .drop-zone-wrapper {
     width: 100%;
     min-height: 100px;
-    cursor: pointer;
     border: rgb(198, 198, 198) 2px dashed;
     border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+.drop-zone-innerwrapper {
+    cursor: pointer;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     font-size: small;
     padding: 15px;
-    margin-bottom: 15px;
 }
 
 .drop-zone-drag {

@@ -6,18 +6,17 @@ import { usePort } from '../PortContext'
 import axios from 'axios'
 import ProgressBarWithLabel from './ProgressBarWithLabel';
 import { ModelDisplayInfo, WorkSpaceMetadata } from '../App';
-import googleLogo from "../assets/web_neutral_rd_na.svg";
-import googleContinue from "../assets/web_neutral_sq_ctn.svg";
+import slackLogo from "../assets/slack-new-logo.svg"
 import Tooltip from '@mui/material/Tooltip';
 
-type LoadGmailProps = {
+type LoadOutLookProps = {
     setCurWorkSpaceID: React.Dispatch<React.SetStateAction<string|null>>,
     setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
     currentModel: ModelDisplayInfo | null,
     setCurrentUsage: React.Dispatch<React.SetStateAction<number>>
 }
 
-export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, currentModel, setCurrentUsage}: LoadGmailProps) {
+export default function LoadSlack({setWorkSpaceMetadata, setCurWorkSpaceID, currentModel, setCurrentUsage}: LoadOutLookProps) {
     const { port } = usePort()
     const closeRef = useRef<HTMLButtonElement>(null)
     const [progress, setProgress] = useState(0)
@@ -172,19 +171,18 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
 
   return (
     <>
-        <Tooltip title="Gmail">
+        <Tooltip title="Upcoming">
             <button type="button" 
-                className='btn mx-1 p-0 rounded-circle'  
-                // className="btn mx-1 h-100"
-                data-bs-toggle="modal" data-bs-target="#gmailModal"
+                className="btn btn-general mx-1 h-100"
                 onClick={(e)=>e.preventDefault()}
+                // data-bs-toggle="modal" 
+                // data-bs-target="#slackModal"
             >
-                {/* <i className="bi bi-google text-secondary text-opacity-75"></i> */}
-                <img src={googleLogo} placeholder='Gmail'/>
+                <img src={slackLogo} style={{width: '20px', opacity: '0.2'}} placeholder='Outlook'/>
             </button>
         </Tooltip>
         
-        <form onSubmit={(e)=>e.preventDefault()} className="modal fade" id="gmailModal" tabIndex={-1} aria-hidden="true">
+        <form onSubmit={(e)=>e.preventDefault()} className="modal fade" id="slackModal" tabIndex={-1} aria-hidden="true">
             <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content">
                     <div className="modal-header border-0 ">
@@ -259,25 +257,29 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
                                 </div>
                                 <div className='font-sm'>Only selected text data from your emails will be downloaded to this local computer.</div>
                                 <div className="form-check font-sm d-flex justify-content-center mt-5">
-                                    <input className="form-check-input me-2" type="checkbox" value="" id="flexCheckDefault" 
+                                    <input className="form-check-input me-2" type="checkbox" value="" id="slackCheckbox" 
                                     checked={checked} onClick={()=>setChecked(!checked)}
                                     readOnly
                                     />
-                                    <label className="form-check-label" htmlFor="flexCheckDefault">
+                                    <label className="form-check-label" htmlFor="slackCheckbox">
                                         I agree with the <a target='_blank' href='https://www.thirdai.com/privacy-policy-pocketllm/'>privacy notice</a>
                                     </label>
                                 </div>
                                 <div className='d-flex justify-content-center mt-2'>
                                     <button type="button"
                                             disabled={!checked}
-                                            className='btn btn-sm p-0 border-0 mx-1'
+                                            className='btn btn-sm p-3 border-0 rounded-2 btn-general mx-1 d-flex'
                                             onClick={ logInGmail } 
                                             style={{
-                                                opacity: `${!checked? "50%" : "100%"}`
+                                                opacity: `${!checked? "50%" : "100%"}`,
+                                                backgroundColor: "#F2F2F2"
                                             }}
                                     >
 
-                                        <img src={googleContinue} placeholder='Continue with Google'/>
+                                        <img src={slackLogo} style={{width: '20px'}} placeholder='Continue with Slack'/>
+                                        <div className='ms-2'>
+                                            Continue with Slack
+                                        </div>
                                     </button>
                                 </div>
                             </div>

@@ -118,9 +118,9 @@ export default function SpecifySummarizer( {summarizer , setSummarizer, trigger,
                                         <div>No summarizer is selected</div>
                                         :
                                         summarizer == "ThirdAI" ?
-                                        <div> <b>Privacy Notice:</b> ThirdAI summarizer is a completely private model for simple use cases.</div>
+                                        <div> Privacy Notice: ThirdAI summarizer is a <b>completely private</b> model for simple use cases.</div>
                                         :
-                                        <div><b>Privacy Notice:</b> OpenAI summarizer is not privacy oriented: your data will go to OpenAI server.</div>
+                                        <div>Privacy Notice: OpenAI summarizer is <b>not private</b>: your data will go to OpenAI server.</div>
                                     }
                                 </div>
 

@@ -182,7 +182,7 @@ export default function Extraction({ searchResults, openAISetKeyNotice, curWorkS
     <div>
       {
           searchResults.map((result, index) => (
-                result.result_type === 'Gmail'
+                result.result_type === 'Gmail' || result.result_type === 'Outlook'
                 ?
                 <div key={index} className='extraction font-sm p-4 rounded-3 mb-3 w-100'>
                     <div className='d-flex align-items-center'>
