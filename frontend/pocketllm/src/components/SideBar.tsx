@@ -6,6 +6,7 @@ import Tooltip from '@mui/material/Tooltip';
 
 import { WorkSpaceMetadata } from '../App'
 import { usePort } from '../PortContext'
+import useTelemetry from '../hooks/useTelemetry'
 
 type SideBarProps = {
     workSpaceMetadata: WorkSpaceMetadata[];
@@ -26,6 +27,9 @@ export default function SideBar({workSpaceMetadata, curWorkSpaceID, setCurWorkSp
     const [editNameEnabled, setEditNameEnabled] = useState<boolean[]>([]);
     const [workspaceNames, setWorkspaceNames] = useState<string[]>([])
     const inputRefs = useRef<Array<HTMLInputElement | null>>([])
+
+    // For telemetry
+    const recordEvent = useTelemetry()
 
     useEffect(() => {
         setEditNameEnabled(new Array(workSpaceMetadata.length).fill(false))
@@ -316,12 +320,27 @@ export default function SideBar({workSpaceMetadata, curWorkSpaceID, setCurWorkSp
         <div className="offcanvas-body font-sm">
             <div className='d-flex mb-3'>
                 <button className='btn btn-general me-2 d-flex border border-secondary-subtle align-items-center w-100'
-                    onClick={()=>handleStartWorkSpace()}
+                    onClick={()=>{
+                                    handleStartWorkSpace();         
+                                    recordEvent({
+                                        UserAction: 'Click',
+                                        UIComponent: 'Start-a-new-workspace button',
+                                        UI: 'SideBar',
+                                    })
+                                }}
                 >
                     <i className="bi bi-plus-circle fs-5 me-2"></i>
                     <div className='font-sm'>Start a new workspace</div>
                 </button>
-                <button onClick={()=>handleImportWorkSpace()} className='btn btn-general d-flex border border-secondary-subtle align-items-center'>
+                <button onClick={()=>{
+                                        handleImportWorkSpace();
+                                        recordEvent({
+                                            UserAction: 'Click',
+                                            UIComponent: 'Import-workspace button',
+                                            UI: 'SideBar',
+                                        })
+                                    }} 
+                    className='btn btn-general d-flex border border-secondary-subtle align-items-center'>
                     <i className="bi bi-cloud-plus fs-5 me-2"></i>
                     <div className='font-sm'>Import</div>
                 </button>
@@ -347,7 +366,14 @@ export default function SideBar({workSpaceMetadata, curWorkSpaceID, setCurWorkSp
                     
                     <div 
                         className='text-start w-100 position-relative' 
-                        onClick={() => handleLoadWorkSpace(workspace.workspaceID)}
+                        onClick={() => {
+                                        handleLoadWorkSpace(workspace.workspaceID);
+                                        recordEvent({
+                                            UserAction: 'Click',
+                                            UIComponent: 'Load-workspace tab',
+                                            UI: 'SideBar',
+                                        })
+                                    }}
                     >
                         <form className='d-flex' onSubmit={(e)=>{console.log("handle name edit here"); e.preventDefault(); toggleEditNameEnabled(index)}}> 
                         {/* handle edit name by enter with form on submit */}
@@ -368,16 +394,37 @@ export default function SideBar({workSpaceMetadata, curWorkSpaceID, setCurWorkSp
                     </div>
                     <div className='d-flex'>
                         <Tooltip title="Edit name" placement='top'>
-                            <i className="btn btn-general p-1 bi bi-pen fs-6" onClick={() => toggleEditNameEnabled(index)}></i>
+                            <i className="btn btn-general p-1 bi bi-pen fs-6" onClick={() => {
+                                                                                                toggleEditNameEnabled(index);
+                                                                                                recordEvent({
+                                                                                                    UserAction: 'Click',
+                                                                                                    UIComponent: 'Edit-workspace-name button',
+                                                                                                    UI: 'SideBar',
+                                                                                                })
+                                }}></i>
                         </Tooltip>
                         
                         <Tooltip  title={workspace.documents.some(doc => doc.isSaved) ?  `${workspace.isWorkSpaceSaved ? 'Export workspace' : 'Export changed workspace'}` : 'Export new workspace'}
-                                  placement='top' onClick={() => handleExportWorkSpace(workspace.workspaceID)}>
+                                  placement='top' onClick={() => {
+                                                                    handleExportWorkSpace(workspace.workspaceID);
+                                                                    recordEvent({
+                                                                        UserAction: 'Click',
+                                                                        UIComponent: 'Export-workspace button',
+                                                                        UI: 'SideBar',
+                                                                    })
+                                  }}>
                             <i className="btn btn-general p-1 bi bi-download mx-2 fs-6"></i>
                         </Tooltip>
                         
                         <Tooltip title={workspace.documents.some(doc => doc.isSaved) ?  `${workspace.isWorkSpaceSaved ? 'Delete workspace' : 'Undo unsaved change'}` : 'Delete new workspace'}
-                                 placement='top' onClick={() => handleDeleteWorkSpace(workspace.workspaceID)}>
+                                 placement='top' onClick={() => {
+                                                                handleDeleteWorkSpace(workspace.workspaceID);
+                                                                recordEvent({
+                                                                    UserAction: 'Click',
+                                                                    UIComponent: 'Delete-workspace button',
+                                                                    UI: 'SideBar',
+                                                                })
+                                 }}>
                             <i className="btn btn-general p-1 bi bi-trash3 fs-6"></i>
                         </Tooltip>
                         

@@ -228,6 +228,8 @@ function createWindow() {
 
   let pdfWin: BrowserWindow | null = null;
 
+  ipcMain.removeAllListeners('open-pdf-window')
+
   ipcMain.on('open-pdf-window', (_, pdfURL) => {
     pdfWin = new BrowserWindow({
       width: 800,
@@ -378,7 +380,7 @@ function createWindow() {
           event.sender.send('telemetry-data-save-result', 'error');
         } else {
           console.log(`Current telemetry data length: ${mergedDataWithUserID.length}`)
-          if (mergedDataWithUserID.length >= 3) {
+          if (mergedDataWithUserID.length >= 2) {
             sendToDatabase(mergedDataWithUserID);
           }
         }
@@ -473,6 +475,8 @@ function createWindow() {
     };
     return formattedUsageData;
   })
+
+  ipcMain.removeAllListeners('open-external-url')
 
   ipcMain.on('open-external-url', (_, url) => {
     const { shell } = require('electron');

@@ -3,6 +3,7 @@ import axios from 'axios'
 import { usePort } from '../PortContext'
 import Toast from './Toast'
 import { WorkSpaceMetadata } from '../App'
+import useTelemetry from '../hooks/useTelemetry'
 
 type TeachProps = {
     curWorkSpaceID: string|null,
@@ -18,7 +19,15 @@ export default function Teach({curWorkSpaceID, setWorkSpaceMetadata}: TeachProps
     const [target, setTarget] = useState('')
     const [toast, setToast] = useState(false)
 
+    // For telemetry
+    const recordEvent = useTelemetry()
+
     function handleToast(){
+        recordEvent({
+            UserAction: 'Click',
+            UIComponent: 'Teach association button',
+            UI: 'Teach'
+        })
         setToast(true);
         setTimeout(()=>{setToast(false)}, 1900);
     }
@@ -67,7 +76,12 @@ export default function Teach({curWorkSpaceID, setWorkSpaceMetadata}: TeachProps
 
   return (
     <>
-        <button type="button" className='btn btn-general mx-1'  data-bs-toggle="modal" data-bs-target="#teachModal">
+        <button onClick={()=>recordEvent({
+                            UserAction: 'Click',
+                            UIComponent: 'Open-teach button',
+                            UI: 'Teach'
+                        })}
+                type="button" className='btn btn-general mx-1'  data-bs-toggle="modal" data-bs-target="#teachModal">
             <i className="bi bi-mortarboard font-lg"></i>
             <div className='font-sm'>Teach</div>
         </button>

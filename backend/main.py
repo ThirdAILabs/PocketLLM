@@ -40,6 +40,7 @@ from urllib.parse import urlencode
 
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
+import multiprocessing
 
 from thirdai import licensing
 if getattr(sys, 'frozen', False):
@@ -1484,17 +1485,21 @@ async def gmail_train_from_csv(websocket: WebSocket):
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
 
+def safe_create_url_wrapper(args):
+    return safe_create_url(*args)
+
+def safe_create_url(url, response):
+    try:
+        return ndb.URL(url=url, url_response=response)
+    except Exception as e:
+        return None
+
 @app.websocket("/url_train")
 async def url_train(websocket: WebSocket):
     def process_url(url):
         try:
             response = requests.get(url)
             return response
-        except Exception as e:
-            return None
-    def safe_create_url(url, response):
-        try:
-            return ndb.URL(url=url, url_response=response)
         except Exception as e:
             return None
 
@@ -1528,22 +1533,25 @@ async def url_train(websocket: WebSocket):
         loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
 
     async for message in websocket.iter_text():
-        data = json.loads(message)
-
+        data = json.loads(message)       
+        
         urls = data.get('urls')
         urls = [url for url in urls if not url.startswith('http://localhost') and url]
 
         with ThreadPoolExecutor(max_workers=100) as executor:
             results = list(executor.map(process_url, urls))
 
+        await websocket.send_json({"progress": 33, "message": 'ThreadPoolExecutor is completed', "complete": False})
+
         url_response_pairs = list(zip(urls, results))
         filtered_pairs = [(url, response) for url, response in url_response_pairs if response is not None and url]
 
-        documents = []
-        for (url, response) in filtered_pairs:
-            document = safe_create_url(url, response)
-            if document:
-                documents.append(document)
+        with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+            documents = pool.map(safe_create_url_wrapper, filtered_pairs)
+
+        documents = [doc for doc in documents if doc is not None]
+
+        await websocket.send_json({"progress": 66, "message": 'creating documents is completed', "complete": False})
 
         try:
             loop = asyncio.get_running_loop()
@@ -1555,93 +1563,6 @@ async def url_train(websocket: WebSocket):
             ))
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
-
-# @app.websocket("/url_train")
-# async def url_train(websocket: WebSocket):
-#     def process_url(url):
-#         try:
-#             response = requests.get(url)
-#             return response
-#         except Exception as e:
-#             return None
-#     def safe_create_url(url, response):
-#         try:
-#             return ndb.URL(url=url, url_response=response)
-#         except Exception as e:
-#             return None
-
-#     await websocket.accept()
-
-#     global backend_instance
-
-#     # If previously trained on Gmail, reset neuraldb
-#     if backend_instance.gmail_query_switch:
-#         backend_instance.reset_neural_db()
-
-#     if backend_instance.outlook_query_switch:
-#         backend_instance.reset_neural_db()
-
-#     async def async_on_progress(fraction):
-#         progress = int(100 * fraction)
-#         message = "Indexing in progress"
-#         await websocket.send_json({"progress": progress, "message": message, "complete": False})
-
-#     def on_progress(fraction):
-#         loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
-
-#     def on_error(error_msg):
-#         loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"error": True, "message": error_msg}))
-
-#     def on_success():
-#         # Turn off Gmail query switch
-#         backend_instance.gmail_query_switch = False
-#         backend_instance.outlook_query_switch = False
-
-#         loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
-
-#     async for message in websocket.iter_text():
-#         data = json.loads(message)
-
-#         # urls = data.get('urls')
-#         urls = []
-#         csv_file_path = data.get('csv_file_path')
-       
-#         with open(csv_file_path, newline='') as csvfile:
-#             reader = csv.DictReader(csvfile)
-#             for row in reader:
-#                 url = row['url']
-#                 urls.append(url)
-#         urls = [url for url in urls if not url.startswith('http://localhost') and url]
-
-#         print('finished url', len(urls))
-
-#         with ThreadPoolExecutor(max_workers=10) as executor:
-#             results = list(executor.map(process_url, urls))
-
-#         url_response_pairs = list(zip(urls, results))
-
-#         filtered_pairs = [(url, response) for url, response in url_response_pairs if response is not None and url]
-
-#         print('finished filtered_pairs', len(filtered_pairs))
-
-#         documents = []
-#         for (url, response) in filtered_pairs:
-#             document = safe_create_url(url, response)
-#             if document:
-#                 documents.append(document)
-
-#         print('finished documents', len(documents))
-
-#         try:
-#             loop = asyncio.get_running_loop()
-#             await loop.run_in_executor(None, lambda: backend_instance.backend.insert(
-#                 sources=documents,
-#                 on_progress=on_progress,
-#                 on_error=on_error,
-#                 on_success=on_success,
-#             ))
-#         except Exception as e:
-#             await websocket.send_json({"error": True, "message": str(e)})
 
 @app.post("/reset_neural_db")
 def reset_neural_db():
@@ -1841,6 +1762,8 @@ async def outlook_download_train(websocket: WebSocket):
             await websocket.send_json({"error": True, "message": str(e)})
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
+
     backend_instance = Backend()
 
     FASTAPI_LOCALHOST_PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000

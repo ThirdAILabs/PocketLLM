@@ -6,6 +6,7 @@ import Tooltip from '@mui/material/Tooltip';
 import { WorkSpaceMetadata } from '../App'
 
 import Clearification from './Clearification'
+import useTelemetry from '../hooks/useTelemetry'
 
 interface ExtractionProps {
   searchResults: SearchResult[],
@@ -22,6 +23,9 @@ export default function Extraction({ searchResults, openAISetKeyNotice, curWorkS
   const [replies, setReplies] = useState<(string | null)[]>([])
   const [startReplies, setStartReplies] = useState<boolean[]>([])
   const [textAreaValues, setTextAreaValues] = useState<string[]>([])
+
+  // For telemetry
+  const recordEvent = useTelemetry()
 
   useEffect(() => {
     setSummaries(new Array(searchResults.length).fill(null))
@@ -140,6 +144,12 @@ export default function Extraction({ searchResults, openAISetKeyNotice, curWorkS
         } else {
           console.log('upweight fail')
         }
+
+        recordEvent({
+          UserAction: 'Click',
+          UIComponent: 'upvote button',
+          UI: 'Extraction',
+        })
     })
     .catch(error => {
         console.error('Error:', error)
@@ -156,6 +166,12 @@ export default function Extraction({ searchResults, openAISetKeyNotice, curWorkS
   function openLinkExternally(e: React.MouseEvent<HTMLAnchorElement>) {
       e.preventDefault();
       window.electron.openExternalUrl(e.currentTarget.href);
+
+      recordEvent({
+        UserAction: 'Click',
+        UIComponent: 'open-reference-link button',
+        UI: 'Extraction',
+      })
   }
 
   async function fetchPDF(index: number) {
@@ -175,6 +191,12 @@ export default function Extraction({ searchResults, openAISetKeyNotice, curWorkS
     } catch (error) {
       console.error('Failed to fetch PDF:', error);
     }
+
+    recordEvent({
+      UserAction: 'Click',
+      UIComponent: 'open-reference-pdf button',
+      UI: 'Extraction',
+    })
   }
 
   return (
@@ -215,7 +237,12 @@ export default function Extraction({ searchResults, openAISetKeyNotice, curWorkS
                       {
                         readNotification ?
                         <>
-                          <button onClick={() => handleSummarizeClick(index)}
+                          <button onClick={() => {handleSummarizeClick(index); 
+                                                  recordEvent({
+                                                    UserAction: 'Click',
+                                                    UIComponent: 'summarization button',
+                                                    UI: 'Extraction',
+                                                  })}}
                                   className='btn font-sm btn-general border border-dark-subtle mx-1'>Summarize</button>
                           <button onClick={() => setStartReplies(prevStartReplies => prevStartReplies.map((value, idx) => idx === index ? true : value))}
                                   className='btn font-sm btn-general border border-dark-subtle'>Craft Reply</button>
@@ -259,7 +286,12 @@ export default function Extraction({ searchResults, openAISetKeyNotice, curWorkS
                                   </textarea>
                                 </div>
                                 <div className='d-flex justify-content-end mt-2 mb-3'>
-                                  <button onClick={() => handleCraftReplyClick(index)}
+                                  <button onClick={() => {handleCraftReplyClick(index); 
+                                                          recordEvent({
+                                                            UserAction: 'Click',
+                                                            UIComponent: 'craft-reply button',
+                                                            UI: 'Extraction',
+                                                          })}}
                                           type='button'
                                           className='btn font-sm btn-general border border-dark-subtle'>Start crafting</button>
                                 </div>

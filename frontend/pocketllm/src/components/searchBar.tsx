@@ -2,6 +2,7 @@ import { useState, ChangeEvent, FormEvent } from 'react'
 import axios from 'axios'
 import { SearchResult } from '../pages/MainPage'
 import { usePort } from '../PortContext'
+import useTelemetry from '../hooks/useTelemetry'
 
 interface SearchBarProps {
   onSearch: (results: SearchResult[]) => void,
@@ -15,7 +16,8 @@ export default function SearchBar( { onSearch, onSummary, summarizer, queryEnabl
 
   const [searchStr, setSearchStr] = useState('')
 
-  // const [model, setModel] = useState("None");
+  // For telemetry
+  const recordEvent = useTelemetry()
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     setSearchStr(e.target.value)
@@ -29,6 +31,12 @@ export default function SearchBar( { onSearch, onSummary, summarizer, queryEnabl
       try {
         const response = await axios.post(`http://127.0.0.1:${port}/query`, {
           search_str: searchStr
+        })
+
+        recordEvent({
+          UserAction: 'Fire query',
+          UIComponent: 'search field',
+          UI: 'SearchBar',
         })
         
         console.log(response.data)

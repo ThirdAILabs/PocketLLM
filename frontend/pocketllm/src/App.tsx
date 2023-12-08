@@ -311,6 +311,7 @@ function App() {
                 
                 <Route path="/" 
                 element = {
+                  <>
                   <MainPage 
                             
                             selectedFiles={selectedFiles}
@@ -335,22 +336,23 @@ function App() {
                             setCurrentUsage = {setCurrentUsage}
                             cachedOpenAIKey = {cachedOpenAIKey}
                   />
+                  <TitleBar workSpaceMetadata = {workSpaceMetadata} 
+                            subscribeTrigger={subscribeTrigger} 
+                            curWorkSpaceID = {curWorkSpaceID} 
+                            setCurWorkSpaceID = {setCurWorkSpaceID} 
+                            setWorkSpaceMetadata = {setWorkSpaceMetadata} 
+                            saveWorkSpaceTrigger = {saveTrigger}
+                            setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace} setAllowUnsave = {setAllowUnsave}
+                            user = {user} setUser = {setUser}
+                            currentUsage = {currentUsage}
+                            setCurrentUsage = {setCurrentUsage}
+                  />
+                  </>
                 }>
 
                 </Route>
 
             </Routes>
-            <TitleBar workSpaceMetadata = {workSpaceMetadata} 
-                      subscribeTrigger={subscribeTrigger} 
-                      curWorkSpaceID = {curWorkSpaceID} 
-                      setCurWorkSpaceID = {setCurWorkSpaceID} 
-                      setWorkSpaceMetadata = {setWorkSpaceMetadata} 
-                      saveWorkSpaceTrigger = {saveTrigger}
-                      setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace} setAllowUnsave = {setAllowUnsave}
-                      user = {user} setUser = {setUser}
-                      currentUsage = {currentUsage}
-                      setCurrentUsage = {setCurrentUsage}
-                      />
           </Router>
           <CustomAlertWrapper message={alertMessage} setMessage={setAlertMessage}/>
         {landing}

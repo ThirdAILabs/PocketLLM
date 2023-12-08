@@ -6,6 +6,7 @@ import { ModelDisplayInfo } from '../App'
 import { useNavigate } from 'react-router-dom'
 import ModelCardFunctions from './ModelCardFunctions'
 import { Model } from '../pages/ModelCards'
+import useTelemetry from '../hooks/useTelemetry'
 
 export type ModelCardProps = {
     name: string,
@@ -38,7 +39,17 @@ export default function ModelCardMini({name, author, description, modelName, cac
 
     const navigate = useNavigate()
 
+    // For telemetry
+    const recordEvent = useTelemetry()
+
+
     const useModel = async (domain: string, author_name: string, model_name: string) => {
+        recordEvent({
+            UserAction: 'Click',
+            UIComponent: `Use-${model_name} button`,
+            UI: 'ModelCardMini',
+        })
+
         if (model_name === 'Default model' && author_name === 'thirdai') {
             const response = await axios.post(`http://localhost:${port}/reset_neural_db`)
 
@@ -90,6 +101,12 @@ export default function ModelCardMini({name, author, description, modelName, cac
     }
 
     const downloadModel = (domain: string, author_name: string, model_name: string) => {
+        recordEvent({
+            UserAction: 'Click',
+            UIComponent: 'Download-expert-model button',
+            UI: 'ModelCardMini',
+        })
+
         try {
             // Initialize the WebSocket connection when the button is clicked
             const ws = new WebSocket(`ws://localhost:${port}/fetch_base_model`);

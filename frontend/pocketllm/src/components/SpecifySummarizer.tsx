@@ -1,6 +1,7 @@
 import { useState, FormEvent, useEffect, useRef } from 'react'
 import axios from 'axios'
 import { usePort } from '../PortContext'
+import useTelemetry from '../hooks/useTelemetry'
 
 import SpecifySummarizerNotice from './SpecifySummarizerNotice';
 
@@ -21,6 +22,9 @@ export default function SpecifySummarizer( {summarizer , setSummarizer, trigger,
     const [openAiApiKey, setOpenAiApiKey] = useState(cachedOpenAIKey);
 
     const closeRef = useRef<HTMLButtonElement>(null);
+
+    // For telemetry
+    const recordEvent = useTelemetry()
 
     useEffect(()=>{
         setValue(summarizer);
@@ -68,7 +72,13 @@ export default function SpecifySummarizer( {summarizer , setSummarizer, trigger,
 
   return (
     <>
-        <button ref={trigger} className='btn btn-general mx-1' data-bs-toggle="modal" data-bs-target="#specifyModal">
+        <button ref={trigger} 
+                onClick={()=>recordEvent({
+                            UserAction: 'Click',
+                            UIComponent: 'set-summarizer button',
+                            UI: 'SpecifySummarizer',
+                        })}
+                className='btn btn-general mx-1' data-bs-toggle="modal" data-bs-target="#specifyModal">
             <i className="bi bi-gear-wide-connected" style={{fontSize: "13.5pt"}}></i>
             <div className='font-sm'>Summarizer</div>
         </button>
@@ -89,21 +99,33 @@ export default function SpecifySummarizer( {summarizer , setSummarizer, trigger,
                                 <div className='d-flex justify-content-between'>
                                     <div className="form-check form-check-inline me-0">
                                         <input className="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio1" value="None" checked={summarizer == "None"}
-                                            onChange={()=>{setValue("None"); setSummarizer('None')}}
+                                            onChange={()=>{setValue("None"); setSummarizer('None'); recordEvent({
+                                                UserAction: 'Click',
+                                                UIComponent: 'unset-summarizer button',
+                                                UI: 'SpecifySummarizer',
+                                            })}}
                                         />
                                         <label className="form-check-label" htmlFor="inlineRadio1">None</label>
                                     </div>
 
                                     <div className="form-check form-check-inline me-0">
                                         <input className="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio2" value="ThirdAI" checked={summarizer == "ThirdAI"}
-                                            onChange={()=>{setValue("ThirdAI"); setSummarizer('ThirdAI')}}
+                                            onChange={()=>{setValue("ThirdAI"); setSummarizer('ThirdAI'); recordEvent({
+                                                UserAction: 'Click',
+                                                UIComponent: 'set-ThirdAI-summarizer button',
+                                                UI: 'SpecifySummarizer',
+                                            })}}
                                         />
                                         <label className="form-check-label" htmlFor="inlineRadio2">ThirdAI</label>
                                     </div>
 
                                     <div className="form-check form-check-inline me-1">
                                         <input className="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio3" value="OpenAI" checked={summarizer == "OpenAI"}
-                                            onChange={()=>{setValue("OpenAI"); setSummarizer('OpenAI')}}
+                                            onChange={()=>{setValue("OpenAI"); setSummarizer('OpenAI'); recordEvent({
+                                                UserAction: 'Click',
+                                                UIComponent: 'set-OpenAI-summarizer button',
+                                                UI: 'SpecifySummarizer',
+                                            })}}
                                         />
                                         <label className="form-check-label" htmlFor="inlineRadio3">OpenAI</label>
                                     </div>
@@ -132,7 +154,13 @@ export default function SpecifySummarizer( {summarizer , setSummarizer, trigger,
                             </div>
 
                             <div className='d-flex justify-content-center mb-3'>
-                                <button className='btn bg-secondary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1' type='submit' ref={formTrigger}>
+                                <button onClick={()=>recordEvent({
+                                                UserAction: 'Click',
+                                                UIComponent: 'set-summarizer-continue button',
+                                                UI: 'SpecifySummarizer',
+                                            })} 
+                                        className='btn bg-secondary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1' 
+                                        type='submit' ref={formTrigger}>
                                     Continue
                                 </button>
                             </div>
