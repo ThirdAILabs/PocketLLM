@@ -266,6 +266,7 @@ export default function LoadUrl({curWorkSpaceID, setWorkSpaceMetadata, setCurWor
               </>
               
             }
+                  <div className="font-x-sm mt-4 text-secondary">Free-tier users are limited to 200 URLs per index.</div>
 
             </div>
           </div>

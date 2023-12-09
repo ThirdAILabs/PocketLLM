@@ -1536,6 +1536,7 @@ async def url_train(websocket: WebSocket):
         data = json.loads(message)       
         
         urls = data.get('urls')
+        urls = list(set(urls))
         urls = [url for url in urls if not url.startswith('http://localhost') and url]
 
         with ThreadPoolExecutor(max_workers=100) as executor:
@@ -1545,6 +1546,9 @@ async def url_train(websocket: WebSocket):
 
         url_response_pairs = list(zip(urls, results))
         filtered_pairs = [(url, response) for url, response in url_response_pairs if response is not None and url]
+
+        # Take only the first 200 elements from filtered_pairs
+        filtered_pairs = filtered_pairs[:200]
 
         with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
             documents = pool.map(safe_create_url_wrapper, filtered_pairs)
