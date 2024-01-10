@@ -17,7 +17,7 @@ export default function SelectedFileList({indexFiles, queryEnabled}: selectedFil
         :
             <div className='d-flex justify-content-center align-items-center'>
                 <div className='font-sm selected-file-list-wrapper w-100'>
-                    <div className='font-x-sm mb-2'>Indexed Files</div>
+                    <div className='font-x-sm mb-2'>Contexts</div>
                     <div className='selected-file-list-scrollbar-wrapper'>
                         {indexFiles.map(( {fileName, isSaved}, key) => (
                             
@@ -28,7 +28,7 @@ export default function SelectedFileList({indexFiles, queryEnabled}: selectedFil
                             :
                             <div key={key} className='d-flex'>
                                 <div>{fileName}</div>
-                                <Tooltip title="Indexed file unsaved" placement='right'>
+                                <Tooltip title="Unsaved" placement='right'>
                                     <div className='ms-1' style={{cursor: "default"}}>*</div>
                                 </Tooltip>
                             </div>

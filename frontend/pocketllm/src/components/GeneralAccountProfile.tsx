@@ -77,7 +77,7 @@ export default function GeneralAccountProfile({user, currentUsage, subscribeTrig
                       (user && user.subscription_plan === SubscriptionPlan.FREE) ? (
                         <>
                             <div className='mx-2 mt-3 pb-1 mb-1 text-start'>
-                                <div className='font-x-sm mb-1 ms-3'>Current workspace usage ({Math.floor(Math.min(currentUsage, 200))}mb / 200mb)</div>
+                                <div className='font-x-sm mb-1 ms-3'>Free-tier monthly usage left: {200 - Math.floor(Math.min(currentUsage, 200))}mb</div>
                                 <div style={{width: "250px"}}>
                                     <ProgressBar 
                                     progress={Math.floor(Math.min(currentUsage / 200 * 100, 100))} 
@@ -96,15 +96,15 @@ export default function GeneralAccountProfile({user, currentUsage, subscribeTrig
                     }
                     </li>
                     <li>
+                        <button className="dropdown-item d-flex btn-general2" data-bs-toggle="modal" data-bs-target="#couponModal">
+                            <div className='me-2'>Referral</div>
+                        </button>
+                    </li>
+                    <li>
                         <button className="dropdown-item d-flex btn-general2"
                             onClick={()=>{subscribeTrigger.current?.click()}}
                         >
                             <div className='me-2'>Subscribe</div>
-                        </button>
-                    </li>
-                    <li>
-                        <button className="dropdown-item d-flex btn-general2" data-bs-toggle="modal" data-bs-target="#couponModal">
-                            <div className='me-2'>Coupon</div>
                         </button>
                     </li>
                     
@@ -121,7 +121,7 @@ export default function GeneralAccountProfile({user, currentUsage, subscribeTrig
                 <>
                     <li>
                         <div className='mx-2 mt-3 pb-1 mb-1 text-start'>
-                            <div className='font-x-sm mb-1 ms-3'>Current workspace usage ({Math.floor(Math.min(currentUsage, 200))}mb / 200mb)</div>
+                            <div className='font-x-sm mb-1 ms-3'>Free-tier monthly usage left: {200 - Math.floor(Math.min(currentUsage, 200))}mb</div>
                             <div style={{width: "250px"}}>
                             <ProgressBar 
                                 progress={Math.floor(Math.min(currentUsage / 200 * 100, 100))} 
@@ -134,16 +134,9 @@ export default function GeneralAccountProfile({user, currentUsage, subscribeTrig
                         <div className='horizontal-line my-2' style={{opacity: "0.3", width: "92%"}}></div>
                     </div>
                     
-                    {/* <li>
-                        <button className="dropdown-item d-flex btn-general2"
-                            onClick={()=>{subscribeTrigger.current?.click()}}
-                        >
-                            <div className='me-2'>Subscribe</div>
-                        </button>
-                    </li> */}
                     <li>
                         <button className="dropdown-item d-flex btn-general2" data-bs-toggle="modal" data-bs-target="#couponModal">
-                            <div className='me-2'>Coupon</div>
+                            <div className='me-2'>Referral</div>
                         </button>
                     </li>
                     <li>

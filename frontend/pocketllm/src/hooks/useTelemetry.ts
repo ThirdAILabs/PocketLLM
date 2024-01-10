@@ -38,8 +38,8 @@ function useTelemetry() {
     
         window.electron.send('save-telemetry-data', serializedData)
 
-        console.log(`Event recorded: ${userName} ${eventType.UserAction} \
-                    in the ${eventType.UI}/${eventType.UIComponent} at ${timestamp} on ${machineType}`)
+        // console.log(`Event recorded: ${userName} ${eventType.UserAction} \
+        //             in the ${eventType.UI}/${eventType.UIComponent} at ${timestamp} on ${machineType}`)
     }, []);
 
     return recordEvent;

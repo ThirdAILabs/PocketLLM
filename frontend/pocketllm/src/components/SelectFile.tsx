@@ -238,35 +238,42 @@ export default function SelectFile(props: SelectFileProps) {
                         }
 
                         {
-                            selectedFiles.length > 0 ?
-                            <>
-                            <hr className='my-2'/>
-                            <div className='mb-3'>
-                                <div className='d-flex font-x-sm'>Selected files</div>
-    
-                                <ul style={{maxHeight: "140px", overflow: "auto"}}>
-                                {
-                                    selectedFiles.map((file) => (
-                                        <li key={file.uuid} className="file-item">
-                                        {file.fileName.length > 20 ? file.fileName.slice(0, 20) + '...' : file.fileName}
-                                            <button className='btn ms-2' onClick={() => removeFile(file.uuid)}>
-                                                <i className="bi bi-x-circle-fill text-secondary"></i>
-                                            </button>
-                                        </li>
-                                    ))
-                                }
-                                </ul>
-                                <div className='d-flex justify-content-center'>
-                                    <button className='btn bg-primary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
-                                            onClick={ addModel }>
-                                        Add to workspace
-                                    </button>
-                                </div>
-                            </div>
-                            <hr className='my-2'/>
-                            </>
-                            :
+                            startProgress ?
                             <></>
+                            :
+                            <>
+                                {
+                                    selectedFiles.length > 0 ?
+                                    <>
+                                    <hr className='my-2'/>
+                                    <div className='mb-3'>
+                                        <div className='d-flex font-x-sm'>Selected files</div>
+            
+                                        <ul style={{maxHeight: "140px", overflow: "auto"}}>
+                                        {
+                                            selectedFiles.map((file) => (
+                                                <li key={file.uuid} className="file-item">
+                                                {file.fileName.length > 20 ? file.fileName.slice(0, 20) + '...' : file.fileName}
+                                                    <button className='btn ms-2' onClick={() => removeFile(file.uuid)}>
+                                                        <i className="bi bi-x-circle-fill text-secondary"></i>
+                                                    </button>
+                                                </li>
+                                            ))
+                                        }
+                                        </ul>
+                                        <div className='d-flex justify-content-center'>
+                                            <button className='btn bg-primary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
+                                                    onClick={ addModel }>
+                                                Add to workspace
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <hr className='my-2'/>
+                                    </>
+                                    :
+                                    <></>
+                                }
+                            </>
                         }
                         
                         

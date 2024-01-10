@@ -137,7 +137,7 @@ export default function TitleBar({ workSpaceMetadata, subscribeTrigger, saveWork
                     <GeneralAccountProfile user={user} setUser = {setUser} subscribeTrigger={subscribeTrigger}  setCurrentUsage = {setCurrentUsage} currentUsage={currentUsage} handleLoginClick = {handleLoginClick}/>
                    
                     
-                    <Tooltip title="Join Community & get FREE usage coupons!" placement='right'>
+                    <Tooltip title="Join community to get referral code!" placement='right'>
                       <button className='no-drag btn border-0 bg-transparent mt-1 p-0 ms-4'>
                         <a target='_blank' onClick={openLinkExternally} href='https://discord.gg/thirdai'>
                           <i className="bi bi-discord fs-5" style={{color: "#7289da"}}></i>

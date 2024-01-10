@@ -53,7 +53,7 @@ export default function Coupon({setCurrentUsage} : CouponProps) {
                       <button type="button" ref={closeRef} className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close"></button>
                   </div>
                   <div className="modal-body">
-                      <Tooltip title="Join discord to get FREE usage coupons!" placement="top">
+                      <Tooltip title="Join community to get referral code!" placement="top">
                         <button className='no-drag btn border-0 bg-transparent mt-1 p-0 ms-4'>
                           <a target='_blank' onClick={openLinkExternally} href='https://discord.gg/thirdai'>
                             <i className="bi bi-discord fs-5" style={{color: "#7289da"}}></i>
@@ -62,7 +62,7 @@ export default function Coupon({setCurrentUsage} : CouponProps) {
                       </Tooltip>
                       <div className='d-flex px-3 mt-2 mb-4 align-items-end'>
                           <div className='w-100'>
-                          <div className='font-x-sm text-start ms-1'>Coupon Code</div>
+                          <div className='font-x-sm text-start ms-1'>Referral Code</div>
                           
                           <input 
                               className='form-control font-sm' 
@@ -77,7 +77,7 @@ export default function Coupon({setCurrentUsage} : CouponProps) {
                               style={{maxHeight: "30px", minWidth: "130px"}}
                               onClick={applyCoupon}
                           >
-                              Apply Coupon
+                              Apply
                           </button>
                       </div>
 

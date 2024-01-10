@@ -27,82 +27,86 @@ export default function LoadGmailDump({ setWorkSpaceMetadata, setCurWorkSpaceID,
   const recordEvent = useTelemetry()
 
   useEffect(() => {
-    const handler = (filePath: string) => {
-      // console.log(filePath)
 
-      const ws = new WebSocket(`ws://localhost:${port}/gmail_train_from_csv`)
+    if (port) {
+      const handler = (filePath: string) => {
+        // console.log(filePath)
+  
+        const ws = new WebSocket(`ws://localhost:${port}/gmail_train_from_csv`)
+      
+        ws.onopen = () => {
+          ws.send(JSON.stringify({ csv_file_path: filePath }));
+          setStartProgress(true);
     
-      ws.onopen = () => {
-        ws.send(JSON.stringify({ csv_file_path: filePath }));
-        setStartProgress(true);
-  
-        setCurrentUsage(prevUsage => prevUsage + 5)
-      }
-  
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        setProgress(data.progress);
-        console.log(`Progress: ${data.progress}% - ${data.message}`);
-  
-  
-        if (data.complete === true) {
-            setTimeout(()=>{
-              closeBtn.current?.click()
-            }, 500)
-  
-            // Create a new workspace
-            const newWorkSpaceID = uuidv4()   // Generate a new unique workspace ID
-            setCurWorkSpaceID(newWorkSpaceID) // Set the current workspace ID
-  
-            const selectedFiles = [
-                {
-                    fileName: `Gmail workspace file`,
-                    filePath: `Gmail workspace path`,
-                    fileSize: (5.3 / 1000 * 10), // This is only an estimate based on: 1000 emails = 5.3MB
-                    isSaved: false,
-                    uuid: uuidv4(),
-                }
-            ]
-  
-            const newWorkSpaceMetadata = {
-                workspaceID: newWorkSpaceID,
-                workspaceName: `Gmail workspace`,
-                model_info: {
-                    author_name: currentModel ? currentModel.author_name : 'thirdai',
-                    model_name: currentModel ? currentModel.model_name : 'Default model',
-                },
-                documents: selectedFiles,
-                last_modified: new Date().toISOString(),
-                isWorkSpaceSaved: false,
-            };
-  
-            setWorkSpaceMetadata(prevMetaData => [...prevMetaData, newWorkSpaceMetadata]);
-  
-            setTimeout(() => {
-                setStartProgress(false);
-                setProgress(0);
-            }, 700)
+          setCurrentUsage(prevUsage => prevUsage + 5)
         }
+    
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          setProgress(data.progress);
+          console.log(`Progress: ${data.progress}% - ${data.message}`);
+    
+    
+          if (data.complete === true) {
+              setTimeout(()=>{
+                closeBtn.current?.click()
+              }, 500)
+    
+              // Create a new workspace
+              const newWorkSpaceID = uuidv4()   // Generate a new unique workspace ID
+              setCurWorkSpaceID(newWorkSpaceID) // Set the current workspace ID
+    
+              const selectedFiles = [
+                  {
+                      fileName: `Gmail workspace file`,
+                      filePath: `Gmail workspace path`,
+                      fileSize: (5.3 / 1000 * 10), // This is only an estimate based on: 1000 emails = 5.3MB
+                      isSaved: false,
+                      uuid: uuidv4(),
+                  }
+              ]
+    
+              const newWorkSpaceMetadata = {
+                  workspaceID: newWorkSpaceID,
+                  workspaceName: `Gmail workspace`,
+                  model_info: {
+                      author_name: currentModel ? currentModel.author_name : 'thirdai',
+                      model_name: currentModel ? currentModel.model_name : 'Default model',
+                  },
+                  documents: selectedFiles,
+                  last_modified: new Date().toISOString(),
+                  isWorkSpaceSaved: false,
+              };
+    
+              setWorkSpaceMetadata(prevMetaData => [...prevMetaData, newWorkSpaceMetadata]);
+    
+              setTimeout(() => {
+                  setStartProgress(false);
+                  setProgress(0);
+              }, 700)
+          }
+        };
+    
+        ws.onerror = (error) => {
+          console.error('WebSocket Error:', error)
+          setStartProgress(false)
+        }
+    
+        ws.onclose = () => {
+          console.log('WebSocket connection closed')
+          setStartProgress(false)
+        }
+  
+      }
+  
+      const cleanup = window.electron.on('gmail-dump-csv', handler);
+  
+      return () => {
+        cleanup();
       };
-  
-      ws.onerror = (error) => {
-        console.error('WebSocket Error:', error)
-        setStartProgress(false)
-      }
-  
-      ws.onclose = () => {
-        console.log('WebSocket connection closed')
-        setStartProgress(false)
-      }
-
     }
 
-    const cleanup = window.electron.on('gmail-dump-csv', handler);
-
-    return () => {
-      cleanup();
-    };
-  }, []);
+  }, [port]);
 
   const selectFile = () => {
     window.electron.send('open-single-csv-file-dialog')

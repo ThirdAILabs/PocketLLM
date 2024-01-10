@@ -216,7 +216,7 @@ def query(query_model: QueryModel):
     query, _ = parse_prompt(search_str)
 
     references = backend_instance.backend.search(
-        query=query, top_k=100, rerank = True
+        query=query, top_k=100, rerank = False
     )
 
     backend_instance.current_results = references

@@ -28,7 +28,7 @@ export default function ModelName({ modelInfo, curWorkSpaceID, workSpaceMetadata
       {
         isCurrentWorkspaceExistAndNotSaved()
         ?
-        <Tooltip title="Tip: Ctrl/Cmd + S" placement='right'>
+        <Tooltip title="Quick save shortcut: Ctrl/Cmd + S" placement='right'>
           <div className='model-name'>
             {modelInfo.model_name === 'Default model' ? 'Basic workspace' : 'Expert workspace'}
             {`${isCurrentWorkspaceExistAndNotSaved() ? ' *' : ''}`}
