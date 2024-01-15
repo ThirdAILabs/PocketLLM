@@ -15,6 +15,9 @@ import { WorkSpaceMetadata } from '../App'
 import { ModelDisplayInfo } from '../App'
 import { FeatureUsableContext } from '../contexts/FeatureUsableContext'
 
+import googleLogo from "../assets/gmail.svg";
+import outlookLogo from "../assets/outlook.svg";
+
 type FunctionBarProps = {
   selectedFiles: WorkSpaceFile[];
   setSelectedFiles: React.Dispatch<React.SetStateAction<WorkSpaceFile[]>>;
@@ -46,18 +49,18 @@ export default function FunctionBar({selectedFiles, setSelectedFiles,
 
   const { isFeatureUsable } = useContext(FeatureUsableContext);
 
-  if (!isFeatureUsable) {
-      // Render a message or alternative UI
-      return (
-        <Tooltip title = "Feature not available due to exceeded workspace usage. Please check subscriptions for upgrades." placement='bottom'>
-          <button className='btn border-0 mx-1 mt-2 text-secondary text-opacity-75' onClick={(e)=>e.preventDefault()}>
-            <i className="bi bi-box-arrow-in-right fs-5"></i>
-              <div className='font-sm'>Upload</div>
-          </button>
-        </Tooltip>
+  // if (!isFeatureUsable) {
+  //     // Render a message or alternative UI
+  //     return (
+  //       <Tooltip title = "Feature not available due to exceeded workspace usage. Please check subscriptions for upgrades." placement='bottom'>
+  //         <button className='btn border-0 mx-1 mt-2 text-secondary text-opacity-75' onClick={(e)=>e.preventDefault()}>
+  //           <i className="bi bi-box-arrow-in-right fs-5"></i>
+  //             <div className='font-sm'>Upload</div>
+  //         </button>
+  //       </Tooltip>
       
-      );
-  }
+  //     );
+  // }
 
   // input animation
   const ref = useRef<HTMLButtonElement>(null);
@@ -97,15 +100,50 @@ export default function FunctionBar({selectedFiles, setSelectedFiles,
                     currentModel = {currentModel}
                     setCurrentUsage = {setCurrentUsage}
             />
-            <LoadOutlook
-                    setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                    currentModel = {currentModel}
-                    setCurrentUsage = {setCurrentUsage}
-            />
-            <LoadGmailDump setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                    currentModel = {currentModel}
-                    setCurrentUsage = {setCurrentUsage}
-            />
+            {
+              ! isFeatureUsable
+              ?
+              <>
+                <Tooltip title="Your monthly premium credits have exhausted. Consider 1) referring your friends (click on top left account profile box), 2) subscribing or 3) waiting until first day of next month to use this feature again.">
+                    <div className='position-relative'>
+                        <button type="button" 
+                            className="btn mx-1 h-100"
+                            onClick={(e)=>e.preventDefault()}
+                        >
+                            <img src={outlookLogo} style={{width: '20px'}} placeholder='Outlook'/>
+                        </button>
+                        <i className="bi font-sm bi-exclamation-circle-fill feature-not-available-mark text-secondary"></i>
+                    </div>
+                </Tooltip>
+
+                <Tooltip title="Your monthly premium credits have exhausted. Consider 1) referring your friends (click on top left account profile box), 2) subscribing or 3) waiting until first day of next month to use this feature again.">
+                  <div className='position-relative'>
+                      <button type="button" 
+                          className="btn px-2 mx-1 h-100"  
+                          onClick={(e)=>e.preventDefault()}
+                      >
+                          <img src={googleLogo} placeholder='Gmail' style={{width: '25px'}}/>
+                      </button>
+                      <i className="bi font-sm bi-exclamation-circle-fill feature-not-available-mark text-secondary"></i>
+                  </div>
+              </Tooltip>
+              </>
+              :
+              <>
+                <LoadOutlook
+                        setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                        currentModel = {currentModel}
+                        setCurrentUsage = {setCurrentUsage}
+                />
+                
+                <LoadGmailDump 
+                        setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                        currentModel = {currentModel}
+                        setCurrentUsage = {setCurrentUsage}
+                />
+              </>
+
+            }
             <LoadGithub
                     setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
                     currentModel = {currentModel}

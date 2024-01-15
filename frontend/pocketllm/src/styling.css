@@ -575,3 +575,9 @@ input:focus{
 .drop-zone-drag {
     background-color: rgb(224, 224, 224);
 }
+
+.feature-not-available-mark {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+}
