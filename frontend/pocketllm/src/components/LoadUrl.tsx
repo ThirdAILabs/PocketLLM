@@ -51,6 +51,12 @@ export default function LoadUrl({curWorkSpaceID, setWorkSpaceMetadata, setCurWor
       setStartProgress(true);
 
       setCurrentUsage(prevUsage => prevUsage + 5)
+
+      recordEvent({
+        UserAction: `Upload ${urls.length} urls`,
+        UIComponent: 'URL CSV drop area',
+        UI: 'LoadURL',
+    })
     }
 
     ws.onmessage = (event) => {

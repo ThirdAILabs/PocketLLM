@@ -103,6 +103,12 @@ export default function SelectFile(props: SelectFileProps) {
                 const filePaths = selectedFiles.map(file => file.filePath)
 
                 ws.send(JSON.stringify({ filePaths }))
+
+                recordEvent({
+                    UserAction: `Upload ${filePaths.length} files ${totalSizeInMB}mbs in total`,
+                    UIComponent: 'drop-file area',
+                    UI: 'SelectFile',
+                })
             };
     
             ws.onmessage = (message) => {
