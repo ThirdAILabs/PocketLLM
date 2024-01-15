@@ -78,7 +78,7 @@ export default function FunctionBar({selectedFiles, setSelectedFiles,
         <div className='d-flex align-items-center' ref={ref2}>
           <button className='btn mx-1' ref={ref}>
             <i className="bi bi-box-arrow-in-right fs-5"></i>
-              <div className='font-sm'>Upload</div>
+              <div className='font-sm'>Context</div>
           </button>
           <div className='d-flex align-items-center rounded-3 ms-1 p-1' style={{backgroundColor: "#F2F2F2"}}>
             <SelectFile

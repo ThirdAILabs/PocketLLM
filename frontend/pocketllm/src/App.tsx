@@ -107,6 +107,7 @@ function App() {
 
   // User current usage
   const [currentUsage, setCurrentUsage] = useState(0)
+  const [premiumEndDate, setPremiumEndDate] = useState<Date | null>(null)
 
   // User can / cannot continue using the app
   const [isFeatureUsable, setIsFeatureUsable] = useState(true)
@@ -191,13 +192,32 @@ function App() {
   }, [currentUsage])
 
   useEffect(() => {
-    // A user can use features if they haven't exceeded the usage limit
-    // or if they are logged in (not null) and their subscription plan is not FREE.
-    const canUseFeature = currentUsage <= 200 || (user && user.subscription_plan !== SubscriptionPlan.FREE);
+    const updatePremiumEndDateInFile = async () => {
+      if (premiumEndDate) {
+        try {
+          const result = await window.electron.invoke('update-premium-end-date', premiumEndDate.toISOString())
+          console.log('Premium end date updated in file:', result)
+        } catch (error) {
+          console.error('Error sending update to main process for premium end date:', error)
+        }
+      }
+    }
   
+    updatePremiumEndDateInFile()
+  }, [premiumEndDate])
+
+  useEffect(() => {
+    // Check if the current date is before or exactly the premium end date
+    const isPremiumActive = premiumEndDate ? new Date() <= premiumEndDate : false;
+
+    // A user can use features if they haven't exceeded the usage limit,
+    // or if their premium access is still active,
+    // or if they are logged in (not null) and their subscription plan is not FREE.
+    const canUseFeature = currentUsage <= 200 || isPremiumActive || (user && user.subscription_plan !== SubscriptionPlan.FREE);
+
     // Explicitly cast to boolean to satisfy TypeScript's type checking
     setIsFeatureUsable(!!canUseFeature);
-  }, [currentUsage, user])
+  }, [currentUsage, user, premiumEndDate])
 
   // Triggered only once at beginning to load workspace info from disk
   useEffect(() => {
@@ -269,22 +289,56 @@ function App() {
       // Get current usage
       try {
         window.electron.invoke('get-current-usage').then(usageData => {
-          console.log(`From Render: Current Usage: ${usageData.size} MB`)
-          console.log(`From Render: Usage Reset Date: ${usageData.resetDate}`)
+          console.log(`User Current Usage: ${usageData.size} MB`)
+          console.log(`User Usage Reset Date: ${usageData.resetDate}`)
+          console.log(`User Premium End Date: ${usageData.premiumEndDate}`)
 
           // Update the state with the fetched usage data
           setCurrentUsage(usageData.size)
 
-          // Here check if the limit is exceeded
-          if (usageData.size > 200) {
-            // Limit exceeded
-            console.warn('Usage limit exceeded')
-          }
+          // Update the premium end date state
+          setPremiumEndDate(new Date(usageData.premiumEndDate))
         })
       } catch (error) {
         console.error('Error fetching current usage:', error);
       }
   }, [])
+
+  const checkAndExtendPremium = () => {
+    // Request to count referrals and mark them
+    window.electron.send('count_referral');
+
+    // Handle the response
+    window.electron.once('count_referral_response', (monthsToAdd) => {
+        if (monthsToAdd > 0) {
+            setPremiumEndDate(originalPremiumEndDate => {
+              const currentDate = new Date();
+              let newPremiumEndDate;
+
+              if (originalPremiumEndDate && originalPremiumEndDate > currentDate) {
+                  // If the original premium end date is in the future, add 1 month to it
+                  newPremiumEndDate = new Date(originalPremiumEndDate);
+                  newPremiumEndDate.setMonth(newPremiumEndDate.getMonth() + monthsToAdd);
+              } else {
+                  // If the original premium end date is today or in the past, set it to 1 month from today
+                  newPremiumEndDate = new Date();
+                  newPremiumEndDate.setMonth(currentDate.getMonth() + monthsToAdd);
+              }
+
+              return newPremiumEndDate;
+            })
+        }
+    });
+  };
+
+  useEffect(() => {
+    checkAndExtendPremium();
+
+    // const intervalId = setInterval(checkAndExtendPremium, 1*60*100); // 1 minute
+    const intervalId = setInterval(checkAndExtendPremium, 10*60*100); // 10 minutes
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   return (
     <FeatureUsableContext.Provider value={{ isFeatureUsable }}>
@@ -345,7 +399,8 @@ function App() {
                             setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace} setAllowUnsave = {setAllowUnsave}
                             user = {user} setUser = {setUser}
                             currentUsage = {currentUsage}
-                            setCurrentUsage = {setCurrentUsage}
+                            premiumEndDate = {premiumEndDate}
+                            setPremiumEndDate = {setPremiumEndDate}
                   />
                   </>
                 }>

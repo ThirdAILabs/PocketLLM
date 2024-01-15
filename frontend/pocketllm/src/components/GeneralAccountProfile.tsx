@@ -4,17 +4,29 @@ import { usePort } from '../PortContext'
 import { SubscriptionPlan } from '../App'
 import Coupon from './Coupon'
 import ProgressBar from './ProgressBar'
+import { Tooltip } from '@mui/material'
 
 type AccountProps = {
     user : { email: string, name: string, subscription_plan: SubscriptionPlan } | null,
     currentUsage: number,
     subscribeTrigger: React.RefObject<HTMLButtonElement>,
     setUser: React.Dispatch<React.SetStateAction<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>>,
-    setCurrentUsage: React.Dispatch<React.SetStateAction<number>>,
-    handleLoginClick: () => {}
+    handleLoginClick: () => {},
+    premiumEndDate: Date | null, setPremiumEndDate: React.Dispatch<React.SetStateAction<Date | null>>,
 }
 
-export default function GeneralAccountProfile({user, currentUsage, subscribeTrigger, setUser, setCurrentUsage, handleLoginClick} : AccountProps) {
+const calculateDaysLeft = (endDate: Date) => {
+    if (!endDate) return 0;
+  
+    const today = new Date();
+    const timeDiff = endDate.getTime() - today.getTime();
+    const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+  
+    return Math.max(daysLeft, 0); // Ensure it doesn't go negative
+}
+
+export default function GeneralAccountProfile({user, currentUsage, subscribeTrigger, setUser, handleLoginClick,
+                                                premiumEndDate, setPremiumEndDate } : AccountProps) {
     const { port } = usePort()
 
     const handleLogout = async () => {
@@ -77,13 +89,35 @@ export default function GeneralAccountProfile({user, currentUsage, subscribeTrig
                       (user && user.subscription_plan === SubscriptionPlan.FREE) ? (
                         <>
                             <div className='mx-2 mt-3 pb-1 mb-1 text-start'>
-                                <div className='font-x-sm mb-1 ms-3'>Free-tier monthly usage left: {200 - Math.floor(Math.min(currentUsage, 200))}mb</div>
-                                <div style={{width: "250px"}}>
-                                    <ProgressBar 
-                                    progress={Math.floor(Math.min(currentUsage / 200 * 100, 100))} 
-                                    color={Math.floor(currentUsage / 200 * 100) < 90 ? "secondary bg-opacity-50" : "warning bg-opacity-50"}
-                                    />
+                                <div className='d-flex align-items-start'>
+                                    {
+                                        premiumEndDate && new Date() <= premiumEndDate 
+                                        ?
+                                        <div className='font-x-sm mb-1 ms-3'>
+                                            Premium days left: {calculateDaysLeft(premiumEndDate)}
+                                        </div>
+                                        :
+                                        <>
+                                            <div className='font-x-sm mb-1 ms-3'>Monthly Premium Credits left: {200 - Math.floor(Math.min(currentUsage, 200))}mb</div>
+                                            <Tooltip title="Free-tier users get 200mbs of premium plan usage at the beginning of every month." placement="right">
+                                                <i className="bi bi-question-circle p-0 font-x-sm ms-1 cursor-pointer text-primary text-opacity-75"></i>
+                                            </Tooltip>
+                                        </>
+                                    }
                                 </div>
+
+                                {
+                                    premiumEndDate && new Date() <= premiumEndDate 
+                                    ?
+                                    <></>
+                                    :
+                                    <div style={{width: "250px"}}>
+                                        <ProgressBar 
+                                        progress={Math.floor(Math.min(currentUsage / 200 * 100, 100))} 
+                                        color={Math.floor(currentUsage / 200 * 100) < 90 ? "secondary bg-opacity-50" : "warning bg-opacity-50"}
+                                        />
+                                    </div>
+                                }
                             </div>
                             <div className='d-flex justify-content-center'>
                                 <div className='horizontal-line my-2' style={{opacity: "0.3", width: "92%"}}></div>
@@ -121,13 +155,35 @@ export default function GeneralAccountProfile({user, currentUsage, subscribeTrig
                 <>
                     <li>
                         <div className='mx-2 mt-3 pb-1 mb-1 text-start'>
-                            <div className='font-x-sm mb-1 ms-3'>Free-tier monthly usage left: {200 - Math.floor(Math.min(currentUsage, 200))}mb</div>
-                            <div style={{width: "250px"}}>
-                            <ProgressBar 
-                                progress={Math.floor(Math.min(currentUsage / 200 * 100, 100))} 
-                                color={Math.floor(currentUsage / 200 * 100) < 90 ? "secondary bg-opacity-50" : "warning bg-opacity-50"}
-                            />
+                            <div className='d-flex align-items-start'>
+                                {
+                                    premiumEndDate && new Date() <= premiumEndDate 
+                                    ?
+                                    <div className='font-x-sm mb-1 ms-3'>
+                                        Premium days left: {calculateDaysLeft(premiumEndDate)}
+                                    </div>
+                                    :
+                                    <>
+                                        <div className='font-x-sm mb-1 ms-3'>Monthly Premium Credits left: {200 - Math.floor(Math.min(currentUsage, 200))}mb</div>
+                                        <Tooltip title="Free-tier users get 200mbs of premium plan usage at the beginning of every month." placement="right">
+                                            <i className="bi bi-question-circle p-0 font-x-sm ms-1 cursor-pointer text-primary text-opacity-75"></i>
+                                        </Tooltip>
+                                    </>
+                                }
                             </div>
+                            
+                            {
+                                premiumEndDate && new Date() <= premiumEndDate 
+                                ?
+                                <></>
+                                :
+                                <div style={{width: "250px"}}>
+                                    <ProgressBar 
+                                    progress={Math.floor(Math.min(currentUsage / 200 * 100, 100))} 
+                                    color={Math.floor(currentUsage / 200 * 100) < 90 ? "secondary bg-opacity-50" : "warning bg-opacity-50"}
+                                    />
+                                </div>
+                            }
                         </div>
                     </li>
                     <div className='d-flex justify-content-center'>
@@ -154,7 +210,7 @@ export default function GeneralAccountProfile({user, currentUsage, subscribeTrig
             
         </ul>
 
-        <Coupon setCurrentUsage = {setCurrentUsage}/>
+        <Coupon setPremiumEndDate = {setPremiumEndDate}/>
     </div>
   )
 }

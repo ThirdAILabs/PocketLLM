@@ -203,11 +203,19 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
                               <div>
                                 <div className='d-flex align-items-start'>
                                   <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>200 MB workspace per month</div>
+                                  <div className='mt-2'>Complete privacy of your data</div>
+                                </div>
+                                <div className='d-flex align-items-start'>
+                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
+                                  <div className='mt-2'>200 MB monthly premium credit</div>
+                                </div>
+                                <div className='d-flex align-items-start'>
+                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
+                                  <div className='mt-2'>Unlimited PDF, URL search</div>
                                 </div>
                                 <div className='d-flex align-items-start'>
                                   <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
-                                  <div className='mt-2'>Limited access to PDF URL Gmail workspace</div>
+                                  <div className='mt-2'>Limited Gmail, Outlook search</div>
                                 </div>
                                 {/* <div className='d-flex align-items-start'>
                                   <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
@@ -222,6 +230,10 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
                               
                               <div className='d-flex fs-6 align-items-end mb-2'><div className='fs-3 me-1 fw-bold'>4.95$</div> /month</div>
                               <div>
+                                <div className='d-flex align-items-start'>
+                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
+                                  <div className='mt-2'>Complete privacy of your data</div>
+                                </div>
                                 <div className='d-flex align-items-start'>
                                   <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
                                   <div className='mt-2'>Unlimited PDF workspace search</div>

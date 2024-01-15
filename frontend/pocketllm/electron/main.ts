@@ -25,51 +25,13 @@ let win: BrowserWindow | null
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 
-import express, { Request, Response } from 'express'
+// Supabase configuration
 import { createClient } from '@supabase/supabase-js'
-import axios from 'axios'
 import { TelemetryEventPackage } from '../src/hooks/useTelemetry'
 
-const expressApp = express();
-const expressPORT = 3792;
-
-// Supabase configuration (Get these values from your Supabase dashboard)
 const SUPABASE_URL = 'https://zdfbyydaiewiqvpymmtf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpkZmJ5eWRhaWV3aXF2cHltbXRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTc3NDA0NzAsImV4cCI6MjAxMzMxNjQ3MH0.N2eAAr8Xv9NghkOBJjqrgWXtzx4IdgpVyB4QrFbK_Yk';
-
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-
-expressApp.use(express.json());
-
-expressApp.post('/save-json', async (req: Request, res: Response) => {
-    const events: TelemetryEventPackage[] = req.body;
-
-    const formattedEvents = events.map(event => ({
-        username: event.UserName,
-        timestamp: event.timestamp,
-        user_machine: event.UserMachine,
-        event: event.event
-    }))
-
-    try {
-      const { error } = await supabase.from('telemetry_events').insert(formattedEvents);
-      if (error) {
-          console.error("Error inserting data:", error);
-          res.status(500).send('Error saving data');
-      } else {
-          console.log("Data inserted successfully");
-          res.status(200).send('Data saved successfully');
-      }
-    } catch (err) {
-        console.error('Error saving data to Supabase:', err);
-        res.status(500).send('Error saving data');
-    }
-});
-
-expressApp.listen(expressPORT, () => {
-    console.log(`Express server running on http://localhost:${expressPORT}`);
-});
-
 
 // All user info will be stored here.
 // This directory is persistent across udpates
@@ -109,6 +71,7 @@ console.log(`User ID: ${userID}`)
 interface UsageData {
   size: number; // Total size used
   resetDate: Date; // The date when the usage was last reset
+  premiumEndDate: Date; // The date when the premium access ends
 }
 
 // Usage
@@ -123,11 +86,19 @@ const getOrCreateUsageData = (): UsageData => {
     const data = JSON.parse(fs.readFileSync(USAGE_FILE, 'utf8'));
     usageData = {
       size: data.size,
-      resetDate: new Date(data.resetDate)
+      resetDate: new Date(data.resetDate),
+      premiumEndDate: data.premiumEndDate ? new Date(data.premiumEndDate) : new Date()
     };
 
     const lastResetDate = usageData.resetDate;
     const currentDate = new Date();
+
+    // Check if the premiumEndDate field was previously not set
+    // This is to accomodate pre-v1.1.0 where premiumEndDate was not a field.
+    if (!data.premiumEndDate) {
+      usageData.premiumEndDate = new Date();
+      usageData.premiumEndDate.setDate(currentDate.getDate() + 15);
+    }
 
     // Check if the last reset was more than a month ago
     if (currentDate.getMonth() !== lastResetDate.getMonth() ||
@@ -145,13 +116,16 @@ const getOrCreateUsageData = (): UsageData => {
     usageData = {
       size: 0,
       resetDate: new Date(), // Keep this as a Date object
+      premiumEndDate: new Date() // Initialize premiumEndDate
     };
+    usageData.premiumEndDate.setDate(usageData.premiumEndDate.getDate() + 15); // Add 15 days for premium access
   }
 
   // Serialize and write to file if necessary
   fs.writeFileSync(USAGE_FILE, JSON.stringify({
     size: usageData.size,
-    resetDate: usageData.resetDate.toISOString() // Convert to string here
+    resetDate: usageData.resetDate.toISOString(), // Convert to string here
+    premiumEndDate: usageData.premiumEndDate.toISOString() // Convert to string
   }, null, 2));
 
   return usageData;
@@ -160,6 +134,7 @@ const getOrCreateUsageData = (): UsageData => {
 const usageData = getOrCreateUsageData()
 console.log(`Current Usage: ${usageData.size} MB`)
 console.log(`Usage Reset Date: ${usageData.resetDate.toISOString()}`)
+console.log(`Premium Plan End Date: ${usageData.premiumEndDate.toISOString()}`)
 
 
 function createWindow() {
@@ -335,6 +310,11 @@ function createWindow() {
     });
   });
 
+  // Get and send user id as referral code
+  ipcMain.on('get-user-id', (event) => {
+    event.sender.send('send-user-id', userID);
+  })
+
   // OS methods are used for telemetry
   const os = require('os')
 
@@ -387,25 +367,32 @@ function createWindow() {
       });
     };
   
-    const sendToDatabase = (data: TelemetryEventPackage[]) => {
-      axios.post(`http://localhost:${expressPORT}/save-json`, data)
-        .then(response => {
-          if (response.status === 200) {
-            console.log('Data saved to PostgreSQL:', response.data);
-            fs.writeFile(telemeryFilePath, JSON.stringify([], null, 2), (writeErr: NodeJS.ErrnoException | null) => {
-              if (writeErr) {
-                console.error(`Error clearing file after database update: ${writeErr}`);
-              } else {
-                console.log('Local file cleared after successful database update');
-              }
-            });
+    const sendToDatabase = async (events: TelemetryEventPackage[]) => {
+        const formattedEvents = events.map(event => ({
+          username: event.UserName,
+          timestamp: event.timestamp,
+          user_machine: event.UserMachine,
+          event: event.event
+        }))
+
+        try {
+          const { error } = await supabase.from('telemetry_events').insert(formattedEvents);
+          if (error) {
+              console.error("Error inserting data to PostgreSQL:", error);
           } else {
-            console.error('Received non-success status from database:', response.status);
+              console.log("Data inserted to PostgreSQL successfully");
+
+              fs.writeFile(telemeryFilePath, JSON.stringify([], null, 2), (writeErr: NodeJS.ErrnoException | null) => {
+                if (writeErr) {
+                  console.error(`Error clearing file after database update: ${writeErr}`);
+                } else {
+                  console.log('Local file cleared after successful database update');
+                }
+            });
           }
-        })
-        .catch(error => {
-          console.error('Error saving data to PostgreSQL:', error);
-        });
+        } catch (err) {
+          console.error('Error saving data to Supabase:', err);
+        }
     };
   
     if (fs.existsSync(telemeryFilePath)) {
@@ -420,6 +407,87 @@ function createWindow() {
       processData('[]');
     }
   });
+
+  ipcMain.on('activate-referral', async (event, userMachineHash) => {
+    try {
+        const { error } = await supabase.from('activated_referrals').insert([{ user_id: userMachineHash }]);
+        if (error) {
+            console.error("Error activating referral code:", error);
+            event.reply('activate-referral-response', { success: false, error: error.message });
+        } else {
+            console.log("Referral code activated successfully");
+            event.reply('activate-referral-response', { success: true });
+        }
+    } catch (err) {
+      if (err instanceof Error) {
+          console.error('Error activating referral code in Supabase:', err.message);
+          event.reply('activate-referral-response', { success: false, error: err.message });
+      } else {
+          console.error('An unexpected error occurred:', err);
+          event.reply('activate-referral-response', { success: false, error: 'An unexpected error occurred' });
+      }
+    }
+  })
+
+  ipcMain.on('apply-referral', async (event, { userMachineHash, referralCode }) => {
+    try {
+        // Check if referral is valid using remote procedure in supabase
+        const { data, error: validationError } = await supabase
+            .rpc('check_referral_usage_valid', { param_user_id_using: userMachineHash, param_user_id_referred: referralCode });
+
+
+        if (validationError) {
+            console.error("Error validating referral code:", validationError);
+            return event.reply('apply-referral-response', { success: false, error: validationError.message });
+        }
+
+        if (data === true) {
+            // If referral is valid, write it to the referral_usage table
+            const { error: insertError } = await supabase.from('referral_usage').insert([{ user_id_using: userMachineHash, user_id_referred: referralCode }]);
+            if (insertError) {
+                console.error("Error writing referral usage:", insertError);
+                return event.reply('apply-referral-response', { success: false, error: insertError.message });
+            }
+
+            // Successfully applied referral
+            console.log("Referral code applied successfully");
+            event.reply('apply-referral-response', { success: true });
+        } else {
+            // Referral is not valid
+            event.reply('apply-referral-response', { success: false, error: 'Invalid referral code' });
+        }
+    } catch (err) {
+        if (err instanceof Error) {
+            console.error('Error applying referral code:', err.message);
+            event.reply('apply-referral-response', { success: false, error: err.message });
+        } else {
+            console.error('An unexpected error occurred:', err);
+            event.reply('apply-referral-response', { success: false, error: 'An unexpected error occurred' });
+        }
+    }
+  });
+
+  ipcMain.on('count_referral', async (event) => {
+    try {
+        const userIDs = userID.split(' | ');
+        const userMachineHash = userIDs.length === 2 ? userIDs[1] : userIDs[0];
+
+        const { data, error } = await supabase
+            .rpc('count_and_mark_referrals', { param_user_id_referred: userMachineHash });
+
+        if (error) {
+            console.error("Error calling Supabase RPC:", error);
+            event.reply('count_referral_response', 0);
+            return;
+        }
+
+        event.reply('count_referral_response', data || 0);
+    } catch (err) {
+        console.error('Error:', err);
+        event.reply('count_referral_response', 0);
+    }
+  });
+
 
   // Remove the existing 'update-usage' handler if any
   ipcMain.removeHandler('update-usage')
@@ -441,6 +509,25 @@ function createWindow() {
     }
   });
   
+  // Remove existing handler if any and define a new one
+  ipcMain.removeHandler('update-premium-end-date');
+
+  ipcMain.handle('update-premium-end-date', async (_, newPremiumEndDate) => {
+    if (fs.existsSync(USAGE_FILE)) {
+      try {
+        const data: UsageData = JSON.parse(fs.readFileSync(USAGE_FILE, 'utf8'));
+        data.premiumEndDate = newPremiumEndDate; // Update the premium end date
+
+        fs.writeFileSync(USAGE_FILE, JSON.stringify(data, null, 2));
+        return 'success';
+      } catch (error) {
+        console.error(`Error writing to file: ${error}`);
+        throw error; // This will send an error back to the renderer process
+      }
+    } else {
+      throw new Error('Usage file not found.');
+    }
+  });
 
   // Remove the existing 'show-save-dialog' handler if any
   ipcMain.removeHandler('show-save-dialog');
@@ -471,7 +558,8 @@ function createWindow() {
     
     const formattedUsageData = {
       size: usageData.size,
-      resetDate: usageData.resetDate.toISOString()
+      resetDate: usageData.resetDate.toISOString(),
+      premiumEndDate: usageData.premiumEndDate.toISOString(),
     };
     return formattedUsageData;
   })

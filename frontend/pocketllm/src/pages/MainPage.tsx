@@ -126,7 +126,7 @@ export default function MainPage({selectedFiles, setSelectedFiles,
         </div>
             
       </div>
-      <div className='font-x-sm mb-3'>Your data stays local. Search works without Internet</div>
+      <div className='mb-3' style={{ fontSize: '12px' }}>Search without internet. Data privacy is guaranteed </div>
     </div>
     
   )

@@ -13,7 +13,7 @@ export default function SelectedFileList({indexFiles, queryEnabled}: selectedFil
     {
         !queryEnabled
         ?
-            <div className='font-sm my-2'>Upload to start</div>
+            <div className='font-sm my-2'>Choose Context</div>
         :
             <div className='d-flex justify-content-center align-items-center'>
                 <div className='font-sm selected-file-list-wrapper w-100'>

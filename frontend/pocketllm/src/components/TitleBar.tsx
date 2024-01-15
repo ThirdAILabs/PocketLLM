@@ -19,7 +19,8 @@ type titleBarProps = {
     setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
     user : { email: string, name: string, subscription_plan: SubscriptionPlan  } | null,
     setUser: React.Dispatch<React.SetStateAction<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>>,
-    currentUsage: number, setCurrentUsage: React.Dispatch<React.SetStateAction<number>>,
+    currentUsage: number, 
+    premiumEndDate: Date | null, setPremiumEndDate: React.Dispatch<React.SetStateAction<Date | null>>,
 }
 
 function openLinkExternally(e: React.MouseEvent<HTMLAnchorElement>) {
@@ -30,7 +31,8 @@ function openLinkExternally(e: React.MouseEvent<HTMLAnchorElement>) {
 export default function TitleBar({ workSpaceMetadata, subscribeTrigger, saveWorkSpaceTrigger, curWorkSpaceID, setCurWorkSpaceID, setWorkSpaceMetadata,
                                     setAfterSaveResetCurWorkspace, setAllowUnsave,
                                     user, setUser,
-                                    currentUsage, setCurrentUsage }:titleBarProps) {
+                                    currentUsage, 
+                                    premiumEndDate, setPremiumEndDate }:titleBarProps) {
     const { port } = usePort()
 
     const handleLoginClick = async () => {
@@ -125,16 +127,8 @@ export default function TitleBar({ workSpaceMetadata, subscribeTrigger, saveWork
                              setCurWorkSpaceID = {setCurWorkSpaceID}
                              setWorkSpaceMetadata = {setWorkSpaceMetadata}
                              saveWorkSpaceTrigger = {saveWorkSpaceTrigger} setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace} setAllowUnsave = {setAllowUnsave}/>
-                    {/* {
-                        user ?
-                        <GeneralAccountProfile user={user} setUser = {setUser} subscribeTrigger={subscribeTrigger} setCurrentUsage = {setCurrentUsage}/>
-                        :
-                        <button onClick={handleLoginClick} className='btn border-0 p-0 bg-white text-secondary font-sm ms-2 no-drag btn-general2'>
-                            <img src={loginLogo} placeholder='log in with Gmail'/>
-                        </button>
-                    } */}
 
-                    <GeneralAccountProfile user={user} setUser = {setUser} subscribeTrigger={subscribeTrigger}  setCurrentUsage = {setCurrentUsage} currentUsage={currentUsage} handleLoginClick = {handleLoginClick}/>
+                    <GeneralAccountProfile user={user} setUser = {setUser} subscribeTrigger={subscribeTrigger}  setPremiumEndDate = {setPremiumEndDate} premiumEndDate = {premiumEndDate} currentUsage={currentUsage} handleLoginClick = {handleLoginClick}/>
                    
                     
                     <Tooltip title="Join community to get referral code!" placement='right'>
