@@ -18,14 +18,14 @@ a = Analysis(
 
 # Check this post: https://github.com/langchain-ai/langchain/issues/4547#issuecomment-1676403768
 # change to Langchain package location
-a.datas += Tree('/opt/homebrew/lib/python3.11/site-packages/langchain', prefix='langchain')
+a.datas += Tree('C:/Users/thirdai/anaconda3/envs/pocketllm-build/Lib/site-packages/langchain', prefix='langchain')
 
 #### Add stopwords data from NLTK. Used in ./parsing_utils/summarize.py: from nltk.corpus import stopwords
 # First make sure you download nltk's stopwords: 
 # import nltk
 # nltk.download('stopwords')
 # Replace /Users/yecao/nltk_data/corpora/stopwords with your stopwords path
-a.datas += Tree('/Users/yecao/nltk_data/corpora/stopwords', prefix='nltk_data/corpora/stopwords')
+a.datas += Tree('C:/Users/thirdai/AppData/Roaming/nltk_data/corpora/stopwords', prefix='nltk_data/corpora/stopwords')
 
 # Gmail oAuth authentication for gmail account
 a.datas += [('client_secret_user_account.json', 'client_secret_user_account.json', 'DATA')]
@@ -41,7 +41,7 @@ a.datas += [('license_may_11_2024.serialized', 'license_may_11_2024.serialized',
 # a.datas += Tree('data', prefix='data')
 
 # Add trafilatura and trafilatura/settings.cfg
-a.datas += Tree('/opt/homebrew/lib/python3.11/site-packages/trafilatura', prefix='trafilatura')
+a.datas += Tree('C:/Users/thirdai/anaconda3/envs/pocketllm-build/Lib/site-packages/trafilatura', prefix='trafilatura')
 
 pyz = PYZ(a.pure)
 

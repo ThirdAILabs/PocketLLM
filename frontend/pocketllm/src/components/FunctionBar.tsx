@@ -7,8 +7,8 @@ import LoadGmailDump from './GmailDump'
 // import LoadGmail from './GmailLoad'
 import LoadOutlook from './OutlookLoad'
 import LoadUrl from './LoadUrl'
-import LoadGithub from './LoadGithub'
-import LoadSlack from './LoadSlack'
+// import LoadGithub from './LoadGithub'
+// import LoadSlack from './LoadSlack'
 import SpecifySummarizer from './SpecifySummarizer'
 import SelectFile from './SelectFile'
 import { WorkSpaceMetadata } from '../App'
@@ -144,21 +144,6 @@ export default function FunctionBar({selectedFiles, setSelectedFiles,
               </>
 
             }
-            <LoadGithub
-                    setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                    currentModel = {currentModel}
-                    setCurrentUsage = {setCurrentUsage}
-            />
-            <LoadSlack
-                    setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                    currentModel = {currentModel}
-                    setCurrentUsage = {setCurrentUsage}
-            />
-            {/* <LoadGmail
-                    setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                    currentModel = {currentModel}
-                    setCurrentUsage = {setCurrentUsage}
-            /> */}
           </div>
           
         </div>

@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
 import axios from 'axios'
-import { Tooltip } from '@mui/material'
+// import { Tooltip } from '@mui/material'
 
 import { usePort } from '../PortContext'
 import SideBar from './SideBar'
-import GeneralAccountProfile from './GeneralAccountProfile'
+// import GeneralAccountProfile from './GeneralAccountProfile'
 
 import { WorkSpaceMetadata } from '../App'
 import { SubscriptionPlan } from '../App'
@@ -23,35 +23,32 @@ type titleBarProps = {
     premiumEndDate: Date | null, setPremiumEndDate: React.Dispatch<React.SetStateAction<Date | null>>,
 }
 
-function openLinkExternally(e: React.MouseEvent<HTMLAnchorElement>) {
-  e.preventDefault();
-  window.electron.openExternalUrl(e.currentTarget.href);
-}
+// function openLinkExternally(e: React.MouseEvent<HTMLAnchorElement>) {
+//   e.preventDefault();
+//   window.electron.openExternalUrl(e.currentTarget.href);
+// }
 
-export default function TitleBar({ workSpaceMetadata, subscribeTrigger, saveWorkSpaceTrigger, curWorkSpaceID, setCurWorkSpaceID, setWorkSpaceMetadata,
-                                    setAfterSaveResetCurWorkspace, setAllowUnsave,
-                                    user, setUser,
-                                    currentUsage, 
-                                    premiumEndDate, setPremiumEndDate }:titleBarProps) {
+export default function TitleBar({ workSpaceMetadata, saveWorkSpaceTrigger, curWorkSpaceID, setCurWorkSpaceID, setWorkSpaceMetadata,
+                                    setAfterSaveResetCurWorkspace, setAllowUnsave, setUser }:titleBarProps) {
     const { port } = usePort()
 
-    const handleLoginClick = async () => {
-        try {
-            const response = await axios.post(`http://localhost:${port}/gmail_login`);
+    // const handleLoginClick = async () => {
+    //     try {
+    //         const response = await axios.post(`http://localhost:${port}/gmail_login`);
 
-            if (response.data.success) {
-                const { email, name } = response.data
+    //         if (response.data.success) {
+    //             const { email, name } = response.data
 
-                const sub_type = await checkSubscriptionStatus(email)
+    //             const sub_type = await checkSubscriptionStatus(email)
 
-                setUser({ email, name, subscription_plan: sub_type })
-            } else {
-                console.error("Failed to authenticate:", response.data.msg);
-            }
-        } catch (error) {
-            console.error("Error during Gmail login:", error);
-        }
-    }
+    //             setUser({ email, name, subscription_plan: sub_type })
+    //         } else {
+    //             console.error("Failed to authenticate:", response.data.msg);
+    //         }
+    //     } catch (error) {
+    //         console.error("Error during Gmail login:", error);
+    //     }
+    // }
 
     const handelCloseAppWindow = async () => {
         // Check if there is any workspace that is not saved
@@ -128,16 +125,16 @@ export default function TitleBar({ workSpaceMetadata, subscribeTrigger, saveWork
                              setWorkSpaceMetadata = {setWorkSpaceMetadata}
                              saveWorkSpaceTrigger = {saveWorkSpaceTrigger} setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace} setAllowUnsave = {setAllowUnsave}/>
 
-                    <GeneralAccountProfile user={user} setUser = {setUser} subscribeTrigger={subscribeTrigger}  setPremiumEndDate = {setPremiumEndDate} premiumEndDate = {premiumEndDate} currentUsage={currentUsage} handleLoginClick = {handleLoginClick}/>
+                    {/* <GeneralAccountProfile user={user} setUser = {setUser} subscribeTrigger={subscribeTrigger}  setPremiumEndDate = {setPremiumEndDate} premiumEndDate = {premiumEndDate} currentUsage={currentUsage} handleLoginClick = {handleLoginClick}/> */}
                    
                     
-                    <Tooltip title="Join community to get referral code!" placement='right'>
+                    {/* <Tooltip title="Join community to get referral code!" placement='right'>
                       <button className='no-drag btn border-0 bg-transparent mt-1 p-0 ms-4'>
                         <a target='_blank' onClick={openLinkExternally} href='https://discord.gg/thirdai'>
                           <i className="bi bi-discord fs-5" style={{color: "#7289da"}}></i>
                         </a>
                       </button>
-                    </Tooltip>
+                    </Tooltip> */}
                     
 
                     

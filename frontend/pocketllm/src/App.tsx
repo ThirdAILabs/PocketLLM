@@ -110,7 +110,7 @@ function App() {
   const [premiumEndDate, setPremiumEndDate] = useState<Date | null>(null)
 
   // User can / cannot continue using the app
-  const [isFeatureUsable, setIsFeatureUsable] = useState(true)
+  const [isFeatureUsable, _] = useState(true)
 
   // Used inside <FunctionBar> to keep track of training progress
   const [selectedFiles, setSelectedFiles] = useState<WorkSpaceFile[]>([]);
@@ -206,18 +206,18 @@ function App() {
     updatePremiumEndDateInFile()
   }, [premiumEndDate])
 
-  useEffect(() => {
-    // Check if the current date is before or exactly the premium end date
-    const isPremiumActive = premiumEndDate ? new Date() <= premiumEndDate : false;
+  // useEffect(() => {
+  //   // Check if the current date is before or exactly the premium end date
+  //   const isPremiumActive = premiumEndDate ? new Date() <= premiumEndDate : false;
 
-    // A user can use features if they haven't exceeded the usage limit,
-    // or if their premium access is still active,
-    // or if they are logged in (not null) and their subscription plan is not FREE.
-    const canUseFeature = currentUsage <= 200 || isPremiumActive || (user && user.subscription_plan !== SubscriptionPlan.FREE);
+  //   // A user can use features if they haven't exceeded the usage limit,
+  //   // or if their premium access is still active,
+  //   // or if they are logged in (not null) and their subscription plan is not FREE.
+  //   const canUseFeature = currentUsage <= 200 || isPremiumActive || (user && user.subscription_plan !== SubscriptionPlan.FREE);
 
-    // Explicitly cast to boolean to satisfy TypeScript's type checking
-    setIsFeatureUsable(!!canUseFeature);
-  }, [currentUsage, user, premiumEndDate])
+  //   // Explicitly cast to boolean to satisfy TypeScript's type checking
+  //   setIsFeatureUsable(!!canUseFeature);
+  // }, [currentUsage, user, premiumEndDate])
 
   // Triggered only once at beginning to load workspace info from disk
   useEffect(() => {

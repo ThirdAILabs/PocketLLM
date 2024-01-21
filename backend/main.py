@@ -50,7 +50,7 @@ else:
 
 license_path = os.path.join(application_path, 'license_may_11_2024.serialized')
 
-licensing.set_path(license_path)
+licensing.activate('8B5B23-BB59FC-214CB4-95DFD9-A1D1BC-V3')
 
 WORKING_FOLDER = Path(os.path.dirname(__file__)) / "data"
 BAZAAR_CACHE = WORKING_FOLDER / "bazaar_cache"

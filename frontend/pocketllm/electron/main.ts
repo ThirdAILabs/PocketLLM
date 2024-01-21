@@ -4,7 +4,7 @@ import path from 'node:path'
 import portfinder from 'portfinder'
 import { autoUpdater } from 'electron-updater'
 import fs from 'fs'
-import { randomBytes } from 'crypto'
+// import { randomBytes } from 'crypto'
 import { spawn, ChildProcess } from 'child_process'
 let serverProcess: ChildProcess | null = null
 
@@ -41,27 +41,27 @@ if (!fs.existsSync(USERDATAPATH)){
 }
 
 // User pseudonyme identity construction and retrieval
-const IDENTITY_FILE = path.join(USERDATAPATH, 'user_identity.json')
+// const IDENTITY_FILE = path.join(USERDATAPATH, 'user_identity.json')
 
-interface Identity {
-  machine_id: string;
-  gmail_id: string | null;
-}
+// interface Identity {
+//   machine_id: string;
+//   gmail_id: string | null;
+// }
 
 const getUserIdentity = () => {
-  let identity : Identity
-  if (fs.existsSync(IDENTITY_FILE)) {
-    identity = JSON.parse(fs.readFileSync(IDENTITY_FILE, 'utf8'))
-  } else {
-    const machine_id = randomBytes(16).toString('hex')
-    identity = { 
-      machine_id, 
-      gmail_id: null,
-    }
-    fs.writeFileSync(IDENTITY_FILE, JSON.stringify(identity))
-  }
+  // let identity : Identity
+  // if (fs.existsSync(IDENTITY_FILE)) {
+  //   identity = JSON.parse(fs.readFileSync(IDENTITY_FILE, 'utf8'))
+  // } else {
+  //   const machine_id = randomBytes(16).toString('hex')
+  //   identity = { 
+  //     machine_id, 
+  //     gmail_id: null,
+  //   }
+  //   fs.writeFileSync(IDENTITY_FILE, JSON.stringify(identity))
+  // }
 
-  const userID = identity.gmail_id ? `${identity.gmail_id} | ${identity.machine_id}` : identity.machine_id
+  const userID = 'PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP'
   return { userID }
 }
 let  { userID }  = getUserIdentity()
