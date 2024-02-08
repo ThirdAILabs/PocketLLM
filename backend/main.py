@@ -822,6 +822,8 @@ def use_model(useInfo: UseInfoModel):
             f"{author_username}/{model_name}"
         )
     )
+    backend_instance.backend.build_inverted_index()
+
     return {"success": True, 
             "msg": f'Backend use model {domain}/{author_username}/{model_name}'}
 
