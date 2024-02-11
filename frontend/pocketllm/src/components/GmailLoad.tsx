@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-// import DatePicker from "react-datepicker";
+
 import { v4 as uuidv4 } from 'uuid'
 import "react-datepicker/dist/react-datepicker.css";
 import { usePort } from '../PortContext'
@@ -9,6 +9,8 @@ import { ModelDisplayInfo, WorkSpaceMetadata } from '../App';
 import googleLogo from "../assets/web_neutral_rd_na.svg";
 import googleContinue from "../assets/web_neutral_sq_ctn.svg";
 import Tooltip from '@mui/material/Tooltip';
+
+import useTelemetry from '../hooks/useTelemetry'
 
 type LoadGmailProps = {
     setCurWorkSpaceID: React.Dispatch<React.SetStateAction<string|null>>,
@@ -25,11 +27,14 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
     const [label, setLabel] = useState("Begin Download");
     const labelRef = useRef<string>(label)
     const [loggedIn, setLoggedIn] = useState(false);
-    const [checked, setChecked] = useState(false);
+
     // const [startDate, setStartDate] = useState(new Date());
     // const [endDate, setEndDate] = useState(new Date());
     const [maxEmailNum, setMaxEmailNum] = useState<null | number>(null);
     const [eDownloadNum, setEDownloadNum] = useState(maxEmailNum != null ? maxEmailNum : 0);
+
+    // For telemetry
+    const recordEvent = useTelemetry()
 
     useEffect(() => {
         labelRef.current = label;
@@ -177,7 +182,14 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
                 className='btn mx-1 p-0 rounded-circle'  
                 // className="btn mx-1 h-100"
                 data-bs-toggle="modal" data-bs-target="#gmailModal"
-                onClick={(e)=>e.preventDefault()}
+                onClick={(e)=>{
+                    e.preventDefault()
+                    recordEvent({
+                        UserAction: 'Click',
+                        UIComponent: 'add-gmail button',
+                        UI: 'GmailLoad',
+                    })
+                }}
             >
                 {/* <i className="bi bi-google text-secondary text-opacity-75"></i> */}
                 <img src={googleLogo} placeholder='Gmail'/>
@@ -255,26 +267,16 @@ export default function LoadGmail({setWorkSpaceMetadata, setCurWorkSpaceID, curr
                             :
                             <div className='py-5'>
                                 <div className='d-flex mb-2 justify-content-center align-items-center'>
-                                    <div>Privacy consent</div>
+                                    <div>Privacy notice</div>
                                 </div>
-                                <div className='font-sm'>Only selected text data from your emails will be downloaded to this local computer.</div>
+                                <div className='font-sm'>Your emails will be downloaded and stay private to this local computer.</div>
                                 <div className="form-check font-sm d-flex justify-content-center mt-5">
-                                    <input className="form-check-input me-2" type="checkbox" value="" id="flexCheckDefault" 
-                                    checked={checked} onClick={()=>setChecked(!checked)}
-                                    readOnly
-                                    />
-                                    <label className="form-check-label" htmlFor="flexCheckDefault">
-                                        I agree with the <a target='_blank' href='https://www.thirdai.com/privacy-policy-pocketllm/'>privacy notice</a>
-                                    </label>
+
                                 </div>
                                 <div className='d-flex justify-content-center mt-2'>
                                     <button type="button"
-                                            disabled={!checked}
                                             className='btn btn-sm p-0 border-0 mx-1'
                                             onClick={ logInGmail } 
-                                            style={{
-                                                opacity: `${!checked? "50%" : "100%"}`
-                                            }}
                                     >
 
                                         <img src={googleContinue} placeholder='Continue with Google'/>

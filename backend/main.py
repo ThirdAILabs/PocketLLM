@@ -18,6 +18,7 @@ from qa_impls import OpenAI, UDTEmbedding
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 import pickle
 import base64
 from bs4 import BeautifulSoup
@@ -1313,6 +1314,13 @@ async def  gmail_download_train(websocket: WebSocket):
         all_messages = []
         page_token = None
 
+        # Initialize the text splitter with your specified configuration
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=500,
+            chunk_overlap=75,
+            length_function=len,
+        )
+
         while True:
             results = service.users().messages().list(userId='me', pageToken=page_token).execute()
             messages = results.get('messages', [])
@@ -1330,7 +1338,7 @@ async def  gmail_download_train(websocket: WebSocket):
         
         # Trim the list to have exactly num_emails messages
         all_messages = all_messages[:num_emails]
-        print(all_messages)
+        # print(all_messages)
 
         # Specify the temporary folder using the WORKING_FOLDER path
         USER_GMAIL_INBOX_TEMP_CACHE = WORKING_FOLDER / "user_gmail_inbox_temp_cache"
@@ -1380,7 +1388,12 @@ async def  gmail_download_train(websocket: WebSocket):
 
                         # Compact the content to remove multiple newlines
                         text_content = re.sub(r'\n+', '\n', text_content)
-                        writer.writerow([msg_id, text_content, subject])
+                        texts = text_splitter.split_text(text_content)
+
+                        for chunk in texts:
+                            chunk = chunk.strip().replace("\r\n", " ").replace("\n", " ")
+                            # Write each chunk as a new row with the same Message ID and Subject
+                            writer.writerow([msg_id, chunk, subject])
 
                     await send_progress_update(round( (idx / len(all_messages)) * 100, 2), f"Processed {idx} of {len(all_messages)} messages")
                 

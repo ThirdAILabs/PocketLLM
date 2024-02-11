@@ -196,7 +196,7 @@ export default function LoadGmailDump({ setWorkSpaceMetadata, setCurWorkSpaceID,
 
   return (
     <>
-      <Tooltip title="GMail">
+      <Tooltip title="Gmail">
         <button onClick={(_) => 
                         recordEvent({
                             UserAction: 'Click',
@@ -237,7 +237,7 @@ export default function LoadGmailDump({ setWorkSpaceMetadata, setCurWorkSpaceID,
                     <div className='d-flex justify-content-end align-items-end me-2 mb-1'>
                         <Tooltip title="Click for instructions" placement='top'>
                             <a target='_blank' className='font-x-sm' onClick={openLinkExternally} href='https://mailmeteor.com/blog/gmail-export#method-2-how-to-export-gmail-single-emails-or-threads:~:text=entire%20Gmail%20data-,Method%201%3A%20How%20to%20export%20Gmail%20emails%20to%20CSV%20without%20leaving,to%20send%20a%20follow%2Dup%20sequence%20until%20you%20get%20a%20reply.,-Method%202%3A%20How'>
-                              <i className="bi bi-google font-sm"></i> Click here to learn how to export your GMail as CSV?
+                              <i className="bi bi-google font-sm"></i> Click here to learn how to export your Gmail as CSV?
                             </a>
                           </Tooltip>
                       </div>

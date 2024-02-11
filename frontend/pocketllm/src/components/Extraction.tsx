@@ -240,11 +240,16 @@ export default function Extraction({ searchResults, openAISetKeyNotice, curWorkS
                           <button onClick={() => {handleSummarizeClick(index); 
                                                   recordEvent({
                                                     UserAction: 'Click',
-                                                    UIComponent: 'summarization button',
+                                                    UIComponent: 'gmail-summarization button',
                                                     UI: 'Extraction',
                                                   })}}
                                   className='btn font-sm btn-general border border-dark-subtle mx-1'>Summarize</button>
-                          <button onClick={() => setStartReplies(prevStartReplies => prevStartReplies.map((value, idx) => idx === index ? true : value))}
+                          <button onClick={() => {setStartReplies(prevStartReplies => prevStartReplies.map((value, idx) => idx === index ? true : value));
+                                                  recordEvent({
+                                                    UserAction: 'Click',
+                                                    UIComponent: 'gmail-craft-reply button',
+                                                    UI: 'Extraction',
+                                                  })}}
                                   className='btn font-sm btn-general border border-dark-subtle'>Craft Reply</button>
                         </>
                         :

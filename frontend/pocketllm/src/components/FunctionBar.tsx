@@ -3,8 +3,8 @@ import { Tooltip } from '@mui/material'
 
 import { WorkSpaceFile } from '../App'
 import Teach from "./Teach"
-import LoadGmailDump from './GmailDump'
-// import LoadGmail from './GmailLoad'
+// import LoadGmailDump from './GmailDump'
+import LoadGmail from './GmailLoad'
 import LoadOutlook from './OutlookLoad'
 import LoadUrl from './LoadUrl'
 import LoadGithub from './LoadGithub'
@@ -69,7 +69,7 @@ export default function FunctionBar({selectedFiles, setSelectedFiles,
 
   useEffect(()=>{
     setWidth(`${ref.current?.clientWidth? (ref.current.clientWidth): "55"}px`);
-}, [])
+  }, [])
 
   return (
     <div className='d-flex mb-3 align-items-end justify-content-center'>
@@ -105,6 +105,17 @@ export default function FunctionBar({selectedFiles, setSelectedFiles,
               ?
               <>
                 <Tooltip title="Your monthly premium credits have exhausted. Consider 1) referring your friends (click on top left account profile box), 2) subscribing or 3) waiting until first day of next month to use this feature again.">
+                  <div className='position-relative'>
+                      <button type="button" 
+                          className="btn px-2 mx-1 h-100"  
+                          onClick={(e)=>e.preventDefault()}
+                      >
+                          <img src={googleLogo} placeholder='Gmail' style={{width: '25px'}}/>
+                      </button>
+                      <i className="bi font-sm bi-exclamation-circle-fill feature-not-available-mark text-secondary"></i>
+                  </div>
+                </Tooltip>
+                <Tooltip title="Your monthly premium credits have exhausted. Consider 1) referring your friends (click on top left account profile box), 2) subscribing or 3) waiting until first day of next month to use this feature again.">
                     <div className='position-relative'>
                         <button type="button" 
                             className="btn mx-1 h-100"
@@ -115,28 +126,15 @@ export default function FunctionBar({selectedFiles, setSelectedFiles,
                         <i className="bi font-sm bi-exclamation-circle-fill feature-not-available-mark text-secondary"></i>
                     </div>
                 </Tooltip>
-
-                <Tooltip title="Your monthly premium credits have exhausted. Consider 1) referring your friends (click on top left account profile box), 2) subscribing or 3) waiting until first day of next month to use this feature again.">
-                  <div className='position-relative'>
-                      <button type="button" 
-                          className="btn px-2 mx-1 h-100"  
-                          onClick={(e)=>e.preventDefault()}
-                      >
-                          <img src={googleLogo} placeholder='Gmail' style={{width: '25px'}}/>
-                      </button>
-                      <i className="bi font-sm bi-exclamation-circle-fill feature-not-available-mark text-secondary"></i>
-                  </div>
-              </Tooltip>
               </>
               :
               <>
-                <LoadOutlook
-                        setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                        currentModel = {currentModel}
-                        setCurrentUsage = {setCurrentUsage}
+                <LoadGmail
+                    setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                    currentModel = {currentModel}
+                    setCurrentUsage = {setCurrentUsage}
                 />
-                
-                <LoadGmailDump 
+                <LoadOutlook
                         setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
                         currentModel = {currentModel}
                         setCurrentUsage = {setCurrentUsage}
@@ -144,6 +142,7 @@ export default function FunctionBar({selectedFiles, setSelectedFiles,
               </>
 
             }
+
             <LoadGithub
                     setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
                     currentModel = {currentModel}
@@ -154,11 +153,6 @@ export default function FunctionBar({selectedFiles, setSelectedFiles,
                     currentModel = {currentModel}
                     setCurrentUsage = {setCurrentUsage}
             />
-            {/* <LoadGmail
-                    setCurWorkSpaceID = {setCurWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                    currentModel = {currentModel}
-                    setCurrentUsage = {setCurrentUsage}
-            /> */}
           </div>
           
         </div>
