@@ -71,6 +71,10 @@
     cursor: pointer;
 }
 
+.cursor-auto {
+    cursor: auto;
+}
+
 .bi-login {
     
     background: conic-gradient(from -45deg, #ea4335 110deg, #4285f4 90deg 180deg, #34a853 180deg 270deg, #fbbc05 270deg) 73% 55%/150% 150% no-repeat;
@@ -112,9 +116,9 @@ input:focus{
 }
 
 .title-bar {
-    position: absolute;
+    /* position: absolute;
     left: 0px;
-    top: 0px;
+    top: 0px; */
     width: 100%;
     -webkit-app-region: drag;
     user-select: none;
@@ -168,7 +172,7 @@ input:focus{
 }
 
 .full-page-setup{
-    width: 100vw;
+    /* width: 100vw; */
     height: 100vh;
     overflow: hidden;
 }
@@ -539,6 +543,7 @@ input:focus{
 
 .selected-file-list-wrapper {
     text-align: left;
+    min-width: 250px;
     max-width: 350px;
     border-radius: 10px;
     border: rgb(224, 224, 224) 1px solid;
@@ -552,6 +557,16 @@ input:focus{
     overflow: auto;
     width: 100%;
     max-height: 60px;
+}
+
+.addfile-btn {
+    width: 40px;
+    height: 40px;
+    border: #808080 1px solid;
+    border-radius: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .drop-zone-wrapper {
@@ -580,4 +595,9 @@ input:focus{
     position: absolute;
     top: 0px;
     right: 0px;
+}
+
+.editablename-icon {
+    position: absolute;
+    right: -25px;
 }

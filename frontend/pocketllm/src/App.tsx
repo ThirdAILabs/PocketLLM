@@ -1,26 +1,93 @@
 import { useEffect, useState, useRef } from 'react';
-import { HashRouter as Router, Route, Routes } from 'react-router-dom';
 import axios from 'axios'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 
-import ModelCards from "./pages/ModelCards";
-import LandingAnimation from "./pages/LandingAnimation";
-import TitleBar from "./components/TitleBar";
-import AppUpdater from "./components/AppUpdater";
-import MainPage from "./pages/MainPage";
-import { usePort } from './PortContext'
-import Subscribe from "./components/Subscribe";
-import SaveNotice from './components/SaveNotice';
-import { SearchResult } from './pages/MainPage'
-import { FeatureUsableContext } from './contexts/FeatureUsableContext';
-import { SetAlertMessageProvider } from './contexts/SetAlertMessageContext'
-import CustomAlertWrapper from './components/CustomAlertWrapper';
 import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap/dist/js/bootstrap.bundle.js";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
-import './App.css'
-import "./styling.css";
+import { styled } from '@mui/material/styles'
+import Box from '@mui/material/Box'
+import CssBaseline from '@mui/material/CssBaseline'
+import MuiAppBar, { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar'
+import Toolbar from '@mui/material/Toolbar'
+import IconButton from '@mui/material/IconButton'
+import MenuIcon from '@mui/icons-material/Menu'
 
+import SideBar from './components/SideBar'
+import AppUpdater from "./components/AppUpdater"
+import { usePort } from './contexts/PortContext'
+import Subscribe from "./components/Subscribe"
+import SaveNotice from './components/SaveNotice'
+import { SetAlertMessageProvider } from './contexts/SetAlertMessageContext'
+import CustomAlertWrapper from './components/CustomAlertWrapper'
+import FilePage from './pages/FilePage'
+import URLPage from './pages/URLPage'
+import GmailPage from './pages/GmailPage'
+import TitleBar from './components/TitleBar'
+import WelcomePage from './pages/WelcomePage';
+
+import './App.css'
+import "./styling.css"
+
+const drawerWidth = 275
+
+const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
+  open?: boolean;
+}>(({ theme, open }) => ({
+  flexGrow: 1,
+  padding: theme.spacing(3),
+  transition: theme.transitions.create('margin', {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  marginLeft: `-${drawerWidth}px`,
+  ...(open && {
+    transition: theme.transitions.create('margin', {
+      easing: theme.transitions.easing.easeOut,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
+    marginLeft: 0,
+  }),
+}))
+
+interface AppBarProps extends MuiAppBarProps {
+  open?: boolean;
+}
+
+const AppBar = styled(MuiAppBar, {
+  shouldForwardProp: (prop) => prop !== 'open',
+})<AppBarProps>(({ theme, open }) => ({
+  transition: theme.transitions.create(['margin', 'width'], {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  ...(open && {
+    width: `calc(100% - ${drawerWidth}px)`,
+    marginLeft: `${drawerWidth}px`,
+    transition: theme.transitions.create(['margin', 'width'], {
+      easing: theme.transitions.easing.easeOut,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
+  }),
+}))
+
+const MyToolbar = styled(Toolbar)(({ theme }) => ({
+    ...theme.mixins.toolbar,
+    backgroundColor: '#fff',
+    border: "none",
+    boxShadow: "none",
+}))
+
+
+
+export interface SearchResult {
+  page_high: number
+  page_low: number
+  result_source: string
+  result_text: string
+  result_type: string
+}
 
 export interface ModelDisplayInfo {
   author_name: string;
@@ -34,6 +101,7 @@ export interface WorkSpaceMetadata {
   documents: WorkSpaceFile[];
   last_modified: string;
   isWorkSpaceSaved: boolean;
+  gmailWorkspaceInfo?: GmailWorkspaceInfo; // Optional to maintain backward compatibility
 }
 
 export interface WorkSpaceFile {
@@ -44,185 +112,59 @@ export interface WorkSpaceFile {
   isSaved: boolean;
 }
 
+export interface GmailWorkspaceInfo {
+  email_account: string          // user gmail account
+  last_email_date: string | null // lastest email's date into gmail.csv, null when no email in gmail.csv
+  num_emails: number             // number of emails downloaded into gmail.csv, 0 when no email in gmail.csv
+  is_downloading: boolean
+  is_download_finished: boolean
+  initial_download_num: number
+  is_training: boolean
+  is_training_finished: boolean
+  is_sync: boolean
+}
+
 export enum SubscriptionPlan {
   FREE = "FREE",
   PREMIUM = "PREMIUM",
   SUPREME = "SUPREME"
 }
 
+export enum SummarizerType {
+  OpenAI = "OpenAI",
+  ThirdAI = "ThirdAI",
+  // More types as needed
+}
+
 function App() {
   const { port } = usePort()
 
-  // Used inside <ModelCards/> 
-  const [currentModel, setCurrentModel] = useState<ModelDisplayInfo | null>(null);
-  const [modelDownloadProgress, setModelDownloadProgress] = useState(0)
-  const [startModelDownloadProgress, setStartModelDownloadProgress] = useState(false)
+  const [open, setOpen] = useState(true)
 
-  // Intro visual effect
-  const [landing, setLanding] = useState(<LandingAnimation/>);
+  // Summarizer setting
+  const [cachedOpenAIKey, setCachedOpenAIKey] = useState<string>('') // User cached OpenAI key
+  const [summarizer, setSummarizer] = useState<SummarizerType | null>(null) // User summarizer choice
 
-  // Work Space ID: Currently chosen workspace
-  // Used inside to keep track of current chosen workspace
-  const [curWorkSpaceID, setCurWorkSpaceID] = useState<string|null>(null)
+  // Workspace
+  const [curWorkSpaceID, setCurWorkSpaceID] = useState<string|null>(null) //  Work Space ID: Used to keep track of current chosen workspace
+  const [workSpaceMetadata, setWorkSpaceMetadata] = useState<WorkSpaceMetadata[]>([]) // All workspace
 
-  // Trigger update modal
-  const updateTrigger = useRef<HTMLButtonElement>(null);
+  // Trigger
+  const updateTrigger = useRef<HTMLButtonElement>(null) // Update
+  const subscribeTrigger = useRef<HTMLButtonElement>(null) // Subscription
+  const [alertMessage, setAlertMessage] = useState<string>("") // Alert
+  const saveTrigger = useRef<HTMLButtonElement>(null) // Save workspace notice
 
-  // Trigger specify summerizer
-  const specifySummerizerTrigger = useRef<HTMLButtonElement>(null);
-
-  // Control specify summarizer form
-  const specifySummarizerFormTrigger = useRef<HTMLButtonElement>(null);
-
-  // Trigger for subscription
-  const subscribeTrigger = useRef<HTMLButtonElement>(null);
-
-  // Alert trigger
-  const [alertMessage, setAlertMessage] = useState<string>("");
-
-  // Trigger for save workspace notice
-  // afterSaveResetCurWorkspace controls if setCurWorkSpaceID(null) happens inside <SaveNotice/> after user clicks save
-  // allowUnsave controls if Delete button will appear inside <SaveNotice/>
-  const saveTrigger = useRef<HTMLButtonElement>(null);
-  const [afterSaveResetCurWorkspace, setAfterSaveResetCurWorkspace] = useState<boolean>(false)
-  const [allowUnsave, setAllowUnsave] = useState<boolean>(false)
-
-  // Workspace meta info
-  const [workSpaceMetadata, setWorkSpaceMetadata] = useState<WorkSpaceMetadata[]>([])
-
-  // Currently indexed files in workspace
-  const [indexFiles, setIndexFiles] = useState<WorkSpaceFile[]>([])
-
-  // Used inside searchbar and specify model
-  const [summarizer, setSummarizer] = useState<string | null>(null)
-
-  // Used inside <SearchBar/> and <Extraction/>
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
-
-  // Used inside <SearchBar/> and <Summary/>
-  const [summaryResult, setSummaryResult] = useState<string>('')
-
-  // User gmail name and email
+  // User
   const [user, setUser] = useState<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>(null)
 
-  // User current usage
-  const [currentUsage, setCurrentUsage] = useState(0)
-  const [premiumEndDate, setPremiumEndDate] = useState<Date | null>(null)
+  // GmailPage uses this state to communicate to sidebar to sync
+  const [gmailWorkspaceSyncID, setGmailWorkspaceSyncID] = useState<string|null>(null)
 
-  // User can / cannot continue using the app
-  const [isFeatureUsable, setIsFeatureUsable] = useState(true)
-
-  // Used inside <FunctionBar> to keep track of training progress
-  const [selectedFiles, setSelectedFiles] = useState<WorkSpaceFile[]>([]);
-  const [progress, setProgress] = useState(0);
-  const [startProgress, setStartProgress] = useState(false);
-
-  // User cached OpenAI key
-  const [cachedOpenAIKey, setCachedOpenAIKey] = useState<string>('')
-
-  useEffect(()=>{
-    setTimeout(()=>{
-      setLanding(<></>)
-    }, 3550)
-  }, [])
-
-  useEffect(() => {
-    workSpaceMetadata.forEach(workspace => {
-      console.log(`Workspace ID: ${workspace.workspaceID}`);
-      console.log(`Workspace Name: ${workspace.workspaceName}`);
-      console.log(`Model Author: ${workspace.model_info.author_name}`);
-      console.log(`Model Name: ${workspace.model_info.model_name}`);
-      workspace.documents.forEach(doc => {
-        console.log(`Document Name: ${doc.fileName}`);
-        console.log(`Document Path: ${doc.filePath}`);
-        console.log(`Document UUID: ${doc.uuid}`);
-        console.log(`Is Document Saved: ${doc.isSaved}`);
-      });
-      console.log(`Last Modified: ${workspace.last_modified}`);
-      console.log(`Is Workspace Saved: ${workspace.isWorkSpaceSaved}`);
-      console.log('----------------------------------------');
-    });
-  }, [workSpaceMetadata]);
-
-  // Triggered when a different workspace is loaded or
-  // An existing workspace is changed (e.g. index new files, upvoted, teaching)
-  useEffect(() => {
-
-    // If workspace is not null, load the workspace's info
-    if (curWorkSpaceID) {
-        const currentWorkspace = workSpaceMetadata.find(ws => ws.workspaceID === curWorkSpaceID)
-        if (currentWorkspace) {
-            const files = currentWorkspace.documents
-            if (files.length === indexFiles.length) {
-              // Upvote, teaching
-              console.log('Workspace change: Upvote, teaching')
-            } else {
-              // index new files
-              console.log('Workspace change: index new files')
-              setSearchResults([])
-              setSummaryResult('')
-            }
-            setIndexFiles(files)
-            setCurrentModel(currentWorkspace.model_info)
-        }
-    } else {
-        // Otherwise, set everything back to not set
-        setIndexFiles([])
-        setCurrentModel(null)
-        setSearchResults([])
-        setSummaryResult('')
-    }
-  }, [curWorkSpaceID, workSpaceMetadata])
-
-  // Triggered when currentUsage changes
-  useEffect(() => {
-    // Function to write the updated usage to file
-    const writeUpdatedUsageToFile = async (newSize: number) => {
-      try {
-        const result = await window.electron.invoke('update-usage', newSize)
-        console.log('Usage size updated in file:', result); // result should be 'success'
-      } catch (error) {
-        console.error('Error sending update usage to main process:', error)
-      }
-    }
-  
-    // Call the function with the new size whenever currentUsage changes
-    if ( currentUsage !== 0 )
-      writeUpdatedUsageToFile(currentUsage)
-  }, [currentUsage])
-
-  useEffect(() => {
-    const updatePremiumEndDateInFile = async () => {
-      if (premiumEndDate) {
-        try {
-          const result = await window.electron.invoke('update-premium-end-date', premiumEndDate.toISOString())
-          console.log('Premium end date updated in file:', result)
-        } catch (error) {
-          console.error('Error sending update to main process for premium end date:', error)
-        }
-      }
-    }
-  
-    updatePremiumEndDateInFile()
-  }, [premiumEndDate])
-
-  useEffect(() => {
-    // Check if the current date is before or exactly the premium end date
-    const isPremiumActive = premiumEndDate ? new Date() <= premiumEndDate : false;
-
-    // A user can use features if they haven't exceeded the usage limit,
-    // or if their premium access is still active,
-    // or if they are logged in (not null) and their subscription plan is not FREE.
-    const canUseFeature = currentUsage <= 200 || isPremiumActive || (user && user.subscription_plan !== SubscriptionPlan.FREE);
-
-    // Explicitly cast to boolean to satisfy TypeScript's type checking
-    setIsFeatureUsable(!!canUseFeature);
-  }, [currentUsage, user, premiumEndDate])
-
-  // Triggered only once at beginning to load workspace info from disk
+  // Load workspace and openai key info from disk
   useEffect(() => {
     if (port) {
-      const handleServerReady = async () => {
+      const loadStateVariable = async () => {
         try {
           // Fetch the list of workspaces
           const responseModels = await axios.get(`http://localhost:${port}/get_cached_workspace_metajson`)
@@ -234,35 +176,6 @@ function App() {
           setWorkSpaceMetadata(workspaces)
         } catch (error) {
             console.error('Error fetching models:', error)
-        }
-
-        // Avoid using raw model on start
-        if (currentModel === null) {
-          const domain = 'public'
-          const author_name = 'thirdai';
-          const model_name = 'GeneralQnA';
-          try {
-              const response = await axios.post(`http://localhost:${port}/use_model`, {
-                  domain: domain,
-                  model_name: model_name,
-                  author_username: author_name
-              })
-
-              const data = response.data
-
-              if (data.success) {
-                  console.log(data.msg)
-
-                  setCurrentModel({
-                      author_name: author_name,
-                      model_name: model_name
-                  })
-              } else {
-                  console.error("Failed to set the model in the backend.")
-              }
-          } catch (error) {
-              console.error('Error:', error)
-          }
         }
 
         // Try to get the OpenAI key
@@ -277,145 +190,128 @@ function App() {
         }
       }
   
-      window.electron.on('server-ready', handleServerReady)
+      window.electron.on('server-ready', loadStateVariable)
+      window.electron.on('power-restarted', loadStateVariable)
     }
   }, [port])
 
+  // Check for update
   useEffect(() => {
-      window.electron.on('update-available', () => {
-          updateTrigger?.current?.click()
-      })
-
-      // Get current usage
-      try {
-        window.electron.invoke('get-current-usage').then(usageData => {
-          console.log(`User Current Usage: ${usageData.size} MB`)
-          console.log(`User Usage Reset Date: ${usageData.resetDate}`)
-          console.log(`User Premium End Date: ${usageData.premiumEndDate}`)
-
-          // Update the state with the fetched usage data
-          setCurrentUsage(usageData.size)
-
-          // Update the premium end date state
-          setPremiumEndDate(new Date(usageData.premiumEndDate))
-        })
-      } catch (error) {
-        console.error('Error fetching current usage:', error);
-      }
+      window.electron.on('update-available', () => { updateTrigger?.current?.click() })
   }, [])
 
-  const checkAndExtendPremium = () => {
-    // Request to count referrals and mark them
-    window.electron.send('count_referral');
-
-    // Handle the response
-    window.electron.once('count_referral_response', (monthsToAdd) => {
-        if (monthsToAdd > 0) {
-            setPremiumEndDate(originalPremiumEndDate => {
-              const currentDate = new Date();
-              let newPremiumEndDate;
-
-              if (originalPremiumEndDate && originalPremiumEndDate > currentDate) {
-                  // If the original premium end date is in the future, add 1 month to it
-                  newPremiumEndDate = new Date(originalPremiumEndDate);
-                  newPremiumEndDate.setMonth(newPremiumEndDate.getMonth() + monthsToAdd);
-              } else {
-                  // If the original premium end date is today or in the past, set it to 1 month from today
-                  newPremiumEndDate = new Date();
-                  newPremiumEndDate.setMonth(currentDate.getMonth() + monthsToAdd);
-              }
-
-              return newPremiumEndDate;
-            })
-        }
-    });
-  };
-
+  // Debug print out all workspaces
   useEffect(() => {
-    checkAndExtendPremium();
-
-    // const intervalId = setInterval(checkAndExtendPremium, 1*60*100); // 1 minute
-    const intervalId = setInterval(checkAndExtendPremium, 10*60*100); // 10 minutes
-
-    return () => clearInterval(intervalId);
-  }, []);
+    workSpaceMetadata.forEach(workspace => {
+      console.log(`Workspace ID: ${workspace.workspaceID}`)
+      // console.log(`Workspace Name: ${workspace.workspaceName}`)
+      // console.log(`Model Author: ${workspace.model_info.author_name}`)
+      // console.log(`Model Name: ${workspace.model_info.model_name}`)
+      // workspace.documents.forEach(doc => {
+      //   console.log(`Document Name: ${doc.fileName}`)
+      //   console.log(`Document Path: ${doc.filePath}`)
+      //   console.log(`Document UUID: ${doc.uuid}`)
+      //   console.log(`Is Document Saved: ${doc.isSaved}`)
+      // });
+      // console.log(`Last Modified: ${workspace.last_modified}`)
+      // console.log(`Is Workspace Saved: ${workspace.isWorkSpaceSaved}`)
+      // console.log('----------------------------------------')
+    });
+  }, [workSpaceMetadata])
 
   return (
-    <FeatureUsableContext.Provider value={{ isFeatureUsable }}>
     <SetAlertMessageProvider setAlertMessage={setAlertMessage}>
 
       <div className='full-page-setup p-0'>
-      
           <AppUpdater trigger = {updateTrigger}/>
-          <Subscribe trigger = {subscribeTrigger}
-                    user = {user} 
-                    setUser = {setUser}/>
+          <Subscribe  trigger = {subscribeTrigger}
+                      user = {user} setUser = {setUser}
+                      setOpen = {setOpen}/>
           <SaveNotice trigger = {saveTrigger}
                       workSpaceMetadata={workSpaceMetadata} setWorkSpaceMetadata = {setWorkSpaceMetadata}
                       setCurWorkSpaceID = {setCurWorkSpaceID}
-                      afterSaveResetCurWorkspace = {afterSaveResetCurWorkspace}
-                      allowUnsave = {allowUnsave}/>
-          <Router>
-            <Routes>
+          />
 
-                <Route path="/ModelCards" element={<ModelCards  setCurWorkSpaceID = {setCurWorkSpaceID} setCurrentModel={setCurrentModel} 
-                                                                progress = {modelDownloadProgress} setProgress = {setModelDownloadProgress}
-                                                                startProgress = {startModelDownloadProgress} setStartProgress = {setStartModelDownloadProgress}
-                                                                />} />
-                
-                <Route path="/" 
-                element = {
-                  <>
-                  <MainPage 
-                            
-                            selectedFiles={selectedFiles}
-                            setSelectedFiles={setSelectedFiles}
-                            progress={progress}
-                            setProgress={setProgress}
-                            startProgress={startProgress}
-                            setStartProgress={setStartProgress}
-                            currentModel={currentModel} 
-                            specifySummerizerTrigger={specifySummerizerTrigger} 
-                            specifySummarizerFormTrigger = {specifySummarizerFormTrigger}
-                            indexFiles = {indexFiles}
-                            queryEnabled = {indexFiles.length != 0}
-                            curWorkSpaceID = {curWorkSpaceID}
-                            setCurWorkSpaceID = {setCurWorkSpaceID}
-                            workSpaceMetadata = {workSpaceMetadata}  setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                            summarizer = {summarizer} setSummarizer = {setSummarizer}
-                            searchResults = {searchResults} setSearchResults = {setSearchResults}
-                            summaryResult = {summaryResult} setSummaryResult = {setSummaryResult}
-                            saveWorkSpaceTrigger = {saveTrigger}  
-                            setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace} setAllowUnsave = {setAllowUnsave}
-                            setCurrentUsage = {setCurrentUsage}
-                            cachedOpenAIKey = {cachedOpenAIKey}
-                  />
-                  <TitleBar workSpaceMetadata = {workSpaceMetadata} 
-                            subscribeTrigger={subscribeTrigger} 
-                            curWorkSpaceID = {curWorkSpaceID} 
-                            setCurWorkSpaceID = {setCurWorkSpaceID} 
-                            setWorkSpaceMetadata = {setWorkSpaceMetadata} 
-                            saveWorkSpaceTrigger = {saveTrigger}
-                            setAfterSaveResetCurWorkspace = {setAfterSaveResetCurWorkspace} setAllowUnsave = {setAllowUnsave}
-                            user = {user} setUser = {setUser}
-                            currentUsage = {currentUsage}
-                            premiumEndDate = {premiumEndDate}
-                            setPremiumEndDate = {setPremiumEndDate}
-                  />
-                  </>
-                }>
 
-                </Route>
+          <Box sx={{ display: 'flex' }}>
+              <CssBaseline />
+              
+              <AppBar position="fixed" open={open} elevation={0}>
+                  <MyToolbar>
+                      <div className='d-flex text-secondary w-100'>
+                          
+                          <IconButton
+                              color="inherit"
+                              aria-label="open drawer"
+                              onClick={()=>setOpen(true)}
+                              edge="start"
+                              sx={{my:2, ...(open && { display: 'none' }) }}
+                              >
+                              <MenuIcon/>
+                          </IconButton>
+                      
+                          <TitleBar 
+                                  workSpaceMetadata = {workSpaceMetadata} 
+                                  saveWorkSpaceTrigger = {saveTrigger}
+                          />
+                      </div>
+                  </MyToolbar>
+              </AppBar>
+              
+              <BrowserRouter>
+                    <SideBar
+                      open = {open} setOpen = {setOpen}
+                      summarizer = {summarizer} setSummarizer = {setSummarizer} cachedOpenAIKey = {cachedOpenAIKey} setCachedOpenAIKey = {setCachedOpenAIKey}
+                      workSpaceMetadata = {workSpaceMetadata} 
+                      subscribeTrigger={subscribeTrigger} 
+                      curWorkSpaceID = {curWorkSpaceID} 
+                      setCurWorkSpaceID = {setCurWorkSpaceID} 
+                      setWorkSpaceMetadata = {setWorkSpaceMetadata} 
+                      saveWorkSpaceTrigger = {saveTrigger}
+                      user = {user} setUser = {setUser}
+                      gmailWorkspaceSyncID = {gmailWorkspaceSyncID} setGmailWorkspaceSyncID = {setGmailWorkspaceSyncID}
+                    />
+                    
+                    <Main open={open}>
+                        <MyToolbar/>
 
-            </Routes>
-          </Router>
-          <CustomAlertWrapper message={alertMessage} setMessage={setAlertMessage}/>
-        {landing}
+                        <Routes>
+                            <Route path='/' element={<WelcomePage/>} />
+                            <Route path='/file/:id' element = {
+                                <FilePage 
+                                    summarizer = {summarizer}
+                                    workSpaceMetadata={workSpaceMetadata} 
+                                    curWorkSpaceID = {curWorkSpaceID} 
+                                    setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                                />} 
+                            />
+
+                            <Route path='/url/:id' element={
+                                <URLPage
+                                    summarizer = {summarizer}
+                                    workSpaceMetadata={workSpaceMetadata} 
+                                    curWorkSpaceID = {curWorkSpaceID} 
+                                    setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                                />
+                            }/>
+
+                            <Route path='/gmail/:id' element={
+                                <GmailPage
+                                      summarizer = {summarizer}
+                                      workSpaceMetadata={workSpaceMetadata} 
+                                      curWorkSpaceID = {curWorkSpaceID} 
+                                      setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                                      setGmailWorkspaceSyncID = {setGmailWorkspaceSyncID}
+                                  />
+                            }/>
+                        </Routes>
+                    </Main>
+              </BrowserRouter>
+          </Box>
+        <CustomAlertWrapper message={alertMessage} setMessage={setAlertMessage}/>
       </div>
     
     </SetAlertMessageProvider>
-    </FeatureUsableContext.Provider>
-
   )
 }
 

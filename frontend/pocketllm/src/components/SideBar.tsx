@@ -1,440 +1,691 @@
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import moment from 'moment'
+import React, { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
-import Tooltip from '@mui/material/Tooltip';
+import { useNavigate } from 'react-router-dom'
 
-import { WorkSpaceMetadata } from '../App'
-import { usePort } from '../PortContext'
-import useTelemetry from '../hooks/useTelemetry'
+import { Modal } from 'bootstrap'
+import { styled, useTheme } from '@mui/material/styles'
+import { Tooltip } from '@mui/material'
+import Drawer from '@mui/material/Drawer'
+import IconButton from '@mui/material/IconButton'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 
-type SideBarProps = {
-    workSpaceMetadata: WorkSpaceMetadata[];
-    curWorkSpaceID: string | null
-    setCurWorkSpaceID: (workspaceID: string | null) => void
-    setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
+import { WorkSpaceMetadata, SubscriptionPlan, SummarizerType } from '../App'
+import CreateFileWorkspace from './FileWorkSpace/CreateFileWorkspace'
+import { usePort } from '../contexts/PortContext'
+import SummarizerSwitch from './SummarizerSwitch'
+import GeneralAccountProfile from './GeneralAccountProfile'
+import SideBarItem from './SideBarItem'
+import CreateURLWorkspace from './URLWorkSpace/CreateURLWorkspace'
+import CreateGmailWorkspace from './GmailWorkSpace/CreateGmailWorkspace'
+import Subscribe from './Subscribe'
+import GmailWorkspaceProgress from '../components/GmailWorkSpace/GmailWorkspaceProgress'
+
+const drawerWidth = 290
+
+const DrawerHeader = styled('div')(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  padding: theme.spacing(0, 1),
+  // necessary for content to be below app bar
+  ...theme.mixins.toolbar,
+  justifyContent: 'flex-end',
+}))
+
+
+type sideBarProps = {
+    summarizer: SummarizerType | null, setSummarizer: React.Dispatch<React.SetStateAction<SummarizerType | null>>, cachedOpenAIKey: string, setCachedOpenAIKey: React.Dispatch<React.SetStateAction<string>>
+
+    workSpaceMetadata: WorkSpaceMetadata[],
+    subscribeTrigger: React.RefObject<HTMLButtonElement>;
     saveWorkSpaceTrigger: React.RefObject<HTMLButtonElement>
-    setAfterSaveResetCurWorkspace: React.Dispatch<React.SetStateAction<boolean>>, setAllowUnsave: React.Dispatch<React.SetStateAction<boolean>>
+    curWorkSpaceID: string | null
+    setCurWorkSpaceID: (modelID: string | null) => void,
+    setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
+    user : { email: string, name: string, subscription_plan: SubscriptionPlan  } | null,
+    setUser: React.Dispatch<React.SetStateAction<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>>,
+    open: boolean ,
+    setOpen:  React.Dispatch<React.SetStateAction<boolean>>,
+    gmailWorkspaceSyncID: string|null, setGmailWorkspaceSyncID:  React.Dispatch<React.SetStateAction<string|null>>
 }
 
-export default function SideBar({workSpaceMetadata, curWorkSpaceID, setCurWorkSpaceID, setWorkSpaceMetadata, saveWorkSpaceTrigger,
-                                setAfterSaveResetCurWorkspace, setAllowUnsave} : SideBarProps){
+
+export default function SideBar(
+    {   summarizer, setSummarizer, cachedOpenAIKey, setCachedOpenAIKey,
+        workSpaceMetadata, curWorkSpaceID, setCurWorkSpaceID, setWorkSpaceMetadata, 
+        subscribeTrigger, saveWorkSpaceTrigger,
+        user, setUser,
+        open, setOpen,
+        gmailWorkspaceSyncID, setGmailWorkspaceSyncID
+    } : sideBarProps
+){
+    const navigate = useNavigate()
+
     const { port } = usePort()
 
-    const navigate = useNavigate();
-    const closeBtn = useRef<HTMLButtonElement>(null);
+    const theme = useTheme()
 
-    const [editNameEnabled, setEditNameEnabled] = useState<boolean[]>([]);
-    const [workspaceNames, setWorkspaceNames] = useState<string[]>([])
-    const inputRefs = useRef<Array<HTMLInputElement | null>>([])
+    const fileWorkspaceCreateModalRef = useRef(null)
+    const URLWorkspaceCreateModalRef = useRef(null)
+    const gmailWorkspaceCreateModalRef = useRef(null)
+    const gmailWorkspaceProgressRef = useRef<HTMLButtonElement>(null)
+    const gmailWorkspaceCloseRef = useRef<HTMLButtonElement>(null)
 
-    // For telemetry
-    const recordEvent = useTelemetry()
+    const [gmailWorkspaceProgress, setGmailWorkspaceProgress] = useState(0)
 
-    useEffect(() => {
-        setEditNameEnabled(new Array(workSpaceMetadata.length).fill(false))
-        setWorkspaceNames(workSpaceMetadata.map(workspace => workspace.workspaceName || ""))
-        // Adjust the length of inputRefs.current
-        if (inputRefs.current.length !== workSpaceMetadata.length) {
-            inputRefs.current = Array.from({ length: workSpaceMetadata.length }, (_, i) => inputRefs.current[i] || null);
-        }
-    }, [workSpaceMetadata])
-
-    const toggleEditNameEnabled = (clickedIndex: number) => {
- 
-        // Check if we're enabling the edit mode for the clicked index
-        if (!editNameEnabled[clickedIndex]) {
-            setTimeout(() => {
-                const inputElement = inputRefs.current[clickedIndex];
-                if (inputElement) {
-                  inputElement.focus()
-                  inputElement.select()
-                }
-              }, 200);
-        }
- 
-        // Calculate the new state of editNameEnabled
-        const newEditNameEnabled = editNameEnabled.map((status, idx) => idx === clickedIndex ? !status : status)
-
-        // Check if all editNameEnabled are false in the new state
-        const allDisabled = newEditNameEnabled.every(status => !status)
-        if (allDisabled) {
-            // Iterate through all workspace names to check for discrepancies
-            workspaceNames.forEach((name, index) => {
-                const savedName = workSpaceMetadata[index].workspaceName
-                const workspaceID = workSpaceMetadata[index].workspaceID
-                if (name !== savedName) {
-                    // Handle discrepancy
-                    (async (workspaceID: string, newName: string) => {
-                        const workspace = workSpaceMetadata.find(ws => ws.workspaceID === workspaceID);
-
-                        if (workspace) {
-                            if (workspace.isWorkSpaceSaved) {
-                                try {
-                                    const response = await axios.post(`http://localhost:${port}/update_workspace_name`, {
-                                        workspaceID,
-                                        newWorkspaceName: newName
-                                    });
-                    
-                                    if (response.data.success) {
-                                        // Update the workSpaceMetadata with the new workspace name
-                                        setWorkSpaceMetadata(prevMetadata => prevMetadata.map(ws => 
-                                            ws.workspaceID === workspaceID ? { ...ws, workspaceName: newName } : ws
-                                        ));
-                                    }
-                                } catch (error) {
-                                    console.error('Error updating workspace name:', error);
-                                }
-                            } else {
-                                // If the workspace is not saved, just update the local state of metadata
-                                setWorkSpaceMetadata(prevMetadata => prevMetadata.map(ws => 
-                                    ws.workspaceID === workspaceID ? { ...ws, workspaceName: newName } : ws
-                                ));
-                            }
-                        }
-                    })(workspaceID, name)
-                }
-            })
-        }
-
-        setEditNameEnabled(newEditNameEnabled)
-    }
-    
-    const handleStartWorkSpace = async () => {
-
-        // Check if there is any workspace that is not saved
-        const isUnsavedWorkspaceExist = workSpaceMetadata.some(workspace => !workspace.isWorkSpaceSaved);
+    const handleClickLoadFileWorkspace = async (workspaceID: string) => {
+        
+        const isUnsavedWorkspaceExist = workSpaceMetadata.some(workspace => !workspace.isWorkSpaceSaved)
 
         if (isUnsavedWorkspaceExist) {
-            // Because user attempts to start another workpsace in RAM, both afterSaveResetCurWorkspace and allowUnsave should be true
-            setAfterSaveResetCurWorkspace(true)
-            setAllowUnsave(true)
-
             // If there are unsaved workspaces, trigger the save button
-            saveWorkSpaceTrigger.current?.click();
-        } else {
-            // If all workspaces are saved, navigate to Model Cards
-            navigate("/ModelCards");
-            closeBtn.current?.click();
-        }
-    };
-    
-    const handleLoadWorkSpace = async (workspaceID: string) => {
-        // Check if any name is currently being edited
-        if (editNameEnabled.some(value => value === true)) {
-            console.log("An workspace name is being edited, cannot load a new workspace");
+            saveWorkSpaceTrigger.current?.click()
+
             return
         }
 
-        console.log(`Load workspace ${workspaceID} into RAM`)
+        try {
+            const response = await axios.post(`http://localhost:${port}/load_by_id`, { workspaceID });
+            
+            if (response.data.success) {
+                setCurWorkSpaceID(workspaceID)
+                navigate(`/file/:${workspaceID}`)
+                // console.log(`workspace ${workspaceID} loaded successfully`)
+            } else {
+                console.error("Failed to load workspace:", response.data.msg);
+            }
+        } catch (error) {
+            console.error("Error loading workspace:", error);
+        }
+    }
 
-        // Check if there is any workspace that is not saved
-        const isUnsavedWorkspaceExist = workSpaceMetadata.some(workspace => !workspace.isWorkSpaceSaved);
+    const handleClickLoadURLWorkspace = async (workspaceID: string) => {
+
+        const isUnsavedWorkspaceExist = workSpaceMetadata.some(workspace => !workspace.isWorkSpaceSaved)
 
         if (isUnsavedWorkspaceExist) {
-            // Because user attempts to load another workpsace in RAM, both afterSaveResetCurWorkspace and allowUnsave should be true
-            setAfterSaveResetCurWorkspace(true)
-            setAllowUnsave(true)
-
             // If there are unsaved workspaces, trigger the save button
-            saveWorkSpaceTrigger.current?.click();
-        } else {
+            saveWorkSpaceTrigger.current?.click()
+
+            return
+        }
+
+        try {
+            const response = await axios.post(`http://localhost:${port}/load_by_id`, { workspaceID });
+            
+            if (response.data.success) {
+                setCurWorkSpaceID(workspaceID)
+                navigate(`/url/:${workspaceID}`)
+                // console.log(`workspace ${workspaceID} loaded successfully`)
+            } else {
+                console.error("Failed to load workspace:", response.data.msg);
+            }
+        } catch (error) {
+            console.error("Error loading workspace:", error);
+        }
+    }
+
+    const updateWorkspaceMetaInfo = (workspaceID: string, updatedMetadata: WorkSpaceMetadata) => {
+        setWorkSpaceMetadata(prevMetadata => {
+            const index = prevMetadata.findIndex(ws => ws.workspaceID === workspaceID)
+            if (index !== -1) {
+                return [
+                    ...prevMetadata.slice(0, index),
+                    { ...updatedMetadata, isWorkSpaceSaved: true },
+                    ...prevMetadata.slice(index + 1)
+                ]
+            } else {
+                // If not found, just add the new metadata
+                return [...prevMetadata, { ...updatedMetadata, isWorkSpaceSaved: true }]
+            }
+        })
+    }
+
+    const handleClickLoadGmailWorkspace = async (workspaceID: string) => {
+        const isUnsavedWorkspaceExist = workSpaceMetadata.some(workspace => !workspace.isWorkSpaceSaved)
+
+        if (isUnsavedWorkspaceExist) {
+            // If there are unsaved workspaces, trigger the save button
+            saveWorkSpaceTrigger.current?.click()
+
+            return
+        }
+
+        // Function to determine the workspace state and take appropriate action
+        async function checkAndHandleWorkspaceState(workspaceID: string) {
             try {
-                const response = await axios.post(`http://localhost:${port}/load_by_id`, { workspaceID });
-        
-                if (response.data.success) {
-                    closeBtn.current?.click()
-                    setCurWorkSpaceID(workspaceID)
-                    console.log("Model loaded successfully:", response.data)
+                const gmailWorkspace = workSpaceMetadata.find(workspace => workspace.workspaceID === workspaceID)
+            
+                if (gmailWorkspace?.gmailWorkspaceInfo?.is_training_finished) {
+                    console.log("Load Workspace.")
+                    const response = await axios.post(`http://localhost:${port}/load_gmail_workspace_by_id`, { workspaceID }) // If training is finished, load the workspace
+                    if (response.data.success) {
+                        setCurWorkSpaceID(workspaceID)
+                        navigate(`/gmail/:${workspaceID}`)
+                    } else {
+                        console.error("Failed to load workspace:", response.data.msg)
+                    }
+                } else if (! gmailWorkspace?.gmailWorkspaceInfo?.is_download_finished) {
+                    // If downloading is not finished, resume downloading
+                    
+                    console.log("Attempt to resume download...")
+                    const ws = new WebSocket(`ws://localhost:${port}/gmail_resume_downloading`)
+                    ws.onopen = () => { 
+                        gmailWorkspaceProgressRef.current?.click()
+                        ws.send(JSON.stringify({ 
+                            workspaceid: workspaceID 
+                        })) 
+                    }
+                    ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data)
+                        console.log(data.progress, data.message)
+
+                        setGmailWorkspaceProgress(data.progress)
+
+                        if (data.complete) {
+                            console.log(data.message)
+                            
+                            // Update metadata
+                            const updatedMetadata: WorkSpaceMetadata = data.metadata
+                            updateWorkspaceMetaInfo(workspaceID, updatedMetadata)
+
+                            // Resume training
+                            console.log("Attempt to resume training...")
+                            const ws = new WebSocket(`ws://localhost:${port}/gmail_resume_training`)
+                            ws.onopen = () => {
+                                console.log("WebSocket connection established. Starting training.")
+                                gmailWorkspaceProgressRef.current?.click()
+                                ws.send(JSON.stringify({
+                                    workspaceid: workspaceID,
+                                }))
+                            }
+                        
+                            ws.onmessage = async (event) => {
+                                // Handle messages from the server here
+                                const messageData = JSON.parse(event.data)
+
+                                setGmailWorkspaceProgress(messageData.progress)
+
+                                if (messageData.complete) {
+                                    console.log("Received message from server:", messageData.message)
+
+                                    const updatedMetadata: WorkSpaceMetadata = messageData.metadata
+
+                                    updateWorkspaceMetaInfo(workspaceID, updatedMetadata)
+                                    gmailWorkspaceCloseRef.current?.click()
+
+                                    const response = await axios.post(`http://localhost:${port}/load_gmail_workspace_by_id`, { workspaceID }) // After training is finished, load the workspace
+                                    if (response.data.success) {
+                                        setCurWorkSpaceID(workspaceID)
+                                        navigate(`/gmail/:${workspaceID}`)
+                                    } else {
+                                        console.error("Failed to load workspace:", response.data.msg)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                 } else {
-                    console.error("Failed to load workspace:", response.data.msg);
+                    // Resume training
+                    console.log("Attempt to resume training...")
+                    const ws = new WebSocket(`ws://localhost:${port}/gmail_resume_training`)
+                    ws.onopen = () => {
+                        console.log("WebSocket connection established. Starting training.")
+                        gmailWorkspaceProgressRef.current?.click()
+                        ws.send(JSON.stringify({
+                            workspaceid: workspaceID,
+                        }))
+                    }
+                
+                    ws.onmessage = async (event) => {
+                        // Handle messages from the server here
+                        const messageData = JSON.parse(event.data)
+
+                        setGmailWorkspaceProgress(messageData.progress)
+
+                        if (messageData.complete) {
+                            console.log("Received message from server:", messageData.message)
+
+                            const updatedMetadata: WorkSpaceMetadata = messageData.metadata
+
+                            updateWorkspaceMetaInfo(workspaceID, updatedMetadata)
+                            gmailWorkspaceCloseRef.current?.click()
+
+                            const response = await axios.post(`http://localhost:${port}/load_gmail_workspace_by_id`, { workspaceID }) // After training is finished, load the workspace
+                            if (response.data.success) {
+                                setCurWorkSpaceID(workspaceID)
+                                navigate(`/gmail/:${workspaceID}`)
+                            } else {
+                                console.error("Failed to load workspace:", response.data.msg)
+                            }
+
+                        }
+                    }
                 }
             } catch (error) {
-                console.error("Error during workspace load:", error);
+                console.error("Failed to handle workspace state:", error);
             }
         }
-    };
+
+        await checkAndHandleWorkspaceState(workspaceID)
+    }
+
+    const handleClickCreateFileWorkspace = async () => {
+        const showBootstrapModal = () => {
+            if (fileWorkspaceCreateModalRef.current) {
+              const modalElement = fileWorkspaceCreateModalRef.current;
+              const bsModal = new Modal(modalElement, {
+                keyboard: false // Optional: specify modal options
+              })
+              bsModal.show()
+            }
+        }
+
+        if ( curWorkSpaceID != null) {
+            const curWorkSpace = workSpaceMetadata.find(workspace => workspace.workspaceID === curWorkSpaceID)
+
+            if ( ! curWorkSpace?.isWorkSpaceSaved) { // if current workspace is not saved
+                saveWorkSpaceTrigger.current?.click()
+                return
+            }
+        }
+
+        showBootstrapModal()
+    }
+
+    const handleClickCreateURLWorkspace = async () => {
+        const showBootstrapModal = () => {
+            if (URLWorkspaceCreateModalRef.current) {
+              const modalElement = URLWorkspaceCreateModalRef.current;
+              const bsModal = new Modal(modalElement, {
+                keyboard: false // Optional: specify modal options
+              })
+              bsModal.show()
+            }
+        }
+
+        if ( curWorkSpaceID != null) {
+            const curWorkSpace = workSpaceMetadata.find(workspace => workspace.workspaceID === curWorkSpaceID)
+
+            if ( ! curWorkSpace?.isWorkSpaceSaved) { // if current workspace is not saved
+                saveWorkSpaceTrigger.current?.click()
+                return
+            }
+        }
+
+        showBootstrapModal()
+    }
+
+    const handleClickCreateGmailWorkspace = async () => {
+        const showBootstrapModal = () => {
+            if (gmailWorkspaceCreateModalRef.current) {
+              const modalElement = gmailWorkspaceCreateModalRef.current;
+              const bsModal = new Modal(modalElement, {
+                keyboard: false // Optional: specify modal options
+              })
+              bsModal.show()
+            }
+        }
+
+        if ( curWorkSpaceID != null) {
+            const curWorkSpace = workSpaceMetadata.find(workspace => workspace.workspaceID === curWorkSpaceID)
+
+            if ( ! curWorkSpace?.isWorkSpaceSaved) { // if current workspace is not saved
+                saveWorkSpaceTrigger.current?.click()
+                return
+            }
+        }
+
+        showBootstrapModal()
+    }
 
     const handleDeleteWorkSpace = async (workspaceID: string) => {
-        console.log("Attempting to delete workspace with ID:", workspaceID)
+        // console.log("Attempting to delete workspace with ID:", workspaceID)
+
+        if (curWorkSpaceID === workspaceID) { // if to delete the workspace current loading, reset backend
+            try {
+                const response = await axios.post(`http://localhost:${port}/reset_neural_db`)
+
+                if (response.data.success) {
+                    setCurWorkSpaceID(null)
+                }
+            } catch (error) {
+                console.error("Error during backend reset:", error)
+            }
+        }
 
         const workspace = workSpaceMetadata.find(ws => ws.workspaceID === workspaceID)
 
-        if (!workspace) {
+        if (! workspace) {
             console.error("Workspace not found:", workspaceID)
             return
         }
 
-        if (!workspace.isWorkSpaceSaved) {
-            // If the workspace is completely new or has some modified change
-            (async () => {
-                const unsavedWorkspace = workspace
+        if ( ! workspace.isWorkSpaceSaved ) { // If the workspace is not saved: completely new or has some modified change
+            const unsavedWorkspace = workspace
 
-                const hasSavedFiles = unsavedWorkspace.documents.some(doc => doc.isSaved)
+            const hasSavedFiles = unsavedWorkspace.documents.some(doc => doc.isSaved)
 
-                if (hasSavedFiles) {
-                    console.log(`removing unsaved files from workspace ${unsavedWorkspace.workspaceID}`)
+            if (hasSavedFiles) {
+                console.log('removing unsaved files and mark workspace as saved')
 
-                    // Remove unsaved files and mark workspace as saved
-                    const updatedDocuments = unsavedWorkspace.documents.filter(doc => doc.isSaved);
-                    const updatedWorkSpaceMetadata = workSpaceMetadata.map(workspace => 
+                const savedDocs = unsavedWorkspace.documents.filter(doc => doc.isSaved)
+                const updatedWorkSpaceMetadata = workSpaceMetadata.map(
+                    workspace => 
                         workspace.workspaceID === unsavedWorkspace.workspaceID
-                            ? { ...workspace, documents: updatedDocuments, isWorkSpaceSaved: true }
-                            : workspace
-                    )
-                    setWorkSpaceMetadata(updatedWorkSpaceMetadata)
-                } else {
-                    console.log(`Delete new workspace ${unsavedWorkspace.workspaceID}`)
+                        ? { ...workspace, documents: savedDocs, isWorkSpaceSaved: true }
+                        : workspace
+                )
+                setWorkSpaceMetadata(updatedWorkSpaceMetadata)
+            } else {
+                console.log('Delete new workspace by remove entire workspace metadata')
 
-                    // Remove entire workspace metadata
-                    const updatedWorkSpaceMetadata = workSpaceMetadata.filter(workspace => workspace.workspaceID !== unsavedWorkspace.workspaceID)
-                    setWorkSpaceMetadata(updatedWorkSpaceMetadata)
-                }
-    
-                // Reset backend and frontend
-                try {
-                    const response = await axios.post(`http://localhost:${port}/reset_neural_db`)
-    
-                    if (response.data.success) {
-                        console.log(response.data.msg)
-                        setCurWorkSpaceID(null)
-                    } else {
-                        console.error("Backend reset failed:", response.data.msg)
-                    }
-                } catch (error) {
-                    console.error("Error during backend reset:", error)
-                }
-            })()
-        } else {
-            // Delete an existing saved & unmodified workspace
+                const updatedWorkSpaceMetadata = workSpaceMetadata.filter(workspace => workspace.workspaceID !== unsavedWorkspace.workspaceID)
+                setWorkSpaceMetadata(updatedWorkSpaceMetadata)
+            }
+
+        } else { // Delete an existing saved & unmodified workspace
             try {
-                const response = await axios.post(`http://localhost:${port}/delete_by_id`, { workspaceID });
+                const response = await axios.post(`http://localhost:${port}/delete_by_id`, { workspaceID })
         
                 if (response.data.success) {
-                    console.log("Workspace deleted successfully:", response.data)
+                    console.log("Workspace deleted successfully")
     
                     // Remove the workspace with the given workspaceID
-                    setWorkSpaceMetadata(prevMetadata => {
-                        return prevMetadata.filter(md => md.workspaceID !== workspaceID);
-                    })
-
-
-                    // Reset backend and frontend
-                    try {
-                        const response = await axios.post(`http://localhost:${port}/reset_neural_db`)
-        
-                        if (response.data.success) {
-                            console.log(response.data.msg)
-                            setCurWorkSpaceID(null)
-                        } else {
-                            console.error("Backend reset failed:", response.data.msg)
-                        }
-                    } catch (error) {
-                        console.error("Error during backend reset:", error)
-                    }
+                    setWorkSpaceMetadata(prevMetadata => prevMetadata.filter(md => md.workspaceID !== workspaceID))
                 } else {
-                    console.error("Failed to delete workspace:", response.data.msg);
+                    console.error("Failed to delete workspace:", response.data.msg)
                 }
             } catch (error) {
-                console.error("Error during workspace deletion:", error);
+                console.error("Error during workspace deletion:", error)
             }
         }
-    };
+    }
 
     const handleExportWorkSpace = (workspaceID: string) => {
-        const workspace = workSpaceMetadata.find(ws => ws.workspaceID === workspaceID);
-        if (!workspace) {
-            console.error("Workspace not found:", workspaceID);
-            return;
+        const workspace = workSpaceMetadata.find(ws => ws.workspaceID === workspaceID)
+
+        if ( !workspace ) {
+            console.error("Workspace not found:", workspaceID)
+            return
         }
 
-        // A workspace is considered new if it was never saved or it's saved and modified
-        const isWorkspaceNew = !workspace.isWorkSpaceSaved
+        // workspace never saved or it's saved and modified
+        const isWorkspaceUnsaved = !workspace.isWorkSpaceSaved
 
         // Invoke Electron's save dialog
         window.electron.invoke('show-save-dialog').then(filePath => {
             if (!filePath) {
-                console.log('Export dialog was canceled');
-                return;
+                // console.log('Export dialog was canceled')
+                return
             }
-            console.log('Workspace will be exported to:', filePath);
+            // console.log('Workspace will be exported to:', filePath)
     
             // Prepare export data based on the workspace state
-            const exportData = isWorkspaceNew ? 
+            const exportData = isWorkspaceUnsaved ? 
                 { filePath, workspaceID, workspaceName: workspace.workspaceName, currentModel: workspace.model_info } :
-                { filePath, workspaceID };
+                { filePath, workspaceID }
     
             // Select endpoint based on the workspace state
-            const endpoint = isWorkspaceNew ? '/export_new_workspace' : '/export_by_id';
+            const endpoint = isWorkspaceUnsaved ? '/export_new_workspace' : '/export_by_id'
     
             axios.post(`http://localhost:${port}${endpoint}`, exportData)
-                .then(response => {
-                    console.log('Workspace exported successfully:', response.data);
+                .then(_ => {
+                    // console.log('Workspace exported successfully:', response.data)
                 })
                 .catch(error => {
-                    console.error('Error during model export:', error);
-                });
+                    console.error('Error during model export:', error)
+                })
         })
         .catch(err => {
-            console.error('Error showing save dialog', err);
-        });
-    };
-
-    const handleImportWorkSpace = () => {
-        window.electron.send('open-folder-dialog')
-
-        window.electron.once('selected-folder', (directoryPath: string) => {
-            console.log('Directory chosen:', directoryPath)
-            
-            axios.post(`http://localhost:${port}/import_workspace`, { directoryPath })
-            .then(response => {
-                console.log('Workspace imported successfully:', response.data)
-
-                const importedMetadata = {
-                    ...response.data.metadata,
-                    isWorkSpaceSaved: true // Set the isWorkSpaceSaved to true
-                }
-
-                setWorkSpaceMetadata(prevMetadata => [...prevMetadata, importedMetadata])
-            })
-            .catch(error => {
-                console.error('Error during workspace import:', error);
-            });
+            console.error('Error showing save dialog', err)
         })
-    };
+    }
 
-  return (
-    <>
-    <button className="btn btn-general no-drag" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasWithBothOptions" aria-controls="offcanvasWithBothOptions">
-        <i className="bi bi-layout-sidebar"></i>
-    </button>
+    const [fileWorkSpaces, setFileWorkSpaces] = useState<WorkSpaceMetadata[]>([]);
+    const [urlWorkSpaces, setUrlWorkSpaces] = useState<WorkSpaceMetadata[]>([])
+    const [gmailWorkSpaces, setGmailWorkSpaces] = useState<WorkSpaceMetadata[]>([])
 
-    <div className="offcanvas offcanvas-start" data-bs-scroll="true" tabIndex={-1} id="offcanvasWithBothOptions" aria-labelledby="offcanvasWithBothOptionsLabel">
-        <div className="offcanvas-header d-flex justify-content-end">
-            <button type="button" className="btn-close no-drag font-sm" ref={closeBtn}
-                data-bs-dismiss="offcanvas" aria-label="Close"
-                style={{display: "none"}}
-            >
-            </button>
-        </div>
-        <div className="offcanvas-body font-sm">
-            <div className='d-flex mb-3'>
-                <button className='btn btn-general me-2 d-flex border border-secondary-subtle align-items-center w-100'
-                    onClick={()=>{
-                                    handleStartWorkSpace();         
-                                    recordEvent({
-                                        UserAction: 'Click',
-                                        UIComponent: 'Start-a-new-workspace button',
-                                        UI: 'SideBar',
-                                    })
-                                }}
-                >
-                    <i className="bi bi-plus-circle fs-5 me-2"></i>
-                    <div className='font-sm'>Start a new workspace</div>
-                </button>
-                <button onClick={()=>{
-                                        handleImportWorkSpace();
-                                        recordEvent({
-                                            UserAction: 'Click',
-                                            UIComponent: 'Import-workspace button',
-                                            UI: 'SideBar',
-                                        })
-                                    }} 
-                    className='btn btn-general d-flex border border-secondary-subtle align-items-center'>
-                    <i className="bi bi-cloud-plus fs-5 me-2"></i>
-                    <div className='font-sm'>Import</div>
-                </button>
-                
-            </div>
+    // Partition workspaces into File and URL
+    useEffect(() => {
+        const partitionWorkSpaces = () => {
+            const fileWS: WorkSpaceMetadata[] = []
+            const urlWS: WorkSpaceMetadata[] = []
+            const gmailWS: WorkSpaceMetadata[] = []
 
-            {
-                workSpaceMetadata.map((workspace, index) => (
-                    <div 
-                    key={workspace.workspaceID}
-                    className={`position-relative btn btn-general2 py-2 w-100 rounded-2 d-flex font-sm justify-content-between align-items-center mb-1 ${curWorkSpaceID === workspace.workspaceID  ? 'bg-secondary' : ''} bg-opacity-50`}>
-                    {
-                        curWorkSpaceID === workspace.workspaceID 
-                        ?
-                        <Tooltip title="Current work space" placement='right'>
-                            <div className='sidebar-curent-select'>
-                                <i className="bi bi-caret-right-fill"></i>
-                            </div>
-                        </Tooltip>
-                        :
-                        <></>
+            workSpaceMetadata.forEach(workspace => {
+                if (workspace.gmailWorkspaceInfo) {
+                    // If the workspace has GmailWorkspaceInfo, add to gmailWS
+                    gmailWS.push(workspace)
+                } else {
+                    // Check if all documents in the workspace are files
+                    const isFile = (fileName: string) => {
+                        const fileExtensions = ['.pdf', '.csv', '.doc']
+                        return fileExtensions.some(ext => fileName.toLowerCase().endsWith(ext))
                     }
+                    const allFiles = workspace.documents.every(doc => isFile(doc.fileName))
+
+                    if (allFiles) {
+                        // If all documents are files, add to fileWS
+                        fileWS.push(workspace)
+                    } else {
+                        // Otherwise, add to urlWS
+                        urlWS.push(workspace)
+                    }
+                }
+            })
+
+            setFileWorkSpaces(fileWS)
+            setUrlWorkSpaces(urlWS)
+            setGmailWorkSpaces(gmailWS)
+        }
+
+        partitionWorkSpaces()
+    }, [workSpaceMetadata])
+
+
+    // When not loading workspace, go to home page
+    useEffect(()=>{
+        if(curWorkSpaceID == null)
+            navigate('/')
+    },[curWorkSpaceID])
+
+
+    useEffect( ()=>{
+        const syncGmailWorkspace = async () => {
+            if (gmailWorkspaceSyncID) {
+                try {
+                    const response = await axios.post(`http://localhost:${port}/gmail_sync`, { workspaceID: gmailWorkspaceSyncID })
                     
-                    <div 
-                        className='text-start w-100 position-relative' 
-                        onClick={() => {
-                                        handleLoadWorkSpace(workspace.workspaceID);
-                                        recordEvent({
-                                            UserAction: 'Click',
-                                            UIComponent: 'Load-workspace tab',
-                                            UI: 'SideBar',
-                                        })
-                                    }}
-                    >
-                        <form className='d-flex' onSubmit={(e)=>{console.log("handle name edit here"); e.preventDefault(); toggleEditNameEnabled(index)}}> 
-                        {/* handle edit name by enter with form on submit */}
-                            <input  
-                                    ref={el => inputRefs.current[index] = el}
-                                    className='mb-2 bg-transparent border-0 history-item' 
-                                    value={workspaceNames[index] || ""}
-                                    readOnly={!editNameEnabled[index]} 
-                                    onChange={(e) => setWorkspaceNames(prevNames => prevNames.map((name, idx) => idx === index ? e.target.value : name))}
-                                    style={{width: "fit-content", maxWidth: "200px"}}
-                            />
-                        </form>
+                    if (response.data.success) {
+                        console.log('Synced this gmail workspace:', gmailWorkspaceSyncID)
+                        navigate('/') // Go to homepage
+                        setCurWorkSpaceID(null)
+                        
+                        console.log("Attempt to resume download...")
+                        const ws = new WebSocket(`ws://localhost:${port}/gmail_resume_downloading`)
+                        ws.onopen = () => { 
+                            gmailWorkspaceProgressRef.current?.click()
+                            ws.send(JSON.stringify({ 
+                                workspaceid: gmailWorkspaceSyncID 
+                            })) 
+                        }
+                        ws.onmessage = (event) => {
+                            const data = JSON.parse(event.data)
+                            console.log(data.progress, data.message)
     
-                        <div className='d-flex font-x-sm mt-1 text-light-emphasis'>
-                            <div> {`${ workspace.documents.some(doc => doc.isSaved) ?  'Last saved: ' + moment.utc(workspace.last_modified).fromNow() : 'Not saved'}`} </div>
-                            <div className='ms-2 text-secondary'>{workspace.isWorkSpaceSaved ? '' : '* Changes not saved'}</div>
-                        </div>
+                            setGmailWorkspaceProgress(data.progress)
+    
+                            if (data.complete) {
+                                console.log(data.message)
+                                
+                                // Update metadata
+                                const updatedMetadata: WorkSpaceMetadata = data.metadata
+                                updateWorkspaceMetaInfo(gmailWorkspaceSyncID, updatedMetadata)
+    
+                                // Resume training
+                                console.log("Attempt to resume training...")
+                                const ws = new WebSocket(`ws://localhost:${port}/gmail_resume_training`)
+                                ws.onopen = () => {
+                                    console.log("WebSocket connection established. Starting training.")
+                                    gmailWorkspaceProgressRef.current?.click()
+                                    ws.send(JSON.stringify({
+                                        workspaceid: gmailWorkspaceSyncID,
+                                    }))
+                                }
+                            
+                                ws.onmessage = async (event) => {
+                                    // Handle messages from the server here
+                                    const messageData = JSON.parse(event.data)
+    
+                                    setGmailWorkspaceProgress(messageData.progress)
+    
+                                    if (messageData.complete) {
+                                        console.log("Received message from server:", messageData.message)
+    
+                                        const updatedMetadata: WorkSpaceMetadata = messageData.metadata
+    
+                                        updateWorkspaceMetaInfo(gmailWorkspaceSyncID, updatedMetadata)
+                                        gmailWorkspaceCloseRef.current?.click()
+    
+                                        const response = await axios.post(`http://localhost:${port}/load_gmail_workspace_by_id`, { gmailWorkspaceSyncID }) // After training is finished, load the workspace
+                                        if (response.data.success) {
+                                            setCurWorkSpaceID(gmailWorkspaceSyncID)
+                                            navigate(`/gmail/:${gmailWorkspaceSyncID}`)
+                                        } else {
+                                            console.error("Failed to load workspace:", response.data.msg)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                    } else {
+                        console.error("Failed to sync workspace:", response.data.message || 'Unknown error')
+                    }
+                } catch (error) {
+                    console.error("Failed to sync workspace due to an error")
+                } finally {
+                    setGmailWorkspaceSyncID(null) // After sync finished, set sync id to null
+                }
+            }
+        }
+            
+        syncGmailWorkspace()
+    },[gmailWorkspaceSyncID])
+
+    return (
+        <>
+            <Drawer
+                PaperProps={{
+                    sx: {
+                    backgroundColor: "rgb(247, 247, 247)",
+                    }
+                }}
+                sx={{
+                width: drawerWidth,
+                flexShrink: 0,
+                '& .MuiDrawer-paper': {
+                    width: drawerWidth,
+                    border: "none",
+                    boxSizing: 'border-box',
+                },
+                }}
+                variant="persistent"
+                anchor="left"
+                open={open}
+            >
+                <DrawerHeader>
+                    <IconButton 
+                        onClick={()=>setOpen(false)}>
+                        {theme.direction === 'ltr' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+                    </IconButton>
+                </DrawerHeader>
+                <div className='w-100 h-100 d-flex flex-column justify-content-between'>
+                    <div className="font-sm w-100">
+                        <SideBarItem    collapseId = {"CollapseFile"} 
+                                        logo = {"📃"} 
+                                        workspaceName = "File"
+                                        createButtonComponent = {
+                                            <Tooltip title="New workspace" placement='right'>
+                                                    <i  className="bi bi-plus-lg btn btn-general p-0 px-1"           
+                                                            onClick={handleClickCreateFileWorkspace}
+                                                    />
+                                            </Tooltip>
+                                        }
+                                        CreateWorkspaceComponent  = { 
+                                            <CreateFileWorkspace
+                                                setCurWorkSpaceID = {setCurWorkSpaceID}
+                                                setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                                                modalRef={fileWorkspaceCreateModalRef}
+                                            />
+                                        }
+                                        workspaces = {fileWorkSpaces} curWorkSpaceID = {curWorkSpaceID}
+                                        handleClickLoadWorkspace = {handleClickLoadFileWorkspace}
+                                        handleClickExportWorkSpace = {handleExportWorkSpace}
+                                        handleClickDeleteWorkspace = {handleDeleteWorkSpace}
+                        />
+
+                        <SideBarItem    collapseId = {"CollapseGmail"}
+                                        logo = {"📧"} 
+                                        workspaceName = "Gmail"
+                                        createButtonComponent = {
+                                            <Tooltip title="New workspace" placement='right'>
+                                                    <i  className="bi bi-plus-lg btn btn-general p-0 px-1"
+                                                        onClick={handleClickCreateGmailWorkspace}/>
+                                            </Tooltip>
+                                        }
+                                        CreateWorkspaceComponent  = { 
+                                            <CreateGmailWorkspace
+                                                setCurWorkSpaceID = {setCurWorkSpaceID}
+                                                setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                                                modalRef={gmailWorkspaceCreateModalRef}
+                                                gmailWorkspaceProgressRef={gmailWorkspaceProgressRef} gmailWorkspaceCloseRef = {gmailWorkspaceCloseRef}
+                                                setGmailWorkspaceProgress={setGmailWorkspaceProgress}
+                                            />
+                                        }
+                                        workspaces = {gmailWorkSpaces} curWorkSpaceID = {curWorkSpaceID}
+                                        handleClickLoadWorkspace = {handleClickLoadGmailWorkspace}
+                                        handleClickExportWorkSpace = {handleExportWorkSpace}
+                                        handleClickDeleteWorkspace = {handleDeleteWorkSpace}
+                        
+                        />
+                        <SideBarItem    collapseId = {"CollapseBrowser"} 
+                                        logo = {"🔗"} 
+                                        workspaceName = "Browser"
+                                        createButtonComponent = {
+                                            <Tooltip title="New workspace" placement='right'>
+                                                    <i  className="bi bi-plus-lg btn btn-general p-0 px-1"
+                                                        onClick={handleClickCreateURLWorkspace}/>
+                                            </Tooltip>
+                                        }
+                                        CreateWorkspaceComponent  = { 
+                                            <CreateURLWorkspace
+                                                setCurWorkSpaceID = {setCurWorkSpaceID}
+                                                setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                                                modalRef={URLWorkspaceCreateModalRef}
+                                            />
+                                        }
+                                        workspaces = {urlWorkSpaces} curWorkSpaceID = {curWorkSpaceID}
+                                        handleClickLoadWorkspace = {handleClickLoadURLWorkspace}
+                                        handleClickExportWorkSpace = {handleExportWorkSpace}
+                                        handleClickDeleteWorkspace = {handleDeleteWorkSpace}
+                        />
+
                     </div>
-                    <div className='d-flex'>
-                        <Tooltip title="Edit name" placement='top'>
-                            <i className="btn btn-general p-1 bi bi-pen fs-6" onClick={() => {
-                                                                                                toggleEditNameEnabled(index);
-                                                                                                recordEvent({
-                                                                                                    UserAction: 'Click',
-                                                                                                    UIComponent: 'Edit-workspace-name button',
-                                                                                                    UI: 'SideBar',
-                                                                                                })
-                                }}></i>
-                        </Tooltip>
-                        
-                        <Tooltip  title={workspace.documents.some(doc => doc.isSaved) ?  `${workspace.isWorkSpaceSaved ? 'Export workspace' : 'Export changed workspace'}` : 'Export new workspace'}
-                                  placement='top' onClick={() => {
-                                                                    handleExportWorkSpace(workspace.workspaceID);
-                                                                    recordEvent({
-                                                                        UserAction: 'Click',
-                                                                        UIComponent: 'Export-workspace button',
-                                                                        UI: 'SideBar',
-                                                                    })
-                                  }}>
-                            <i className="btn btn-general p-1 bi bi-download mx-2 fs-6"></i>
-                        </Tooltip>
-                        
-                        <Tooltip title={workspace.documents.some(doc => doc.isSaved) ?  `${workspace.isWorkSpaceSaved ? 'Delete workspace' : 'Undo unsaved change'}` : 'Delete new workspace'}
-                                 placement='top' onClick={() => {
-                                                                handleDeleteWorkSpace(workspace.workspaceID);
-                                                                recordEvent({
-                                                                    UserAction: 'Click',
-                                                                    UIComponent: 'Delete-workspace button',
-                                                                    UI: 'SideBar',
-                                                                })
-                                 }}>
-                            <i className="btn btn-general p-1 bi bi-trash3 fs-6"></i>
-                        </Tooltip>
-                        
+                    <div className='rounded-0 py-3 border-0 border-shadow w-100'>
+                        <SummarizerSwitch summarizer = {summarizer} setSummarizer = {setSummarizer} cachedOpenAIKey = {cachedOpenAIKey} setCachedOpenAIKey = {setCachedOpenAIKey}  />
+                        <Subscribe trigger = {subscribeTrigger} user={user} setUser={setUser} setOpen = {setOpen}/>
+                        <GeneralAccountProfile user={user} setUser = {setUser} subscribeTrigger={subscribeTrigger}/>
                     </div>
                 </div>
-                ))
-            }
-        </div>
-    </div>
-    </>
-    
-  )
-}
+
+                <GmailWorkspaceProgress progress = {gmailWorkspaceProgress} 
+                                    gmailWorkspaceProgressRef = {gmailWorkspaceProgressRef} gmailWorkspaceCloseRef = {gmailWorkspaceCloseRef}
+                                    setCurWorkSpaceID = {setCurWorkSpaceID}
+                                    />
+            </Drawer>
+        </>
+    );
+    }

@@ -1,12 +1,13 @@
 // import { app, BrowserWindow, ipcMain, dialog, Menu, MenuItemConstructorOptions } from 'electron'
-import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, powerMonitor } from 'electron'
 import path from 'node:path'
 import portfinder from 'portfinder'
 import { autoUpdater } from 'electron-updater'
 import fs from 'fs'
 import { randomBytes } from 'crypto'
 import { spawn, ChildProcess } from 'child_process'
-let serverProcess: ChildProcess | null = null
+import { createClient } from '@supabase/supabase-js'
+import { TelemetryEventPackage } from '../src/hooks/useTelemetry'
 
 // The built directory structure
 //
@@ -20,29 +21,20 @@ let serverProcess: ChildProcess | null = null
 process.env.DIST = path.join(__dirname, '../dist')
 process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(process.env.DIST, '../public')
 
-
+let serverProcess: ChildProcess | null = null
 let win: BrowserWindow | null
-// 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
-const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
-
-// Supabase configuration
-import { createClient } from '@supabase/supabase-js'
-import { TelemetryEventPackage } from '../src/hooks/useTelemetry'
+const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL'] // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 
 const SUPABASE_URL = 'https://zdfbyydaiewiqvpymmtf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpkZmJ5eWRhaWV3aXF2cHltbXRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTc3NDA0NzAsImV4cCI6MjAxMzMxNjQ3MH0.N2eAAr8Xv9NghkOBJjqrgWXtzx4IdgpVyB4QrFbK_Yk';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-// All user info will be stored here.
-// This directory is persistent across udpates
-const USERDATAPATH = path.join(app.getPath('appData'), 'pocketllm');
+const USERDATAPATH = path.join(app.getPath('appData'), 'pocketllm') // All user info will be stored here. This directory is persistent across udpates
 if (!fs.existsSync(USERDATAPATH)){
-  fs.mkdirSync(USERDATAPATH);
+  fs.mkdirSync(USERDATAPATH)
 }
 
-// User pseudonyme identity construction and retrieval
-const IDENTITY_FILE = path.join(USERDATAPATH, 'user_identity.json')
-
+const IDENTITY_FILE = path.join(USERDATAPATH, 'user_identity.json') // User pseudonyme identity construction and retrieval
 interface Identity {
   machine_id: string;
   gmail_id: string | null;
@@ -64,78 +56,9 @@ const getUserIdentity = () => {
   const userID = identity.gmail_id ? `${identity.gmail_id} | ${identity.machine_id}` : identity.machine_id
   return { userID }
 }
+
 let  { userID }  = getUserIdentity()
 console.log(`User ID: ${userID}`)
-
-// Define an interface for usage data
-interface UsageData {
-  size: number; // Total size used
-  resetDate: Date; // The date when the usage was last reset
-  premiumEndDate: Date; // The date when the premium access ends
-}
-
-// Usage
-const USAGE_FILE = path.join(USERDATAPATH, 'usage.json')
-
-// Function to get or create the usage data
-const getOrCreateUsageData = (): UsageData => {
-  let usageData: UsageData;
-
-  if (fs.existsSync(USAGE_FILE)) {
-    // Read the existing usage data
-    const data = JSON.parse(fs.readFileSync(USAGE_FILE, 'utf8'));
-    usageData = {
-      size: data.size,
-      resetDate: new Date(data.resetDate),
-      premiumEndDate: data.premiumEndDate ? new Date(data.premiumEndDate) : new Date()
-    };
-
-    const lastResetDate = usageData.resetDate;
-    const currentDate = new Date();
-
-    // Check if the premiumEndDate field was previously not set
-    // This is to accomodate pre-v1.1.0 where premiumEndDate was not a field.
-    if (!data.premiumEndDate) {
-      usageData.premiumEndDate = new Date();
-      usageData.premiumEndDate.setDate(currentDate.getDate() + 15);
-    }
-
-    // Check if the last reset was more than a month ago
-    if (currentDate.getMonth() !== lastResetDate.getMonth() ||
-        currentDate.getFullYear() !== lastResetDate.getFullYear()) {
-      
-      console.log('Reset the usage data in a new month.')
-      
-      usageData.size = 0;
-      usageData.resetDate = new Date(); // Keep this as a Date object
-    }
-  } else {
-    console.log('Writing the usage file for first time.')
-
-    // Create new usage data with initial values
-    usageData = {
-      size: 0,
-      resetDate: new Date(), // Keep this as a Date object
-      premiumEndDate: new Date() // Initialize premiumEndDate
-    };
-    usageData.premiumEndDate.setDate(usageData.premiumEndDate.getDate() + 15); // Add 15 days for premium access
-  }
-
-  // Serialize and write to file if necessary
-  fs.writeFileSync(USAGE_FILE, JSON.stringify({
-    size: usageData.size,
-    resetDate: usageData.resetDate.toISOString(), // Convert to string here
-    premiumEndDate: usageData.premiumEndDate.toISOString() // Convert to string
-  }, null, 2));
-
-  return usageData;
-}
-
-const usageData = getOrCreateUsageData()
-console.log(`Current Usage: ${usageData.size} MB`)
-console.log(`Usage Reset Date: ${usageData.resetDate.toISOString()}`)
-console.log(`Premium Plan End Date: ${usageData.premiumEndDate.toISOString()}`)
-
 
 function createWindow() {
   win = new BrowserWindow({
@@ -182,15 +105,12 @@ function createWindow() {
     win.loadFile(path.join(process.env.DIST, 'index.html'))
   }
 
-  //close window
-  ipcMain.on("closeApp", ()=>{
-    // probably need more work here to completely exit
-    win?.close();
+  ipcMain.on("closeApp", ()=>{ //close window
+    win?.close()
   })
 
   ipcMain.on("minimizeApp", ()=>{
-    console.log("Received minimizeApp event");
-    win?.minimize();
+    win?.minimize()
   })
 
   ipcMain.on("fullscreen", ()=>{
@@ -204,7 +124,6 @@ function createWindow() {
   let pdfWin: BrowserWindow | null = null;
 
   ipcMain.removeAllListeners('open-pdf-window')
-
   ipcMain.on('open-pdf-window', (_, pdfURL) => {
     pdfWin = new BrowserWindow({
       width: 800,
@@ -219,9 +138,9 @@ function createWindow() {
     pdfWin.on('closed', () => {
       pdfWin = null;
     });
-  });
+  })
 
-  // Set up a listener for the 'open-file-dialog' message
+  ipcMain.removeAllListeners('open-file-dialog')
   ipcMain.on('open-file-dialog', (event) => {
     dialog.showOpenDialog(win!, {
       properties: ['openFile', 'multiSelections'],
@@ -247,6 +166,7 @@ function createWindow() {
     })
   })
 
+  ipcMain.removeAllListeners('open-csv-file-dialog')
   ipcMain.on('open-csv-file-dialog', (event) => {
     const urlRegex = /https?:\/\/[^\s,]+/g; // Regular expression for URL validation
 
@@ -279,8 +199,9 @@ function createWindow() {
     }).catch(err => {
       console.log(err);
     });
-  });
+  })
 
+  ipcMain.removeAllListeners('open-single-csv-file-dialog')
   ipcMain.on('open-single-csv-file-dialog', (event) => {
 
     dialog.showOpenDialog(win!, {
@@ -295,9 +216,9 @@ function createWindow() {
     }).catch(err => {
       console.log(err);
     });
-  });
+  })
 
-  // Set up a listener for the 'open-folder-dialog' message
+  ipcMain.removeAllListeners('open-folder-dialog')
   ipcMain.on('open-folder-dialog', (event) => {
     dialog.showOpenDialog({
       properties: ['openDirectory']
@@ -308,28 +229,26 @@ function createWindow() {
     }).catch(err => {
       console.log(err);
     });
-  });
-
-  // Get and send user id as referral code
-  ipcMain.on('get-user-id', (event) => {
-    event.sender.send('send-user-id', userID);
   })
 
-  // OS methods are used for telemetry
-  const os = require('os')
+  const os = require('os') // used inside telemetry
 
+  ipcMain.removeAllListeners('get-os-type')
   ipcMain.on('get-os-type', (event) => {
     event.returnValue = os.type()
   })
 
+  ipcMain.removeAllListeners('get-os-release')
   ipcMain.on('get-os-release', (event) => {
     event.returnValue = os.release()
   })
 
+  ipcMain.removeAllListeners('get-os-arch')
   ipcMain.on('get-os-arch', (event) => {
     event.returnValue = os.arch()
   })
 
+  ipcMain.removeAllListeners('save-telemetry-data')
   ipcMain.on('save-telemetry-data', (event, data) => {
     const fs = require('fs');
   
@@ -406,132 +325,15 @@ function createWindow() {
     } else {
       processData('[]');
     }
-  });
-
-  ipcMain.on('activate-referral', async (event, userMachineHash) => {
-    try {
-        const { error } = await supabase.from('activated_referrals').insert([{ user_id: userMachineHash }]);
-        if (error) {
-            console.error("Error activating referral code:", error);
-            event.reply('activate-referral-response', { success: false, error: error.message });
-        } else {
-            console.log("Referral code activated successfully");
-            event.reply('activate-referral-response', { success: true });
-        }
-    } catch (err) {
-      if (err instanceof Error) {
-          console.error('Error activating referral code in Supabase:', err.message);
-          event.reply('activate-referral-response', { success: false, error: err.message });
-      } else {
-          console.error('An unexpected error occurred:', err);
-          event.reply('activate-referral-response', { success: false, error: 'An unexpected error occurred' });
-      }
-    }
   })
 
-  ipcMain.on('apply-referral', async (event, { userMachineHash, referralCode }) => {
-    try {
-        // Check if referral is valid using remote procedure in supabase
-        const { data, error: validationError } = await supabase
-            .rpc('check_referral_usage_valid', { param_user_id_using: userMachineHash, param_user_id_referred: referralCode });
+  ipcMain.removeAllListeners('open-external-url')
+  ipcMain.on('open-external-url', (_, url) => {
+    const { shell } = require('electron');
+    shell.openExternal(url);
+  })
 
-
-        if (validationError) {
-            console.error("Error validating referral code:", validationError);
-            return event.reply('apply-referral-response', { success: false, error: validationError.message });
-        }
-
-        if (data === true) {
-            // If referral is valid, write it to the referral_usage table
-            const { error: insertError } = await supabase.from('referral_usage').insert([{ user_id_using: userMachineHash, user_id_referred: referralCode }]);
-            if (insertError) {
-                console.error("Error writing referral usage:", insertError);
-                return event.reply('apply-referral-response', { success: false, error: insertError.message });
-            }
-
-            // Successfully applied referral
-            console.log("Referral code applied successfully");
-            event.reply('apply-referral-response', { success: true });
-        } else {
-            // Referral is not valid
-            event.reply('apply-referral-response', { success: false, error: 'Invalid referral code' });
-        }
-    } catch (err) {
-        if (err instanceof Error) {
-            console.error('Error applying referral code:', err.message);
-            event.reply('apply-referral-response', { success: false, error: err.message });
-        } else {
-            console.error('An unexpected error occurred:', err);
-            event.reply('apply-referral-response', { success: false, error: 'An unexpected error occurred' });
-        }
-    }
-  });
-
-  ipcMain.on('count_referral', async (event) => {
-    try {
-        const userIDs = userID.split(' | ');
-        const userMachineHash = userIDs.length === 2 ? userIDs[1] : userIDs[0];
-
-        const { data, error } = await supabase
-            .rpc('count_and_mark_referrals', { param_user_id_referred: userMachineHash });
-
-        if (error) {
-            console.error("Error calling Supabase RPC:", error);
-            event.reply('count_referral_response', 0);
-            return;
-        }
-
-        event.reply('count_referral_response', data || 0);
-    } catch (err) {
-        console.error('Error:', err);
-        event.reply('count_referral_response', 0);
-    }
-  });
-
-
-  // Remove the existing 'update-usage' handler if any
-  ipcMain.removeHandler('update-usage')
-
-  ipcMain.handle('update-usage', async (_, newSize) => {
-    if (fs.existsSync(USAGE_FILE)) {
-      try {
-        const data = JSON.parse(fs.readFileSync(USAGE_FILE, 'utf8'));
-        data.size = newSize; // Assuming newSize is the new total size to set
-  
-        fs.writeFileSync(USAGE_FILE, JSON.stringify(data, null, 2));
-        return 'success';
-      } catch (error) {
-        console.error(`Error writing to file: ${error}`);
-        throw error; // This will send an error back to the renderer process
-      }
-    } else {
-      throw new Error('Usage file not found.');
-    }
-  });
-  
-  // Remove existing handler if any and define a new one
-  ipcMain.removeHandler('update-premium-end-date');
-
-  ipcMain.handle('update-premium-end-date', async (_, newPremiumEndDate) => {
-    if (fs.existsSync(USAGE_FILE)) {
-      try {
-        const data: UsageData = JSON.parse(fs.readFileSync(USAGE_FILE, 'utf8'));
-        data.premiumEndDate = newPremiumEndDate; // Update the premium end date
-
-        fs.writeFileSync(USAGE_FILE, JSON.stringify(data, null, 2));
-        return 'success';
-      } catch (error) {
-        console.error(`Error writing to file: ${error}`);
-        throw error; // This will send an error back to the renderer process
-      }
-    } else {
-      throw new Error('Usage file not found.');
-    }
-  });
-
-  // Remove the existing 'show-save-dialog' handler if any
-  ipcMain.removeHandler('show-save-dialog');
-
+  ipcMain.removeHandler('show-save-dialog')
   ipcMain.handle('show-save-dialog', async (_) => {
     const result = await dialog.showSaveDialog(win!, {
       title: 'Save File',
@@ -548,27 +350,6 @@ function createWindow() {
     } else {
       return null
     }
-  })
-
-  // Remove the existing 'get-current-usage' handler if any
-  ipcMain.removeHandler('get-current-usage')
-
-  ipcMain.handle('get-current-usage', async (_) => {
-    const usageData = getOrCreateUsageData();
-    
-    const formattedUsageData = {
-      size: usageData.size,
-      resetDate: usageData.resetDate.toISOString(),
-      premiumEndDate: usageData.premiumEndDate.toISOString(),
-    };
-    return formattedUsageData;
-  })
-
-  ipcMain.removeAllListeners('open-external-url')
-
-  ipcMain.on('open-external-url', (_, url) => {
-    const { shell } = require('electron');
-    shell.openExternal(url);
   })
 }
 
@@ -595,8 +376,7 @@ app.on('window-all-closed', () => {
     win = null
   }
 
-  // Kill the Python process if it's running
-  if (serverProcess && !serverProcess.killed) {
+  if (serverProcess && !serverProcess.killed) { // Kill the Python process if it's running
     serverProcess.kill()
     console.log('Python server process killed on window-all-closed')
   }
@@ -611,17 +391,26 @@ app.on('activate', () => {
   }
 })
 
+ipcMain.removeHandler('restart-backend')
+ipcMain.handle('restart-backend', async () => {
+  if (serverProcess && !serverProcess.killed) { // Check if serverProcess is running and kill it
+    serverProcess.kill('SIGKILL')
+    console.log('Existing server process killed')
+  }
+
+  await startBackend()
+  console.log('Backend restarted successfully')
+})
+
 async function startBackend() {
   const availablePort = await portfinder.getPortPromise();
 
-  console.log(`found port ${availablePort}`)
+  console.log(`Found port available: ${availablePort}`)
 
-  // Remove the existing 'get-port' handler if any
-  ipcMain.removeHandler('get-port');
-
+  ipcMain.removeHandler('get-port')
   ipcMain.handle('get-port', (_) => {
-    return availablePort;
-  });
+    return availablePort
+  })
 
   // Start the FastAPI server as a child process
   const pythonExecutablePath = app.isPackaged ? 
@@ -634,40 +423,35 @@ async function startBackend() {
 
   console.log('spawn success')
 
-  // Handle server process outputs or errors
-  serverProcess.stdout!.on('data', (data) => {
+  serverProcess.stdout!.on('data', (data) => { // Handle server process outputs or errors
     console.log(`Server Output: ${data}`)
   })
   
   serverProcess.stderr!.on('data', (data) => {
     console.error(`Server Error: ${data}`)
 
-    // Notify render process FastAPI server is ready
     const message = data.toString()
     if (message.includes("Application startup complete.")) {
-      win?.webContents.send('server-ready')
+      win?.webContents.send('server-ready') // notify electron render process FastAPI server is ready
     }
   })
 }
 
 app.whenReady().then(async () => {
 
-  startBackend()
+  startBackend() // start backend
 
-  // Create the main application window
-  createWindow()
+  createWindow() // create main application window
 
-  // Initialize auto-updater after the main window has been created
-  autoUpdater.checkForUpdatesAndNotify()
+  autoUpdater.checkForUpdatesAndNotify() // initialize auto-updater after the main window has been created
 
   autoUpdater.on('update-available', () => {
     console.log('Update available.')
-    // Send a message to the renderer to notify users about an available update.
-    win?.webContents.send('update-available')
+    win?.webContents.send('update-available') // send message to render process to notify users about an available update.
   })
 
   autoUpdater.on('error', (error) => {
-    console.error(`Update error: ${error.toString()}`);
+    console.error(`Update error: ${error.toString()}`)
   })
 
   ipcMain.on('accept-update', () => {
@@ -677,5 +461,11 @@ app.whenReady().then(async () => {
   
   ipcMain.on('deny-update', () => {
     console.log('User denied the update.')
+  })
+
+  powerMonitor.on('resume', () => {
+    console.log('System has resumed from sleep');
+    
+    win?.webContents.send('power-restarted')
   })
 })

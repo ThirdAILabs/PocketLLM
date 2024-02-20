@@ -5,6 +5,7 @@ import SpecifyPaymentNotice from "./SpecifyPaymentNotice";
 import { SubscriptionPlan } from '../App'
 import { SetAlertMessageContext } from '../contexts/SetAlertMessageContext';
 import stripeLogo from "../assets/stripe.png";
+import { Tooltip } from "@mui/material";
 
 const stripePromise = loadStripe('pk_live_51O25b4E7soCP48YBHZshJy5P2LBBoKxdmohhpWXt0vHqQr9wXj1c729heMtDNCLghWUWO30yp6ubJqGuRgoreZlY00f9C88gFs')
 
@@ -12,9 +13,10 @@ type SubscribeProps = {
   trigger: React.RefObject<HTMLButtonElement>;
   user : { email: string, name: string, subscription_plan: SubscriptionPlan  } | null,
   setUser: React.Dispatch<React.SetStateAction<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>>,
+  setOpen: React.Dispatch<React.SetStateAction<boolean>>,
 }
 
-export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
+export default function Subscribe({trigger, user, setUser, setOpen}: SubscribeProps) {
   const [paymentType, setPaymentType] = useState(0) // 0 - don't, 1 - monthly, 2 - yearly
 
   const [notice, setNotice] = useState(<></>);
@@ -166,200 +168,153 @@ export default function Subscribe({trigger, user, setUser}: SubscribeProps) {
 
   return (
     <>
-        <button ref={trigger} type="button" className='btn btn-general mx-1 mt-5'  
-          data-bs-toggle="modal" data-bs-target="#subscribeModal"
-          style={{display: "none"}}
-        >
-            <div className='font-sm'>Subscription</div>
-        </button>
-
+    {
+      user ?
+      <>
+      <div className='px-2 my-2'>
+            <button  ref={trigger} type="button" data-bs-toggle="modal" data-bs-target="#subscribeModal" 
+            onClick={()=>setOpen(false)}
+            className='font-sm text-start btn btn-general2 bg-transparent rounded-3 py-2 w-100 d-flex'>
+                <i className="bi bi-credit-card text-secondary me-2"></i>
+                Subscribe
+            </button>
+        </div>
 
         <div className="modal fade" id="subscribeModal" tabIndex={-1} aria-hidden="true">
-            <div className="modal-dialog modal-xl modal-dialog-centered">
+            <div className="modal-dialog modal-lg modal-dialog-centered">
                 <div className="modal-content">
                     <div className="modal-header border-0">
-                        <button type="button" className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close" 
-                          onClick={()=>{setTimeout(() => {setPaymentType(0)}, 2000)}}>
-                        </button>
+                          <button type="button" className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close" 
+                            onClick={()=>{setTimeout(() => {setPaymentType(0)}, 2000)}}>
+                          </button>
                     </div>
-                    <div className="modal-body py-5 font-sm">
-                    {
-                      paymentType !== 0
-                      ?
-                      <>
-                        {/* Show user the amount of payment they are about to make */}
-                        <Elements stripe={stripePromise}>
-                          <PaymentForm/>
-                        </Elements>
-                      </>
-                      :
-                      <>
-                        <div className='d-flex mb-3 justify-content-center px-4'>
-                          <div className='subscribe-frame mx-2 border-shadow border border-light-subtle text-start d-flex flex-column justify-content-between'>
-                            <div>
-                              <div className='pb-3'>Free Plan</div>
-                              
-                              <div className='d-flex fs-6 align-items-end mb-2'><div className='fs-3 me-1 fw-bold'>0$</div></div>
-                              <div>
-                                <div className='d-flex align-items-start'>
-                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>Complete privacy of your data</div>
-                                </div>
-                                <div className='d-flex align-items-start'>
-                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>200 MB monthly premium credit</div>
-                                </div>
-                                <div className='d-flex align-items-start'>
-                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>Unlimited PDF, URL search</div>
-                                </div>
-                                <div className='d-flex align-items-start'>
-                                  <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
-                                  <div className='mt-2'>Limited Gmail, Outlook search</div>
-                                </div>
-                                {/* <div className='d-flex align-items-start'>
-                                  <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
-                                  <div className='mt-2'>OpenAI key not included</div>
-                                </div> */}
-                              </div>
-                            </div>
-                          </div>
-                          <div className='subscribe-frame mx-2 border-shadow border border-light-subtle text-start d-flex flex-column justify-content-between'>
-                            <div>
-                              <div className='pb-3'>Premium Plan</div>
-                              
-                              <div className='d-flex fs-6 align-items-end mb-2'><div className='fs-3 me-1 fw-bold'>4.95$</div> /month</div>
-                              <div>
-                                <div className='d-flex align-items-start'>
-                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>Complete privacy of your data</div>
-                                </div>
-                                <div className='d-flex align-items-start'>
-                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>Unlimited PDF workspace search</div>
-                                </div>
-                                <div className='d-flex align-items-start'>
-                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>Unlimited URL workspace search</div>
-                                </div>
-                                <div className='d-flex align-items-start'>
-                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>Unlimited Gmail workspace search</div>
-                                </div>
-                                <div className='d-flex align-items-start'>
-                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>Unlimited Outlook workspace search</div>
-                                </div>
-                                <div className='d-flex align-items-start'>
-                                  <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
-                                  <div className='mt-2'>Unlimited Github workspace search (upcoming)</div>
-                                </div>
-                                <div className='d-flex align-items-start'>
-                                  <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
-                                  <div className='mt-2'>Unlimited Slack workspace search (upcoming)</div>
-                                </div>
-                                {/* <div className='d-flex align-items-start'>
-                                  <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
-                                  <div className='mt-2'>OpenAI key not included</div>
-                                </div> */}
-                              </div>
-                            </div>
-                            
-                            <div className='d-flex justify-content-center my-2 mt-5'>
-                              {
-                                (!user || (user && user.subscription_plan === SubscriptionPlan.FREE)) ?
-                                <button type="button"
-                                        className='btn bg-primary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
-                                        onClick={()=>setPaymentType(1)}>
-                                          Subscribe
-                                </button>
-                                :
-                                user.subscription_plan ==  SubscriptionPlan.PREMIUM ?
-                                <div>
-                                  <div className='btn bg-info bg-opacity-25 btn-sm grey-btn px-3 rounded-3 mx-1' style={{cursor: "default"}}>
-                                            Cancel
+                    <div className="modal-body py-3 font-sm">
+                          {
+                            paymentType !== 0
+                            ?
+                            <>
+                              {/* Show user the amount of payment they are about to make */}
+                              <Elements stripe={stripePromise}>
+                                <PaymentForm/>
+                              </Elements>
+                            </>
+                            :
+                            <>
+                              <div className='d-flex mb-3 justify-content-center px-4'>
+                                <div className='subscribe-frame mx-2 border-shadow border border-light-subtle text-start d-flex flex-column justify-content-between'>
+                                  <div>
+                                    <div className='pb-3'>Free Plan</div>
+                                    
+                                    <div className='d-flex fs-6 align-items-end mb-2'><div className='fs-3 me-1 fw-bold'>0$</div></div>
+                                    <div>
+                                      <div className='d-flex align-items-start'>
+                                        <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
+                                        <div className='mt-2'>Complete privacy of your data</div>
+                                      </div>
+                                      <div className='d-flex align-items-start'>
+                                        <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
+                                        <div className='mt-2'>200 MB monthly premium credit</div>
+                                      </div>
+                                      <div className='d-flex align-items-start'>
+                                        <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
+                                        <div className='mt-2'>Unlimited PDF, URL search</div>
+                                      </div>
+                                      <div className='d-flex align-items-start'>
+                                        <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
+                                        <div className='mt-2'>Limited Gmail, Outlook search</div>
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
-                                
-                                :
-                                <button type="button"
-                                        className='btn bg-primary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
-                                        onClick={()=>setPaymentType(1)}
-                                >
-                                          Switch plan
-                                </button>
-                              }
-                              
-                            </div>
-                          </div>
 
-                          {/* <div className='subscribe-frame mx-2 border-shadow border border-light-subtle text-start d-flex flex-column justify-content-between'>
-                            <div className='position-relative'>
-                              <div className='pb-3'>Supreme Plan</div>
-                              
-                              <div className='d-flex fs-6 align-items-end mb-2'><div className='fs-3 me-1 fw-bold'>9.99$</div> /month</div>
-                              <div className='mb-2'></div>
-                              <div>
-                              <div className='d-flex align-items-start'>
-                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>Unlimited PDF workspace search</div>
-                                </div>
-                                <div className='d-flex align-items-start'>
-                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>Unlimited URL workspace search</div>
-                                </div>
-                                <div className='d-flex align-items-start'>
-                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>Unlimited Gmail workspace search</div>
-                                </div>
-                                <div className='d-flex align-items-start'>
-                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>OpenAI key included</div>
-                                </div>
-                                <div className='d-flex align-items-start'>
-                                  <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
-                                  <div className='mt-2'>Early Beta access to new workspace</div>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <div className='d-flex justify-content-center my-2 mt-5'>
-                            {
-                                (!user || (user && user.subscription_plan === SubscriptionPlan.FREE)) ?
-                                <button type="button"
-                                        className='btn bg-primary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
-                                        onClick={()=>setPaymentType(2)}>
-                                          Subscribe
-                                </button>
-                                :
-                                user.subscription_plan ==  SubscriptionPlan.SUPREME ?
-                                <div>
-                                  <div className='btn bg-info bg-opacity-25 btn-sm grey-btn px-3 rounded-3 mx-1' style={{cursor: "default"}}>
-                                            Subscribed
+                                <div className='subscribe-frame mx-2 border-shadow border border-light-subtle text-start d-flex flex-column justify-content-between'>
+                                  <div>
+                                    <div className='pb-3'>Premium Plan</div>
+                                    
+                                    <div className='d-flex fs-6 align-items-end mb-2'><div className='fs-3 me-1 fw-bold'>4.95$</div> /month</div>
+                                    <div>
+                                      <div className='d-flex align-items-start'>
+                                        <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
+                                        <div className='mt-2'>Complete privacy of your data</div>
+                                      </div>
+                                      <div className='d-flex align-items-start'>
+                                        <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
+                                        <div className='mt-2'>Unlimited PDF workspace search</div>
+                                      </div>
+                                      <div className='d-flex align-items-start'>
+                                        <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
+                                        <div className='mt-2'>Unlimited URL workspace search</div>
+                                      </div>
+                                      <div className='d-flex align-items-start'>
+                                        <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
+                                        <div className='mt-2'>Unlimited Gmail workspace search</div>
+                                      </div>
+                                      <div className='d-flex align-items-start'>
+                                        <i className="bi bi-check-lg text-info fs-4 mx-2"></i>
+                                        <div className='mt-2'>Unlimited Outlook workspace search</div>
+                                      </div>
+                                      <div className='d-flex align-items-start'>
+                                        <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
+                                        <div className='mt-2'>Unlimited Github workspace search (upcoming)</div>
+                                      </div>
+                                      <div className='d-flex align-items-start'>
+                                        <i className="bi bi-dot fs-4 mx-2 text-secondary"></i>
+                                        <div className='mt-2'>Unlimited Slack workspace search (upcoming)</div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className='d-flex justify-content-center my-2 mt-5'>
+                                    {
+                                      (!user || (user && user.subscription_plan === SubscriptionPlan.FREE)) ?
+                                      <button type="button"
+                                              className='btn bg-primary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
+                                              onClick={()=>setPaymentType(1)}>
+                                                Subscribe
+                                      </button>
+                                      :
+                                      user.subscription_plan ==  SubscriptionPlan.PREMIUM ?
+                                      <div>
+                                        <div className='btn bg-info bg-opacity-25 btn-sm grey-btn px-3 rounded-3 mx-1' style={{cursor: "default"}}>
+                                                  Cancel
+                                        </div>
+                                      </div>
+                                      
+                                      :
+                                      <button type="button"
+                                              className='btn bg-primary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
+                                              onClick={()=>setPaymentType(1)}
+                                      >
+                                                Switch plan
+                                      </button>
+                                    }
+                                    
                                   </div>
                                 </div>
-                                
-                                :
-                                <button type="button"
-                                        className='btn bg-primary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
-                                        onClick={()=>setPaymentType(2)}
-                                >
-                                          Switch plan
-                                </button>
-                              }
-                            </div>
-                            
-                          </div> */}
-                        </div>
-                      </>
-                    }
+                              </div>
+                            </>
+                          }
                        
-                    <div className="font-sm mt-4 text-secondary">Have questions? Reach us at contact@thirdai.com</div>
+                          <div className="font-sm mt-4 text-secondary">Have questions? Reach us at contact@thirdai.com</div>
                     </div>
                     {notice}
                 </div>
             </div>
-          </div>
+        </div>
+      </>
+      :
+      <div className='px-2 my-2'>
+        <Tooltip title="Please login first" placement="right">
+          <button  type="button"  onClick={(e)=>e.preventDefault()}
+            style={{opacity: 0.5}}
+            className='font-sm border-0 text-start btn btn-general2 bg-transparent rounded-3 py-2 w-100 d-flex'>
+              <i className="bi bi-credit-card text-secondary me-2"></i>
+              Subscribe
+          </button>
+        </Tooltip>
+      </div>
+    }
+        
     </>
   )
 }

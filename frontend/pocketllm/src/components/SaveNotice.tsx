@@ -2,21 +2,17 @@ import React, { useEffect, useState } from 'react'
 import axios from 'axios';
 
 import { WorkSpaceMetadata } from '../App'
-import { usePort } from '../PortContext'
+import { usePort } from '../contexts/PortContext'
 
 type SaveProps = {
     trigger: React.RefObject<HTMLButtonElement>;
     workSpaceMetadata: WorkSpaceMetadata[]
     setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
     setCurWorkSpaceID: React.Dispatch<React.SetStateAction<string|null>>,
-    afterSaveResetCurWorkspace: boolean,
-    allowUnsave: boolean,
 }
   
 // SaveNotice is triggered when user attemtps to train/load/switch another model while there is one currently in RAM
-export default function SaveNotice({trigger, 
-                                    workSpaceMetadata, setWorkSpaceMetadata, setCurWorkSpaceID,
-                                    afterSaveResetCurWorkspace, allowUnsave}: SaveProps) {
+export default function SaveNotice({trigger, workSpaceMetadata, setWorkSpaceMetadata, setCurWorkSpaceID}: SaveProps) {
     const { port } = usePort()
 
     const [unsavedWorkspaceName, setUnsavedWorkspaceName] = useState('')
@@ -89,9 +85,7 @@ export default function SaveNotice({trigger,
                     })
                     setWorkSpaceMetadata(updatedWorkSpaceMetadata)
                     
-                    if ( afterSaveResetCurWorkspace ) {
-                        setCurWorkSpaceID(null)
-                    }
+                
                 } else {
                     console.error("Failed to save workspace:", response.data.msg);
                 }
@@ -131,19 +125,13 @@ export default function SaveNotice({trigger,
                 <div className="modal-body pt-0">
                     <div className='d-flex justify-content-center mb-3'>Do you want to save workspace({unsavedWorkspaceName}) ?</div>
                     <div className='d-flex justify-content-center mb-3'>
-                        {
-                            allowUnsave
-                            ?
-                            <button className='btn bg-secondary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
+                        <button className='btn bg-secondary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
                                 type="button"
                                 data-bs-dismiss="modal"
                                 onClick={()=>handleDontSave()}
                             >
                                 Delete
-                            </button>
-                            :
-                            <></>
-                        }
+                        </button>
                         
                         <button className='btn bg-primary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
                                 type="button"

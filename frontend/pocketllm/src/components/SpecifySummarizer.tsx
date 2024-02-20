@@ -1,6 +1,6 @@
 import { useState, FormEvent, useEffect, useRef } from 'react'
 import axios from 'axios'
-import { usePort } from '../PortContext'
+import { usePort } from '../contexts/PortContext'
 import useTelemetry from '../hooks/useTelemetry'
 
 import SpecifySummarizerNotice from './SpecifySummarizerNotice';

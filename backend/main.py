@@ -25,37 +25,44 @@ from bs4 import BeautifulSoup
 import re
 import csv
 from email import message_from_bytes
+from email.utils import parsedate_to_datetime
 from retrying import retry
 from email.header import decode_header
 import requests
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 import io
 from uuid import uuid4
 from highlight import highlight_ref as hl
 from shutil import move
-from copy import deepcopy
-
-import webbrowser
-from urllib.parse import urlencode
-
-import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
-
 from thirdai import licensing
+
+
+
+
+
 if getattr(sys, 'frozen', False):
-    application_path = sys._MEIPASS
+    APPLICATION_PATH = sys._MEIPASS
 else:
-    application_path = os.path.dirname(os.path.abspath(__file__))
+    APPLICATION_PATH = os.path.dirname(os.path.abspath(__file__))
+THIRDAI_LICENSE_PATH = os.path.join(APPLICATION_PATH, 'license_may_11_2024.serialized')
+licensing.set_path(THIRDAI_LICENSE_PATH)
 
-license_path = os.path.join(application_path, 'license_may_11_2024.serialized')
-
-licensing.set_path(license_path)
 
 WORKING_FOLDER = Path(os.path.dirname(__file__)) / "data"
 BAZAAR_CACHE = WORKING_FOLDER / "bazaar_cache"
 BAZAAR_URL = "https://staging-modelzoo.azurewebsites.net/api/"
+USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
+USER_GMAIL_CACHE = WORKING_FOLDER / "user_gmail_cache"
+USER_GMAIL_LOGIN_CACHE = WORKING_FOLDER / "user_gmail_login_cache"
+
+OUTLOOK_CLIENT_ID = "a0e83608-a426-46ba-be71-040486d5c230"
+OUTLOOK_TENANT_ID = "f8cdef31-a31e-4b4a-93e4-5f571e91255a"
+OUTLOOK_CLIENT_SECRET = "xFT8Q~C1t-nUTGvf4Brmh5vr5tvwt5cdAgrhecL4"
+OUTLOOK_SCOPES = ["https://graph.microsoft.com/Mail.Read"]
+OUTLOOK_AUTH_STATUS = {"is_authenticated": False, 'total_emails': None} # Global variable to store the outlook authentication status for Electron frontend Polling
 
 app = FastAPI()
 
@@ -92,6 +99,19 @@ class Backend:
 
 backend_instance: Backend = Backend()
 
+@app.get("/check_live")
+async def check_live():
+    return {"message": "Backend is alive"}
+
+@app.post("/reset_neural_db")
+def reset_neural_db():
+    global backend_instance
+
+    backend_instance.reset_neural_db()
+
+    return {"success": True, 'msg': 'Neural DB reset successful'}
+
+
 def parse_prompt(query) -> Tuple[str, Optional[str]]:
     KEYWORD = "$PROMPT$"
     if KEYWORD not in query:
@@ -110,7 +130,7 @@ def parse_prompt(query) -> Tuple[str, Optional[str]]:
 
 @app.get("/get_cached_workspace_metajson")
 def get_cached_workspace_metajson():
-    USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
+    
     model_metadata_list = []
 
     # Walk through each folder in the user_workspace_cache
@@ -125,6 +145,8 @@ def get_cached_workspace_metajson():
                     model_metadata_list.append(metadata)
     
     return model_metadata_list
+
+
 
 @app.get("/highlighted_pdf")
 def highlighted_pdf(index: Optional[int] = Query(None)):
@@ -197,6 +219,8 @@ async def index_files(websocket: WebSocket):
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
 
+
+
 class QueryModel(BaseModel):
     search_str: str
 
@@ -256,6 +280,7 @@ def query(query_model: QueryModel):
 
     return results
 
+
 class TeachModel(BaseModel):
     source_str: str
     target_str: str
@@ -285,6 +310,8 @@ def teach(teach_model: TeachModel):
     
     return { 'success': True, 'msg': 'associate success' }
 
+
+
 class UpWeightModel(BaseModel):
     result_idx: int
 
@@ -299,6 +326,8 @@ def upweight(up_weight_model: UpWeightModel):
         return  { 'success': True, 'msg': 'upweight success' }
     except Exception as error:
         return { 'success': False, 'msg': error }
+
+
 
 class SaveModel(BaseModel):
     filePath: str
@@ -316,6 +345,8 @@ def save(path: SaveModel):
     except Exception as error:
         print(f"Error saving file path: {error}")
         return { 'success': False, 'msg': error }
+
+
 
 class LoadModel(BaseModel):
     filePath: str
@@ -338,6 +369,8 @@ def load(path: LoadModel):
 
     return {'success': True}
 
+
+
 class CurrentModelInfo(BaseModel):
     author_name: Optional[str]
     model_name: Optional[str]
@@ -352,8 +385,6 @@ def save_workspace(model_data: SaveModelByID):
     workspaceID = model_data.workspaceID
     currentModel = model_data.currentModel
     workspaceName = model_data.workspaceName
-
-    USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
 
     # Generate a temporary workspace ID and create a temp folder
     temp_workspaceID = str(uuid4())
@@ -423,6 +454,8 @@ def save_workspace(model_data: SaveModelByID):
 
     return {'success': True, 'documents': documents}
 
+
+
 class LoadModelByID(BaseModel):
     workspaceID: str
 
@@ -433,8 +466,6 @@ def load_by_id(model_data: LoadModelByID):
     workspaceID = model_data.workspaceID
 
     print("Received workspaceID:", workspaceID)
-
-    USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
 
     # Determine the path based on workspaceID
     model_folder = USER_WORKSPACE_CACHE / workspaceID
@@ -485,12 +516,38 @@ def load_by_id(model_data: LoadModelByID):
 
     return {'success': True}
 
+
+@app.post("/load_gmail_workspace_by_id")
+def load_gmail_workspace_by_id(model_data: LoadModelByID):
+    global backend_instance
+
+    workspaceID = model_data.workspaceID
+    model_folder = USER_WORKSPACE_CACHE / workspaceID
+    file_path = model_folder / 'model.ndb'
+    
+    # Check if the path exists
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Model not found.")
+    
+    try:
+        backend_instance.gmail_query_switch = True
+        backend_instance.backend = ndb.NeuralDB.from_checkpoint(
+            checkpoint_path=str(file_path),
+        )
+    except Exception as error:
+        error_msg = str(error)
+        print(f"backend: {error_msg}")
+        raise HTTPException(status_code=500, detail=error_msg)
+
+    return {'success': True}
+
+
 class DeleteModelByID(BaseModel):
     workspaceID: str
 
 @app.post("/delete_by_id")
 def delete_by_id(model_data: DeleteModelByID):
-    USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
+    
 
     # Determine the path based on workspaceID
     model_folder = USER_WORKSPACE_CACHE / model_data.workspaceID
@@ -509,13 +566,15 @@ def delete_by_id(model_data: DeleteModelByID):
     
     return {'success': True}
 
+
+
 class ExportModelData(BaseModel):
     filePath: str
     workspaceID: str
 
 @app.post("/export_by_id")
 def export_by_id(export_data: ExportModelData):
-    USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
+    
 
     # Determine the path based on workspaceID
     model_folder = USER_WORKSPACE_CACHE / export_data.workspaceID
@@ -534,6 +593,8 @@ def export_by_id(export_data: ExportModelData):
         raise HTTPException(status_code=500, detail=error_msg)
     
     return {'success': True}
+
+
 
 class ExportNewWorkspaceData(BaseModel):
     workspaceID: str
@@ -606,12 +667,14 @@ def export_new_workspace(export_data: ExportNewWorkspaceData):
 
     return {'success': True, 'documents': documents}
 
+
+
 class ImportModelData(BaseModel):
     directoryPath: str
 
 @app.post("/import_workspace")
 def import_workspace(import_data: ImportModelData):
-    USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
+    
     chosen_directory = Path(import_data.directoryPath)
 
     if chosen_directory.suffix == '.ndb':
@@ -683,6 +746,8 @@ def import_workspace(import_data: ImportModelData):
     else:
         raise HTTPException(status_code=400, detail="Unsupported workspace type.")
 
+
+
 class UpdateWorkspaceNameRequest(BaseModel):
     workspaceID: str
     newWorkspaceName: str
@@ -692,7 +757,7 @@ def update_workspace_name(request: UpdateWorkspaceNameRequest):
     workspace_id = request.workspaceID
     new_workspace_name = request.newWorkspaceName
 
-    USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
+    
 
     workspace_folder = USER_WORKSPACE_CACHE / workspace_id
     metadata_path = workspace_folder / 'metadata.json'
@@ -711,127 +776,6 @@ def update_workspace_name(request: UpdateWorkspaceNameRequest):
     return {"success": True}
 
 
-@app.post("/fetch_model_cards")
-def fetch_model_cards():
-    global backend_instance
-
-    def clean_bazaar_entry(bazaar_entry):
-        # TODO: cache function is not working (_model_dir_in_cache)
-        # print(self.bazaar._model_dir_in_cache(bazaar_entry.identifier))
-        # print(self.bazaar._cached_model_dir_path(bazaar_entry.identifier))
-        # print(bazaar_entry.is_indexed)
-        return {
-            "domain": bazaar_entry.domain,
-            "modelName": bazaar_entry.model_name,
-            "authorUsername": bazaar_entry.author_username,
-            "modelDesc": bazaar_entry.description,
-            "task": bazaar_entry.trained_on,
-            "hasIndex": bazaar_entry.is_indexed,
-            "publishDate": bazaar_entry.publish_date,
-            "dataset": bazaar_entry.trained_on,
-            # modelSize and modelSizeInMemory are expected to be in MB, but they are in B
-            "modelSize": bazaar_entry.size // (1024 * 1024),
-            "modelSizeInMemory": bazaar_entry.size_in_memory // (1024 * 1024),
-            "isCached": True
-            if backend_instance.bazaar._model_dir_in_cache(
-                bazaar_entry.identifier, bazaar_entry, only_check_dir_exists=True
-            )
-            else False,
-        }
-    
-    model_cards = [
-        clean_bazaar_entry(bazaar_entry)
-        for bazaar_entry in backend_instance.bazaar.fetch()
-    ]
-
-    for card in model_cards:
-        card["domain"] = "Public"
-
-    return model_cards
-
-@app.websocket("/fetch_base_model")
-async def fetch_base_model(websocket: WebSocket):
-    await websocket.accept()
-
-    global backend_instance
-
-    async for message in websocket.iter_text():
-
-        data = json.loads(message)
-        
-        domain = data['domain']
-        author_username = data['author_username']
-        model_name = data['model_name']
-
-        async def async_on_progress(fraction):
-            progress = int(100 * fraction)
-            message = "Downloading model in progress"
-            await websocket.send_json({"progress": progress, "message": message})
-
-        def on_progress(fraction):
-            loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
-
-        try:
-            loop = asyncio.get_running_loop()
-            checkpoint_dir = await loop.run_in_executor(None, lambda: backend_instance.bazaar.get_model_dir(
-                model_name, 
-                author_username, 
-                on_progress=on_progress))
-            
-            # TODO: update isCached status of this model card in caches
-            await websocket.send_json({"progress": 100, "message": f'Model downloaded at {checkpoint_dir}'})
-        except Exception as e:
-            await websocket.send_json({"error": True, "message": str(e)})
-
-class RemoveModelInfo(BaseModel):
-    author_username: str
-    model_name: str
-
-@app.post("/remove_model")
-def remove_model(info: RemoveModelInfo):
-    global backend_instance
-    
-    # Construct the identifier using the provided author_username and model_name
-    identifier = f"{info.author_username}/{info.model_name}"
-    
-    # Construct the directory path that needs to be removed
-    directory_to_remove = backend_instance.bazaar._cached_checkpoint_dir(identifier)
-
-    try:
-        # Use shutil.rmtree to remove the directory
-        shutil.rmtree(directory_to_remove)
-        return {"success": True, "msg": f"Removed model {identifier}"}
-    except Exception as e:
-        # If an error occurs, return an error message
-        raise HTTPException(status_code=500, detail=str(e))
-
-class UseInfoModel(BaseModel):
-    domain: str
-    author_username: str
-    model_name: str
-
-@app.post("/use_model")
-def use_model(useInfo: UseInfoModel):
-    global backend_instance
-
-    domain = useInfo.domain
-    author_username = useInfo.author_username
-    model_name = useInfo.model_name
-
-    backend_instance.backend = ndb.NeuralDB.from_checkpoint(
-        checkpoint_path=backend_instance.bazaar._cached_model_dir_path(
-            f"{author_username}/{model_name}"
-        )
-    )
-    backend_instance.backend.build_inverted_index()
-
-    return {"success": True, 
-            "msg": f'Backend use model {domain}/{author_username}/{model_name}'}
-
-@app.post("/fetch_meta_cache_model")
-def fetch_meta_cache_model():
-    return backend_instance.bazaar.fetch_meta_cache_model()
-
 @app.get("/get_cached_openai_key")
 def get_cached_openai_key():
     key_file_path = WORKING_FOLDER / 'user_openai_key.txt'
@@ -840,6 +784,8 @@ def get_cached_openai_key():
             return {"openai_key": key_file.read()}
     else:
         return {"openai_key": ""}
+
+
 
 class SettingInput(BaseModel):
     model_preference: str
@@ -1000,7 +946,7 @@ async def gmail_reply(websocket: WebSocket):
 
 @app.post("/gmail_inbox_delete_credential")
 def gmail_inbox_delete_credential():
-    USER_GMAIL_CACHE = WORKING_FOLDER / "user_gmail_cache"
+    
     credential_files = list(USER_GMAIL_CACHE.glob("*_token.pkl"))
 
     # If there's a file, delete it
@@ -1017,7 +963,7 @@ def gmail_inbox_delete_credential():
 @app.post('/gmail_delete_login_credential')
 def gmail_delete_login_credential():
     try:
-        USER_GMAIL_LOGIN_CACHE = WORKING_FOLDER / "user_gmail_login_cache"
+        
 
         # Check if credentials dir exists and delete it
         if USER_GMAIL_LOGIN_CACHE.exists():
@@ -1036,7 +982,7 @@ def gmail_delete_login_credential():
 
 @app.post('/gmail_auto_login')
 def gmail_auto_login():
-    USER_GMAIL_LOGIN_CACHE = WORKING_FOLDER / "user_gmail_login_cache"
+    
     USER_GMAIL_LOGIN_CACHE.mkdir(parents=True, exist_ok=True)
 
     creds = None
@@ -1083,7 +1029,7 @@ def gmail_auto_login():
 def gmail_login():
     global backend_instance
 
-    USER_GMAIL_LOGIN_CACHE = WORKING_FOLDER / "user_gmail_login_cache"
+    
     USER_GMAIL_LOGIN_CACHE.mkdir(parents=True, exist_ok=True)
 
     creds = None
@@ -1099,12 +1045,7 @@ def gmail_login():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            if getattr(sys, 'frozen', False):
-                application_path = sys._MEIPASS
-            else:
-                application_path = os.path.dirname(os.path.abspath(__file__))
-
-            client_secrets_path = os.path.join(application_path, 'client_secret_user_account.json')
+            client_secrets_path = os.path.join(APPLICATION_PATH, 'client_secret_user_account.json')
             
             flow = InstalledAppFlow.from_client_secrets_file(
                 client_secrets_path, 
@@ -1156,92 +1097,32 @@ def gmail_login():
 @app.post('/gmail_auth')
 def gmail_auth():
     global backend_instance
-
-    # Define the path to the "user_gmail_cache" folder
-    USER_GMAIL_CACHE = WORKING_FOLDER / "user_gmail_cache"
-    # Ensure the folder exists
-    USER_GMAIL_CACHE.mkdir(parents=True, exist_ok=True)
-
+    
     def save_credentials_to_file(user_id, credentials):
         file_path = USER_GMAIL_CACHE / f"{user_id}_token.pkl"
         with open(file_path, 'wb') as token_file:
             pickle.dump(credentials, token_file)
 
-    def get_credentials_from_file(user_id):
-        file_path = USER_GMAIL_CACHE / f"{user_id}_token.pkl"
-        try:
-            with open(file_path, 'rb') as token_file:
-                return pickle.load(token_file)
-        except FileNotFoundError:
-            return None
+    # Ensure the folder exists
+    USER_GMAIL_CACHE.mkdir(parents=True, exist_ok=True)
 
     user_id = 'me'
+    client_secrets_path = os.path.join(APPLICATION_PATH, 'client_secrets.json')
+    flow = InstalledAppFlow.from_client_secrets_file(
+        client_secrets_path, scopes=['https://www.googleapis.com/auth/gmail.readonly'],
+    )
 
-    # Check if we have previously stored credentials for this user
-    stored_creds = get_credentials_from_file(user_id)
-    if stored_creds and stored_creds.valid:
-        credentials = stored_creds
-    else:
-        if stored_creds and stored_creds.expired and stored_creds.refresh_token:
-            try:
-                stored_creds.refresh(Request())
-                credentials = stored_creds
-                save_credentials_to_file(user_id, credentials)  # save the refreshed credentials
-            except Exception as e:
-                # Handle error, perhaps reinitiate the auth flow
-                return {"success": False, "msg": f"Failed to refresh credentials: {str(e)}"}
-        else:
-            if getattr(sys, 'frozen', False):
-                application_path = sys._MEIPASS
-            else:
-                application_path = os.path.dirname(os.path.abspath(__file__))
-
-            client_secrets_path = os.path.join(application_path, 'client_secrets.json')
-
-            flow = InstalledAppFlow.from_client_secrets_file(
-                client_secrets_path,
-                scopes=['https://www.googleapis.com/auth/gmail.readonly'],
-            )
-
-            # Open browser for the user to authenticate
-            try:
-                credentials = flow.run_local_server(port=0)
-                # Save the credentials for future use
-                save_credentials_to_file(user_id, credentials)
-            except Exception as error:
-                return {"success": False, "msg": str(error)}
+    try:
+        credentials = flow.run_local_server(port=0) # Open browser for the user to authenticate
+        save_credentials_to_file(user_id, credentials) # Save the credentials for future use
+    except Exception as error:
+        return {"success": False, "msg": str(error)}
 
     # Build the Gmail API service and save it for the user
     service = build('gmail', 'v1', credentials=credentials)
     backend_instance.gmail_auth_services[user_id] = service
 
     return {"success": True, 'msg': 'Gmail auth successful'}
-
-    # # Get user's detailed information using the OAuth2 userinfo endpoint
-    # try:
-    #     session = requests.Session()
-    #     session.headers.update({
-    #         'Authorization': f'Bearer {credentials.token}',
-    #         'Content-Type': 'application/json',
-    #     })
-
-    #     response = session.get('https://www.googleapis.com/oauth2/v1/userinfo')
-
-    #     if response.status_code == 200:
-    #         user_info = response.json()
-    #         return {
-    #             "success": True, 
-    #             'msg': 'Gmail auth successful', 
-    #             'email': user_info['email'], 
-    #             'name': user_info['name']
-    #         }
-    #     else:
-    #         return {
-    #             "success": False, 
-    #             'msg': f"Failed to fetch user's email. Error: {response.text}"
-    #         }
-    # except Exception as e:
-    #     return {"success": False, "msg": f"Failed to get user profile: {str(e)}"}
 
 @app.post("/gmail_total_emails")
 def gmail_total_emails(user_id: str = 'me'):
@@ -1253,14 +1134,94 @@ def gmail_total_emails(user_id: str = 'me'):
     total_emails = profile.get('messagesTotal')
     return {"total_emails": total_emails}
 
-@app.websocket("/gmail_download_train")
-async def  gmail_download_train(websocket: WebSocket):
-    global backend_instance
+@app.post("/save_gmail_workspace")
+def save_gmail_workspace():
+    def get_first_email_to_field(token_file_path) -> str:
+        """Fetch the first email and return the 'To' field as the user's email account."""
 
-    ##############################################  Download  ##########################################
+        def load_user_credentials(token_file_path):
+            """Load user's credentials from a pickle file."""
+            with open(token_file_path, 'rb') as token:
+                return pickle.load(token)
 
-    # Function to send progress updates through the WebSocket connection
-    async def send_progress_update(progress, message):
+        credentials = load_user_credentials(token_file_path)
+        service = build('gmail', 'v1', credentials=credentials)
+        messages = service.users().messages().list(userId='me', maxResults=1).execute()
+        
+        if messages and 'messages' in messages:
+            message_id = messages['messages'][0]['id']
+            message = service.users().messages().get(userId='me', id=message_id, format='full').execute()
+            
+            headers = message['payload']['headers']
+            to_header = next((header['value'] for header in headers if header['name'] == 'To'), None)
+            
+            if to_header:
+                return to_header
+        return "Unknown email account"
+
+    workspaceID = str(uuid4())
+
+    # Create a workspace folder
+    workspace_folder = USER_WORKSPACE_CACHE / workspaceID
+    workspace_folder.mkdir(parents=True, exist_ok=True)
+
+    # Copy the auth token file to the workspace folder
+    user_id = 'me'
+    source_token_file = USER_GMAIL_CACHE / f"{user_id}_token.pkl"
+    target_token_file = workspace_folder / f"{user_id}_token.pkl"
+    if source_token_file.exists():
+        shutil.copy(source_token_file, target_token_file)
+    else:
+        return {"success": False, "msg": "Authentication token not found."}
+
+    # Create 'documents' folder and initialize 'gmail.csv'
+    documents_folder = workspace_folder / 'documents'
+    documents_folder.mkdir(exist_ok=True)
+    gmail_csv_path = documents_folder / 'gmail.csv'
+    with open(gmail_csv_path, mode='w', encoding='utf-8') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['Message ID', 'Timestamp', 'From', 'To', 'CC', 'Subject', 'Email Content'])
+
+    email_account = get_first_email_to_field(target_token_file)
+
+    metadata = {
+        "workspaceID": workspaceID,
+        "workspaceName": "Gmail Workspace",
+        "model_info": {
+            "author_name": "thirdai",
+            "model_name": "Default model"
+        },
+        "documents": [{
+            "fileName": "gmail.csv",
+            "filePath": str(gmail_csv_path),
+            "uuid": str(uuid4()),
+            "isSaved": True
+        }],
+        "last_modified": datetime.utcnow().isoformat(),
+        "gmailWorkspaceInfo": {
+            "last_email_date": None,
+            "num_emails": 0,  # Initialize to 0 as the gmail.csv is empty
+            "email_account": email_account,
+            "initial_download_num": 200,  # User specified or default to 200
+            "is_downloading": False,
+            "is_download_finished": False,
+            "is_training": False,
+            "is_training_finished": False,
+            "is_sync": False
+        }
+    }
+
+    # Write metadata to JSON file
+    metadata_path = workspace_folder / 'metadata.json'
+    with open(metadata_path, 'w') as json_file:
+        json.dump(metadata, json_file, indent=4)
+    
+    # Return success response to the frontend
+    return { "success": True, "metadata": metadata}
+
+async def append_emails_to_csv(websocket, service, messages, gmail_csv_path):
+
+    async def send_progress_update(progress, message): # Function to send progress updates through the WebSocket connection
         await websocket.send_json({"progress": progress, "message": message})
 
     def extract_text_from_mime(mime_msg):
@@ -1300,145 +1261,97 @@ async def  gmail_download_train(websocket: WebSocket):
                 header_parts.append(text)
         return "".join(header_parts)
 
-    await websocket.accept()
-
-    async for message in websocket.iter_text():
-        data = json.loads(message)
+    def parse_date_to_utc(date_str):
+        dt = parsedate_to_datetime(date_str)
+        dt_utc = dt.astimezone(timezone.utc) # Convert to UTC
+        timestamp = dt_utc.isoformat() # Format as an ISO string in UTC
         
-        user_id = data.get('user_id', 'me')
-        num_emails = data.get("num_emails", 1000)
+        return timestamp
 
-        service = backend_instance.gmail_auth_services.get(user_id)
+    latest_email_date_iso = '1970-01-01T00:00:00+00:00'
+    text_splitter = RecursiveCharacterTextSplitter(
+                        chunk_size=500,
+                        chunk_overlap=75,
+                        length_function=len,
+                    )
+    
+    with open(gmail_csv_path, mode='a', encoding='utf-8') as csvfile:
+        writer = csv.writer(csvfile)
 
-        # Get 'num_emails' messages
-        all_messages = []
-        page_token = None
+        for idx, message_info in enumerate(messages):
+            msg_id = message_info['id']
 
-        # Initialize the text splitter with your specified configuration
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=75,
-            length_function=len,
-        )
+            try:
+                message = fetch_gmail_message(service, msg_id)
 
-        while True:
-            results = service.users().messages().list(userId='me', pageToken=page_token).execute()
-            messages = results.get('messages', [])
-            if not messages:
-                break
-            all_messages.extend(messages)
+                # Decode email
+                msg_raw = base64.urlsafe_b64decode(message['raw'].encode('ASCII')) 
+                mime_msg = message_from_bytes(msg_raw)
 
-            # Check if we have num_emails or more messages and break out of the loop
-            if len(all_messages) >= num_emails:
-                break
+                # Extract additional details
+                subject = decode_mime_header(mime_msg.get("Subject", ""))
+                from_header = decode_mime_header(mime_msg.get("From", ""))
+                to_header = decode_mime_header(mime_msg.get("To", ""))
+                cc_header = decode_mime_header(mime_msg.get("Cc", ""))
+                timestamp = parse_date_to_utc(mime_msg.get('Date'))
+                text_content = extract_text_from_mime(mime_msg) # Get the plain text content from the MIME message
 
-            page_token = results.get('nextPageToken')
-            if not page_token:
-                break
-        
-        # Trim the list to have exactly num_emails messages
-        all_messages = all_messages[:num_emails]
-        # print(all_messages)
+                # Update latest email date if this email is more recent
+                if timestamp > latest_email_date_iso:
+                    latest_email_date_iso = timestamp
 
-        # Specify the temporary folder using the WORKING_FOLDER path
-        USER_GMAIL_INBOX_TEMP_CACHE = WORKING_FOLDER / "user_gmail_inbox_temp_cache"
+                if text_content:
+                    if '<html' in text_content.lower():
+                        # Parse the content using BeautifulSoup
+                        soup = BeautifulSoup(text_content, 'html.parser')
+                        # Extract the plain text
+                        text_content = soup.get_text(separator=' ', strip=True)
 
-        # Check if USER_GMAIL_INBOX_TEMP_CACHE exists, if so, delete it
-        if USER_GMAIL_INBOX_TEMP_CACHE.exists():
-            shutil.rmtree(USER_GMAIL_INBOX_TEMP_CACHE)
+                    # Compact the content to remove multiple newlines
+                    text_content = re.sub(r'\n+', '\n', text_content)
+                    texts = text_splitter.split_text(text_content)
 
-        USER_GMAIL_INBOX_TEMP_CACHE.mkdir(parents=True, exist_ok=True)
+                    for chunk in texts:
+                        chunk = chunk.strip().replace("\r\n", " ").replace("\n", " ")
+                        writer.writerow([msg_id, timestamp, from_header, to_header, cc_header, subject, chunk])
 
-        # Create a CSV file within this temporary folder
-        temp_file_location = USER_GMAIL_INBOX_TEMP_CACHE / "gmail_inbox_data.csv"
+                await send_progress_update(round( (idx / len(messages)) * 100, 2), f"Processed {idx} of {len(messages)} messages")
+            
+            except Exception as e:
+                print(f"Failed to fetch message with ID {msg_id}. Error: {e}")
+                continue  # Skip this message and move to the next
+    
+    return latest_email_date_iso, len(messages)
 
-        # Open a CSV file in write mode
-        with open(temp_file_location, mode='w', encoding='utf-8') as csvfile:
-            temp_file_location = csvfile.name
+async def download_emails(websocket, service, num_download, gmail_csv_path, num_email_skip = 0):
 
-            writer = csv.writer(csvfile)
+    page_token = None
+    all_messages = []
 
-            # Write a header row to the CSV file
-            writer.writerow(['Message ID', 'Email Content', 'Subject'])
+    adjusted_download_num = num_download + num_email_skip
 
-            # Iterate over each message ID and fetch the message content
-            for idx, message_info in enumerate(all_messages):
-                msg_id = message_info['id']
+    while True:
+        results = service.users().messages().list(userId='me', pageToken=page_token).execute()
+        messages = results.get('messages', [])
+        if not messages:
+            break
+        all_messages.extend(messages)
 
-                try:
-                    message = fetch_gmail_message(service, msg_id)
-        
-                    # Extract the raw email data from the message and decode it
-                    msg_raw = base64.urlsafe_b64decode(message['raw'].encode('ASCII'))
+        if len(all_messages) >= adjusted_download_num:
+            break
 
-                    # Parse the raw email to get a MIME message object
-                    mime_msg = message_from_bytes(msg_raw)
+        page_token = results.get('nextPageToken')
+        if not page_token:
+            break
+    
+    all_messages = all_messages[num_email_skip:num_download + num_email_skip]
 
-                    subject = decode_mime_header(mime_msg.get("Subject", ""))
+    latest_email_date_iso, num_emails_appended = await append_emails_to_csv(websocket, service, all_messages, gmail_csv_path)
 
-                    # Get the plain text content from the MIME message
-                    text_content = extract_text_from_mime(mime_msg)
+    return latest_email_date_iso, num_emails_appended
 
-                    if text_content:
-                        if '<html' in text_content.lower():
-                            # Parse the content using BeautifulSoup
-                            soup = BeautifulSoup(text_content, 'html.parser')
-                            # Extract the plain text
-                            text_content = soup.get_text(separator=' ', strip=True)
-
-                        # Compact the content to remove multiple newlines
-                        text_content = re.sub(r'\n+', '\n', text_content)
-                        texts = text_splitter.split_text(text_content)
-
-                        for chunk in texts:
-                            chunk = chunk.strip().replace("\r\n", " ").replace("\n", " ")
-                            # Write each chunk as a new row with the same Message ID and Subject
-                            writer.writerow([msg_id, chunk, subject])
-
-                    await send_progress_update(round( (idx / len(all_messages)) * 100, 2), f"Processed {idx} of {len(all_messages)} messages")
-                
-                except Exception as e:
-                    print(f"Failed to fetch message with ID {msg_id}. Error: {e}")
-                    continue  # Skip this message and move to the next
-
-            await send_progress_update(100, f"Finished processing {len(all_messages)} messages saved at {temp_file_location}")
-
-        ##############################################  Train  ##########################################
-
-        # Reset neuraldb to make sure previously trained files are not included.
-        backend_instance.reset_neural_db()
-
-        documents = [ndb.CSV(temp_file_location, strong_columns = ['Subject'], weak_columns=['Email Content'], reference_columns = ['Message ID', 'Email Content'])]
-
-        async def async_on_progress(fraction):
-            progress = int(100 * fraction)
-            message = "Indexing in progress"
-            await websocket.send_json({"progress": progress, "message": message, "complete": False})
-
-        def on_progress(fraction):
-            loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
-
-        def on_error(error_msg):
-            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"error": True, "message": error_msg}))
-
-        def on_success():
-            # Turn on Gmail query switch
-            backend_instance.gmail_query_switch = True
-            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
-
-        try:
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, lambda: backend_instance.backend.insert(
-                sources=documents,
-                on_progress=on_progress,
-                on_error=on_error,
-                on_success=on_success,
-            ))
-        except Exception as e:
-            await websocket.send_json({"error": True, "message": str(e)})
-
-@app.websocket("/gmail_train_from_csv")
-async def gmail_train_from_csv(websocket: WebSocket):
+@app.websocket("/gmail_initial_download_train")
+async def gmail_initial_download_train(websocket: WebSocket):
     global backend_instance
 
     await websocket.accept()
@@ -1446,32 +1359,50 @@ async def gmail_train_from_csv(websocket: WebSocket):
     async for message in websocket.iter_text():
         data = json.loads(message)
         
-        csv_file_path = data.get('csv_file_path', 'me')
+        user_id = data.get('user_id', 'me')
+        initial_download_num = data.get("initial_download_num", 200)
+        workspace_id = data.get("workspaceid")
 
-        # TODO optimize: reading, editing, and writing is time consuming for large CSV gmail file.
-            # One quick optimization is to allow neuraldb to take into df as variable
+        gmail_csv_path = USER_WORKSPACE_CACHE / workspace_id / 'documents' / 'gmail.csv' # Locate the gmail.csv file
+        metadata_path = USER_WORKSPACE_CACHE / workspace_id / 'metadata.json'
+        service = backend_instance.gmail_auth_services.get(user_id)
 
-        # Load CSV into memory and rename columns
-        df = pd.read_csv(csv_file_path)
-        df.rename(columns={'ID': 'Message ID', 'Snippet': 'Email Content'}, inplace=True)
+        if metadata_path.exists(): # Load the existing metadata, update it, and write it back
+            with open(metadata_path, 'r') as file:
+                metadata = json.load(file)
+            
+            # Update the initial_download_num in the metadata
+            metadata['gmailWorkspaceInfo']['is_downloading'] = True
+            metadata['gmailWorkspaceInfo']['initial_download_num'] = initial_download_num
 
-        # Specify the temporary folder using the WORKING_FOLDER path
-        USER_GMAIL_INBOX_TEMP_CACHE = WORKING_FOLDER / "user_gmail_inbox_temp_cache"
+            # Write the updated metadata back to the file
+            with open(metadata_path, 'w') as file:
+                json.dump(metadata, file, indent=4)
 
-        # Check if USER_GMAIL_INBOX_TEMP_CACHE exists, if so, delete it
-        if USER_GMAIL_INBOX_TEMP_CACHE.exists():
-            shutil.rmtree(USER_GMAIL_INBOX_TEMP_CACHE)
+        latest_email_date_iso, num_emails = await download_emails(websocket, service, initial_download_num, gmail_csv_path)
 
-        USER_GMAIL_INBOX_TEMP_CACHE.mkdir(parents=True, exist_ok=True)
+        if metadata_path.exists():
+            with open(metadata_path, 'r') as file:
+                metadata = json.load(file)
 
-        # Create a CSV file within this temporary folder
-        temp_file_location = USER_GMAIL_INBOX_TEMP_CACHE / "gmail_inbox_data.csv"
-        df.to_csv(temp_file_location, index=False)
+            # Update the states accordingly
+            metadata['last_modified'] = datetime.utcnow().isoformat()
+            metadata['gmailWorkspaceInfo']['is_downloading'] = False
+            metadata['gmailWorkspaceInfo']['is_download_finished'] = True
+            metadata['gmailWorkspaceInfo']['is_training'] = True
+            metadata['gmailWorkspaceInfo']['is_training_finished'] = False
+            metadata['gmailWorkspaceInfo']['num_emails'] = num_emails
+            metadata['gmailWorkspaceInfo']['last_email_date'] = latest_email_date_iso
 
-        # Reset neuraldb to make sure previously trained files are not included.
-        backend_instance.reset_neural_db()
+            # Save the updated metadata back to the file
+            with open(metadata_path, 'w') as file:
+                json.dump(metadata, file, indent=4)
+            
+        await websocket.send_json({"progress": 100, "message": f"Finished downloading emails at {gmail_csv_path}"})
 
-        documents = [ndb.CSV(temp_file_location, strong_columns = ['Subject'], weak_columns=['Email Content'], reference_columns = ['Message ID', 'Email Content'])]
+        ##############################################  Train  ##########################################
+
+        documents = [ndb.CSV(gmail_csv_path, strong_columns = ['Subject'], weak_columns=['Email Content'], reference_columns = ['Message ID', 'Email Content'])]
 
         async def async_on_progress(fraction):
             progress = int(100 * fraction)
@@ -1485,9 +1416,30 @@ async def gmail_train_from_csv(websocket: WebSocket):
             loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"error": True, "message": error_msg}))
 
         def on_success():
+            # Save the model in the workspace
+            model_path = USER_WORKSPACE_CACHE / workspace_id / 'model.ndb'
+            backend_instance.backend.save(model_path)
+
+            if metadata_path.exists():
+                with open(metadata_path, 'r') as file:
+                    metadata = json.load(file)
+
+                # Update the states to reflect that downloading has finished and training is complete
+                metadata['gmailWorkspaceInfo']['is_downloading'] = False
+                metadata['gmailWorkspaceInfo']['is_download_finished'] = True
+                metadata['gmailWorkspaceInfo']['is_training'] = False
+                metadata['gmailWorkspaceInfo']['is_training_finished'] = True
+
+                # Optionally, update other relevant fields such as 'last_modified' to indicate when the training finished
+                metadata['last_modified'] = datetime.utcnow().isoformat()
+
+                # Save the updated metadata back to the file
+                with open(metadata_path, 'w') as file:
+                    json.dump(metadata, file, indent=4)
+
             # Turn on Gmail query switch
             backend_instance.gmail_query_switch = True
-            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
+            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True, "metadata": metadata}))
 
         try:
             loop = asyncio.get_running_loop()
@@ -1499,6 +1451,237 @@ async def gmail_train_from_csv(websocket: WebSocket):
             ))
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
+
+@app.websocket("/gmail_resume_downloading")
+async def gmail_resume_downloading(websocket: WebSocket):
+    global backend_instance
+
+    def count_unique_emails(gmail_csv_path):
+        unique_message_ids = set()
+
+        try:
+            with open(gmail_csv_path, mode='r', encoding='utf-8') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    message_id = row['Message ID']
+                    unique_message_ids.add(message_id)
+        except FileNotFoundError:
+            print(f"File {gmail_csv_path} not found.")
+
+        return len(unique_message_ids)
+
+    def create_service_instance(workspaceID):
+        file_path = USER_WORKSPACE_CACHE / workspaceID / "me_token.pkl"
+        stored_creds = None
+        credentials = None
+        with open(file_path, 'rb') as token_file:
+            stored_creds = pickle.load(token_file)
+        
+        if stored_creds and stored_creds.valid:
+            credentials = stored_creds
+        else:
+            if stored_creds and stored_creds.expired and stored_creds.refresh_token:
+                try:
+                    stored_creds.refresh(Request())
+                    credentials = stored_creds
+                except Exception as e:
+                    return {"success": False, "msg": f"Failed to refresh credentials: {str(e)}"}
+
+        service = build('gmail', 'v1', credentials=credentials)
+
+        return service
+
+    def get_latest_email_date(gmail_csv_path):
+        latest_email_date_iso = '1970-01-01T00:00:00+00:00'  # This is a base comparison string
+        try:
+            with open(gmail_csv_path, mode='r', encoding='utf-8') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    timestamp = row['Timestamp']
+                    if timestamp > latest_email_date_iso:
+                        latest_email_date_iso = timestamp
+        except FileNotFoundError:
+            print(f"File {gmail_csv_path} not found.")
+        return latest_email_date_iso
+
+    def list_messages_matching_query(service, user_id, query=''):
+        try:
+            response = service.users().messages().list(userId=user_id, q=query).execute()
+            messages = response.get('messages', [])
+            return messages
+        except error as error:
+            print(f'An error occurred: {error}')
+            return []
+
+    def fetch_emails_after_date(service, gmail_csv_path, user_id='me'):
+        latest_email_date_iso = get_latest_email_date(gmail_csv_path)
+        # Convert ISO date to epoch in milliseconds for the Gmail query
+        latest_email_datetime = datetime.fromisoformat(latest_email_date_iso)
+        query = f"after:{int(latest_email_datetime.timestamp())}"
+        
+        messages = list_messages_matching_query(service, user_id, query)
+
+        return messages
+
+    await websocket.accept()
+
+    async for message in websocket.iter_text():
+        data = json.loads(message)
+
+        workspace_id = data.get("workspaceid")
+        metadata_path = USER_WORKSPACE_CACHE / workspace_id / 'metadata.json'
+        gmail_csv_path = USER_WORKSPACE_CACHE / workspace_id / 'documents' / 'gmail.csv'
+
+        if not metadata_path.exists() or not gmail_csv_path.exists():
+            raise HTTPException(status_code=404, detail="Workspace or gmail.csv not found.")
+
+        with open(metadata_path, 'r') as file:
+            metadata = json.load(file)
+
+        if not metadata['gmailWorkspaceInfo'].get('is_sync', False): # Check if is_sync is false
+            # Determine the number of emails already downloaded
+            existing_emails_count = count_unique_emails(gmail_csv_path)
+
+            initial_download_num = metadata['gmailWorkspaceInfo'].get('initial_download_num', 200)
+            emails_to_download = initial_download_num - existing_emails_count
+
+            if emails_to_download > 0:
+                # Download additional emails and append them to gmail.csv
+                service = create_service_instance(workspace_id)
+                await download_emails(websocket, service, emails_to_download, gmail_csv_path, num_email_skip = existing_emails_count)
+
+                # Update metadata after downloading
+                if metadata_path.exists():
+                    with open(metadata_path, 'r') as file:
+                        metadata = json.load(file)
+
+                    metadata['gmailWorkspaceInfo']['is_downloading'] = False
+                    metadata['gmailWorkspaceInfo']['is_download_finished'] = True
+                    metadata['gmailWorkspaceInfo']['is_training'] = True
+                    metadata['gmailWorkspaceInfo']['is_training_finished'] = False
+                    metadata['gmailWorkspaceInfo']['num_emails'] = initial_download_num
+                    metadata['last_modified'] = datetime.utcnow().isoformat()
+                    metadata['gmailWorkspaceInfo']['last_email_date'] = get_latest_email_date(gmail_csv_path)
+
+                    with open(metadata_path, 'w') as file:
+                        json.dump(metadata, file, indent=4)
+
+                await websocket.send_json({"progress": '100', "message": 'finished downloading', "complete": True, 'metadata': metadata})
+            else:
+                await websocket.send_json({"progress": '100', "message": 'No additional emails needed to be downloaded.', "complete": True})
+        else:
+            # If is_sync is true, this endpoint shouldn't handle the request
+            service = create_service_instance(workspace_id)
+            messages = fetch_emails_after_date(service, gmail_csv_path)
+            latest_email_date_iso, num_emails_sync = await append_emails_to_csv(websocket, service, messages, gmail_csv_path)
+            
+            # Update metadata after downloading
+            if metadata_path.exists():
+                with open(metadata_path, 'r') as file:
+                    metadata = json.load(file)
+
+                metadata['gmailWorkspaceInfo']['is_downloading'] = False
+                metadata['gmailWorkspaceInfo']['is_download_finished'] = True
+                metadata['gmailWorkspaceInfo']['is_training'] = True
+                metadata['gmailWorkspaceInfo']['is_training_finished'] = False
+                metadata['gmailWorkspaceInfo']['num_emails'] += num_emails_sync
+                metadata['last_modified'] = datetime.utcnow().isoformat()
+                metadata['gmailWorkspaceInfo']['last_email_date'] = latest_email_date_iso
+
+                with open(metadata_path, 'w') as file:
+                    json.dump(metadata, file, indent=4)
+            await websocket.send_json({"progress": '100', "message": 'finished downloading async emails', "complete": True, 'metadata': metadata})
+
+@app.websocket("/gmail_resume_training")
+async def gmail_resume_training(websocket: WebSocket):
+    await websocket.accept()
+
+    async def async_on_progress(fraction):
+        progress = int(100 * fraction)
+        message = "Indexing in progress"
+        await websocket.send_json({"progress": progress, "message": message, "complete": False})
+
+    def on_progress(fraction):
+        loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
+
+    def on_error(error_msg):
+        loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"error": True, "message": error_msg}))
+
+    def on_success():
+        # Move the trained model to the target location
+        if checkpoint_dir.exists():
+            if target_model_path.exists():
+                shutil.rmtree(target_model_path)  # Remove the existing model directory
+            shutil.move(str(checkpoint_dir / 'trained.ndb'), str(target_model_path))  # Move the new model to the target location
+            shutil.rmtree(checkpoint_dir) # Remove the saved_training_model directory
+
+        if metadata_path.exists():
+            with open(metadata_path, 'r') as file:
+                metadata = json.load(file)
+
+            # Update the states accordingly
+            metadata['last_modified'] = datetime.utcnow().isoformat()
+            metadata['gmailWorkspaceInfo']['is_training'] = False
+            metadata['gmailWorkspaceInfo']['is_training_finished'] = True
+            metadata['gmailWorkspaceInfo']['is_sync'] = False
+
+            # Save the updated metadata back to the file
+            with open(metadata_path, 'w') as file:
+                json.dump(metadata, file, indent=4)
+        loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Resumed training completed successfully", "complete": True, "metadata": metadata}))
+
+    async for message in websocket.iter_text():
+        data = json.loads(message)
+
+        workspace_id = data.get("workspaceid")
+        workspace_folder = USER_WORKSPACE_CACHE / workspace_id
+        metadata_path = workspace_folder / 'metadata.json'
+        gmail_file_path = str(workspace_folder / 'documents' / 'gmail.csv')
+        checkpoint_dir = workspace_folder / "saved_training_model"
+        docs_to_insert = [ndb.CSV(gmail_file_path, strong_columns = ['Subject'], weak_columns=['Email Content'], reference_columns = ['Message ID', 'Email Content'])]
+        checkpoint_config = ndb.CheckpointConfig(
+            checkpoint_dir=checkpoint_dir,
+            resume_from_checkpoint=checkpoint_dir.exists() and any(checkpoint_dir.iterdir()),
+            checkpoint_interval=1,
+        )
+        target_model_path = workspace_folder / 'model.ndb'
+        loop = asyncio.get_running_loop()
+
+        try:
+            # Resume training
+            db = ndb.NeuralDB()
+            loop.run_in_executor(None, lambda: db.insert(
+                sources=docs_to_insert,
+                train=True,
+                on_progress=on_progress,
+                on_error=on_error,
+                on_success=on_success,
+                checkpoint_config=checkpoint_config
+            ))
+        except Exception as e:
+            await websocket.send_json({"error": str(e)})
+
+class GmailSync(BaseModel):
+    workspaceID: str
+
+@app.post("/gmail_sync")
+def gmail_sync(data: GmailSync):
+    workspace_id = data.workspaceID
+    metadata_path = USER_WORKSPACE_CACHE / workspace_id / 'metadata.json'
+
+    if metadata_path.exists(): # Load the existing metadata, update it, and write it back
+        with open(metadata_path, 'r') as file:
+            metadata = json.load(file)
+        
+        # Update the initial_download_num in the metadata
+        metadata['gmailWorkspaceInfo']['is_sync'] = True
+
+        # Write the updated metadata back to the file
+        with open(metadata_path, 'w') as file:
+            json.dump(metadata, file, indent=4)
+
+    return {"success": True}
+
 
 def safe_create_url_wrapper(args):
     return safe_create_url(*args)
@@ -1583,202 +1766,6 @@ async def url_train(websocket: WebSocket):
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
 
-@app.post("/reset_neural_db")
-def reset_neural_db():
-    global backend_instance
-
-    backend_instance.reset_neural_db()
-
-    return {"success": True, 'msg': 'Neural DB reset successful'}
-
-OUTLOOK_CLIENT_ID = "a0e83608-a426-46ba-be71-040486d5c230"
-OUTLOOK_TENANT_ID = "f8cdef31-a31e-4b4a-93e4-5f571e91255a"
-OUTLOOK_CLIENT_SECRET = "xFT8Q~C1t-nUTGvf4Brmh5vr5tvwt5cdAgrhecL4"
-OUTLOOK_SCOPES = ["https://graph.microsoft.com/Mail.Read"]
-
-@app.get("/outlook_auth")
-def outlook_auth():
-    # Helper function to generate the Microsoft OAuth URL
-    def get_microsoft_auth_url():
-        params = {
-            "client_id": OUTLOOK_CLIENT_ID,
-            "response_type": "code",
-            "redirect_uri": OUTLOOK_REDIRECT_URI,
-            "response_mode": "query",
-            "scope": " ".join(OUTLOOK_SCOPES)
-        }
-        return f"https://login.microsoftonline.com/common/oauth2/v2.0/authorize?{urlencode(params)}"
-    
-    auth_url = get_microsoft_auth_url()
-    webbrowser.open(auth_url)  # Try to open the browser
-    return {"message": "Check your browser to login", "url": auth_url}
-
-# Global variable to store the outlook authentication status for Electron frontend Polling
-auth_status = {"is_authenticated": False, 'total_emails': None}
-
-@app.get("/get_outlook_auth_status")
-def get_outlook_auth_status():
-    global auth_status
-
-    current_status = deepcopy(auth_status)
-
-    auth_status = {"is_authenticated": False, 'total_emails': None}
-
-    return current_status
-
-@app.get("/outlook_callback")
-def outlook_callback(code: str = None):
-    global auth_status
-
-    def exchange_code_for_token(code):
-        token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
-        headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        data = {
-            "client_id": OUTLOOK_CLIENT_ID,
-            "scope": " ".join(OUTLOOK_SCOPES),
-            "code": code,
-            "redirect_uri": OUTLOOK_REDIRECT_URI,
-            "grant_type": "authorization_code",
-        }
-        response = requests.post(token_url, headers=headers, data=data)
-        return response.json()
-
-    def get_email_count(access_token):
-        graph_url = "https://graph.microsoft.com/v1.0/me/mailFolders/Inbox/messages?$count=true"
-        headers = {"Authorization": f"Bearer {access_token}", "ConsistencyLevel": "eventual"}
-        response = requests.get(graph_url, headers=headers)
-        return response.json().get('@odata.count', 0)
-
-    if not code:
-        raise HTTPException(status_code=400, detail="Missing authorization code")
-    
-    # Exchange code for token
-    token_response = exchange_code_for_token(code)
-    access_token = token_response.get("access_token")
-
-    if not access_token:
-        raise HTTPException(status_code=500, detail="Failed to obtain access token")
-
-    backend_instance.outlook_access_token = access_token
-
-    total_emails = get_email_count(access_token)
-
-    auth_status["is_authenticated"] = True
-    auth_status["total_emails"] = total_emails
-
-    return {'message': 'The authentication has succeeded. Please go back to PocketLLM.'}
-
-@app.websocket("/outlook_download_train")
-async def outlook_download_train(websocket: WebSocket):
-
-    ##############################################  Download  ##########################################
-
-    async def get_user_emails(access_token, max_emails, websocket):
-        total_emails_url = "https://graph.microsoft.com/v1.0/me/mailFolders/Inbox/messages?$count=true"
-        headers = {"Authorization": f"Bearer {access_token}"}
-        total_response = requests.get(total_emails_url, headers=headers)
-        total_count = total_response.json().get('@odata.count', 0)
-
-        emails = []
-        processed = 0
-        skip = 0
-        while processed < total_count and processed < max_emails:
-            batch_url = f"https://graph.microsoft.com/v1.0/me/messages?$top={min(max_emails, 50)}&$skip={skip}"
-            batch_response = requests.get(batch_url, headers=headers)
-            batch_emails = batch_response.json().get('value', [])
-            emails.extend(batch_emails)
-            processed += len(batch_emails)
-            skip += len(batch_emails)
-
-            # Send progress update
-            progress = (processed / min(total_count, max_emails)) * 100
-            await websocket.send_json({"progress": progress, "message": f"Downloaded {processed}/{min(total_count, max_emails)} emails", "complete": False})
-
-            if len(batch_emails) == 0:
-                break  # No more emails to fetch
-
-        return emails
-
-    def extract_email_data(emails):
-        # Helper function to convert HTML to plain text
-        def html_to_text(html):
-            soup = BeautifulSoup(html, "html.parser")
-            return soup.get_text()
-
-        emails_data = []
-        for email in emails:
-            email_id = email.get('conversationId')
-            subject = email.get('subject')
-            html_content = email.get('body', {}).get('content')
-            plain_text_content = html_to_text(html_content)
-            emails_data.append((email_id, subject, plain_text_content))
-        return emails_data
-
-
-    await websocket.accept()
-
-    async for message in websocket.iter_text():
-        data = json.loads(message)
-
-        # Number of emails to download
-        num_emails = data.get("num_emails", 10)
-
-        # Fetch emails using the access token
-        emails = await get_user_emails(backend_instance.outlook_access_token, num_emails, websocket)
-        emails_data = extract_email_data(emails)
-        
-        # Specify and prepare the folder for CSV file
-        USER_OUTLOOK_INBOX_TEMP_CACHE = WORKING_FOLDER / "user_outlook_inbox_temp_cache"
-        if USER_OUTLOOK_INBOX_TEMP_CACHE.exists():
-            shutil.rmtree(USER_OUTLOOK_INBOX_TEMP_CACHE)
-        USER_OUTLOOK_INBOX_TEMP_CACHE.mkdir(parents=True, exist_ok=True)
-
-        # CSV file location
-        temp_file_location = USER_OUTLOOK_INBOX_TEMP_CACHE / "outlook_inbox_data.csv"
-
-        # Write to CSV
-        with open(temp_file_location, mode='w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(['Message ID', 'Subject', 'Email Content'])
-
-            for email_id, subject, html_content in emails_data:
-                writer.writerow([email_id, subject, html_content])
-
-            await websocket.send_json({"progress": 100, "message": f"Emails saved to CSV at {str(temp_file_location)}",  "complete": True})
-
-        ##############################################  Train  ##########################################
-
-        # Reset neuraldb to make sure previously trained files are not included.
-        backend_instance.reset_neural_db()
-
-        documents = [ndb.CSV(temp_file_location, strong_columns = ['Subject'], weak_columns=['Email Content'], reference_columns = ['Message ID', 'Email Content'])]
-
-        async def async_on_progress(fraction):
-            progress = int(100 * fraction)
-            message = "Indexing in progress"
-            await websocket.send_json({"progress": progress, "message": message, "complete": False})
-
-        def on_progress(fraction):
-            loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
-
-        def on_error(error_msg):
-            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"error": True, "message": error_msg}))
-
-        def on_success():
-            # Turn on Outlook query switch
-            backend_instance.outlook_query_switch = True
-            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
-
-        try:
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, lambda: backend_instance.backend.insert(
-                sources=documents,
-                on_progress=on_progress,
-                on_error=on_error,
-                on_success=on_success,
-            ))
-        except Exception as e:
-            await websocket.send_json({"error": True, "message": str(e)})
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()

@@ -1,9 +1,10 @@
 import { useState, ChangeEvent, FormEvent, useRef } from 'react'
 import axios from 'axios'
-import { usePort } from '../PortContext'
+import { usePort } from '../contexts/PortContext'
 import Toast from './Toast'
 import { WorkSpaceMetadata } from '../App'
 import useTelemetry from '../hooks/useTelemetry'
+import Tooltip from '@mui/material/Tooltip'
 
 type TeachProps = {
     curWorkSpaceID: string|null,
@@ -76,15 +77,17 @@ export default function Teach({curWorkSpaceID, setWorkSpaceMetadata}: TeachProps
 
   return (
     <>
-        <button onClick={()=>recordEvent({
-                            UserAction: 'Click',
-                            UIComponent: 'Open-teach button',
-                            UI: 'Teach'
-                        })}
-                type="button" className='btn btn-general mx-1'  data-bs-toggle="modal" data-bs-target="#teachModal">
-            <i className="bi bi-mortarboard font-lg"></i>
-            <div className='font-sm'>Teach</div>
-        </button>
+        <Tooltip title="Teach" placement='right'>
+            <button onClick={()=>recordEvent({
+                                UserAction: 'Click',
+                                UIComponent: 'Open-teach button',
+                                UI: 'Teach'
+                            })}
+                    type="button" className='btn btn-general mx-1'  data-bs-toggle="modal" data-bs-target="#teachModal">
+                <i className="bi bi-mortarboard font-lg"></i>
+            </button>
+        </Tooltip>
+        
 
         <form onSubmit={ handleSubmit } className="modal fade" id="teachModal" tabIndex={-1} aria-hidden="true">
             <div className="modal-dialog modal-dialog-centered">
