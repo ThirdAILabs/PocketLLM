@@ -443,6 +443,29 @@ export default function SideBar(
         })
     }
 
+    const handleImportWorkSpace = () => {
+        window.electron.send('open-folder-dialog')
+
+        window.electron.once('selected-folder', (directoryPath: string) => {
+            console.log('Directory chosen:', directoryPath)
+            
+            axios.post(`http://localhost:${port}/import_workspace`, { directoryPath })
+            .then(response => {
+                console.log('Workspace imported successfully:', response.data)
+
+                const importedMetadata = {
+                    ...response.data.metadata,
+                    isWorkSpaceSaved: true // Set the isWorkSpaceSaved to true
+                }
+
+                setWorkSpaceMetadata(prevMetadata => [...prevMetadata, importedMetadata])
+            })
+            .catch(error => {
+                console.error('Error during workspace import:', error);
+            });
+        })
+    }
+
     const [fileWorkSpaces, setFileWorkSpaces] = useState<WorkSpaceMetadata[]>([]);
     const [urlWorkSpaces, setUrlWorkSpaces] = useState<WorkSpaceMetadata[]>([])
     const [gmailWorkSpaces, setGmailWorkSpaces] = useState<WorkSpaceMetadata[]>([])
@@ -604,6 +627,7 @@ export default function SideBar(
                 </DrawerHeader>
                 <div className='w-100 h-100 d-flex flex-column justify-content-between'>
                     <div className="font-sm w-100">
+                        <button onClick={handleImportWorkSpace}>import workspace</button>
                         <SideBarItem    collapseId = {"CollapseFile"} 
                                         logo = {"📃"} 
                                         workspaceName = "File"

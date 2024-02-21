@@ -145,7 +145,7 @@ function createWindow() {
     dialog.showOpenDialog(win!, {
       properties: ['openFile', 'multiSelections'],
       filters: [
-        { name: 'Documents', extensions: ['pdf', 'csv', 'docx'] }
+        { name: 'Documents', extensions: ['pdf', 'docx'] }
       ]
     }).then(result => {
       if (!result.canceled && result.filePaths.length > 0) {

@@ -181,7 +181,7 @@ export default function AddFileWorkspace(
                               className={`drop-zone drop-zone-innerwrapper drop-zone-wrapper ${ draggover? " drop-zone-drag" : ""}`} 
                               onClick={ selectFiles }>
                               <i className="bi bi-upload fs-2 text-secondary mb-2"></i>
-                              Drop files (.PDF .DOCX .CSV) or click to select files.
+                              Drop files (.PDF .DOCX) or click to select files.
                           </div>
                           {
                               selectedFiles.length > 0 
