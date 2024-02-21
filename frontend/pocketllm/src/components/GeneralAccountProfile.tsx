@@ -119,7 +119,7 @@ export default function GeneralAccountProfile({ user, subscribeTrigger, setUser 
                                     <div className='font-x-sm mx-2'>Unsubscribed</div>
                             }
                         </div>
-                        <button className="d-flex btn-general bg-transparent align-items-center"
+                        <button className="d-flex btn-general2 bg-transparent align-items-center"
                             style={{minWidth: "110px"}}
                                 onClick={()=>{handleLogout()}}>
                             <i className="bi bi-box-arrow-right me-2"></i>
@@ -129,7 +129,7 @@ export default function GeneralAccountProfile({ user, subscribeTrigger, setUser 
                     :
                     <>
                         <div className='userHeadshot bg-secondary bg-opacity-25'><i className="bi bi-person-dash"/></div>
-                        <div className='font-sm mx-2' onClick={()=>{handleLoginClick()}}>Click to login</div>
+                        <div className='font-sm mx-2' style={{ cursor: 'pointer' }}  onClick={()=>{handleLoginClick()}}>Click to login</div>
                     </>
                 }
                 

@@ -171,11 +171,11 @@ export default function Subscribe({trigger, user, setUser, setOpen}: SubscribePr
     {
       user ?
       <>
-      <div className='px-2 my-2'>
+      <div className='px-2 my-1'>
             <button  ref={trigger} type="button" data-bs-toggle="modal" data-bs-target="#subscribeModal" 
             onClick={()=>setOpen(false)}
-            className='font-sm text-start btn btn-general2 bg-transparent rounded-3 py-2 w-100 d-flex'>
-                <i className="bi bi-credit-card text-secondary me-2"></i>
+            className='font-sm text-start btn btn-general2 bg-transparent rounded-3 py-2 w-100 d-flex align-items-center'>
+                <i className="bi bi-credit-card text-secondary me-3 fs-6"></i>
                 Subscribe
             </button>
         </div>

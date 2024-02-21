@@ -627,7 +627,6 @@ export default function SideBar(
                 </DrawerHeader>
                 <div className='w-100 h-100 d-flex flex-column justify-content-between'>
                     <div className="font-sm w-100">
-                        <button onClick={handleImportWorkSpace}>import workspace</button>
                         <SideBarItem    collapseId = {"CollapseFile"} 
                                         logo = {"📃"} 
                                         workspaceName = "File"
@@ -700,6 +699,16 @@ export default function SideBar(
                     </div>
                     <div className='rounded-0 py-3 border-0 border-shadow w-100'>
                         <SummarizerSwitch summarizer = {summarizer} setSummarizer = {setSummarizer} cachedOpenAIKey = {cachedOpenAIKey} setCachedOpenAIKey = {setCachedOpenAIKey}  />
+                        <div className='px-2 mb-1'>
+                            <button  type="button"  
+                                     className='font-sm text-start btn btn-general2 bg-transparent rounded-3 py-2 w-100 d-flex align-items-center'
+                                     onClick={handleImportWorkSpace}
+                                     >
+                                    <i className="bi bi-cloud-arrow-up text-secondary me-3 fs-5"></i>
+                                    <div>Import Workspace</div>
+                            </button>
+                        </div>
+
                         <Subscribe trigger = {subscribeTrigger} user={user} setUser={setUser} setOpen = {setOpen}/>
                         <GeneralAccountProfile user={user} setUser = {setUser} subscribeTrigger={subscribeTrigger}/>
                     </div>
