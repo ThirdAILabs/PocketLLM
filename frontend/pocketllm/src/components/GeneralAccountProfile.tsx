@@ -119,7 +119,7 @@ export default function GeneralAccountProfile({ user, subscribeTrigger, setUser 
                                     <div className='font-x-sm mx-2'>Unsubscribed</div>
                             }
                         </div>
-                        <button className="d-flex btn-general2 bg-transparent align-items-center"
+                        <button className="d-flex btn btn-general2 bg-transparent align-items-center"
                             style={{minWidth: "110px"}}
                                 onClick={()=>{handleLogout()}}>
                             <i className="bi bi-box-arrow-right me-2"></i>
