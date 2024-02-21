@@ -529,7 +529,7 @@ export default function SideBar(
                                 const ws = new WebSocket(`ws://localhost:${port}/gmail_resume_training`)
                                 ws.onopen = () => {
                                     console.log("WebSocket connection established. Starting training.")
-                                    gmailWorkspaceProgressRef.current?.click()
+                                    // gmailWorkspaceProgressRef.current?.click()
                                     ws.send(JSON.stringify({
                                         workspaceid: gmailWorkspaceSyncID,
                                     }))
