@@ -157,15 +157,13 @@ export default function AddFileWorkspace(
             data-bs-backdrop="static">
             <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content">
-                  {
-                    startProgress
-                    ?
-                    <></>
-                    :
-                    <div className="modal-header border-0 ">
-                        <button ref = {closeBtn} type="button" className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div
+                        className="modal-header border-0"
+                        style={{ display: startProgress ? 'none' : '' }}
+                    >
+                        <button ref={closeBtn} type="button" className="btn-close modal-close-btn" data-bs-dismiss="modal" aria-label="Close"/>
                     </div>
-                  }
+
                     <div className="modal-body pt-0">
                        
                        {
