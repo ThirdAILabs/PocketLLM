@@ -14,18 +14,18 @@ function Main() {
       console.log("fetch and set port from main process:", port)
     }
 
-    const checkBackendStatus = async () => {
-      try {
-        const port = await window.electron.invoke('get-port')
-        const response = await fetch(`http://localhost:${port}/check_live`)
-        if (!response.ok) throw new Error('Backend not responding')
-        const data = await response.json()
-        console.log(data.message); // Should log "Backend is alive"
-      } catch (error) {
-        console.error('Backend check failed, attempting to restart')
-        restartBackend()
-      }
-    }
+    // const checkBackendStatus = async () => {
+    //   try {
+    //     const port = await window.electron.invoke('get-port')
+    //     const response = await fetch(`http://localhost:${port}/check_live`)
+    //     if (!response.ok) throw new Error('Backend not responding')
+    //     const data = await response.json()
+    //     console.log(data.message); // Should log "Backend is alive"
+    //   } catch (error) {
+    //     console.error('Backend check failed, attempting to restart')
+    //     restartBackend()
+    //   }
+    // }
 
     const restartBackend = async () => {
       await window.electron.invoke('restart-backend') // signal main process to restart the backend
@@ -35,9 +35,9 @@ function Main() {
     useEffect(() => {
       fetchAndSetPort()
 
-      const intervalId = setInterval(checkBackendStatus, 5000)
+      // const intervalId = setInterval(checkBackendStatus, 5000)
 
-      return () => clearInterval(intervalId) // Cleanup the interval on component unmount
+      // return () => clearInterval(intervalId) // Cleanup the interval on component unmount
     }, [setPort])
 
     return (
