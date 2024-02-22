@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import axios from 'axios'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { HashRouter as Router, Route, Routes } from 'react-router-dom'
 
 import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap/dist/js/bootstrap.bundle.js";
@@ -258,7 +258,7 @@ function App() {
                   </MyToolbar>
               </AppBar>
               
-              <BrowserRouter>
+              <Router>
                     <SideBar
                       open = {open} setOpen = {setOpen}
                       summarizer = {summarizer} setSummarizer = {setSummarizer} cachedOpenAIKey = {cachedOpenAIKey} setCachedOpenAIKey = {setCachedOpenAIKey}
@@ -306,7 +306,7 @@ function App() {
                             }/>
                         </Routes>
                     </Main>
-              </BrowserRouter>
+              </Router>
           </Box>
         <CustomAlertWrapper message={alertMessage} setMessage={setAlertMessage}/>
       </div>
