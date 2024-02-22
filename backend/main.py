@@ -1534,11 +1534,19 @@ async def gmail_resume_downloading(websocket: WebSocket):
     await websocket.accept()
 
     async for message in websocket.iter_text():
+        def on_progress(progress_percentage, message):
+            asyncio.run_coroutine_threadsafe(
+                websocket.send_text(json.dumps({"progress": progress_percentage, "message": message})),
+                loop
+            )
+
         data = json.loads(message)
 
         workspace_id = data.get("workspaceid")
         metadata_path = USER_WORKSPACE_CACHE / workspace_id / 'metadata.json'
         gmail_csv_path = USER_WORKSPACE_CACHE / workspace_id / 'documents' / 'gmail.csv'
+        service = create_service_instance(workspace_id)
+        loop = asyncio.get_running_loop()
 
         if not metadata_path.exists() or not gmail_csv_path.exists():
             raise HTTPException(status_code=404, detail="Workspace or gmail.csv not found.")
@@ -1555,8 +1563,10 @@ async def gmail_resume_downloading(websocket: WebSocket):
 
             if emails_to_download > 0:
                 # Download additional emails and append them to gmail.csv
-                service = create_service_instance(workspace_id)
-                await download_emails(websocket, service, emails_to_download, gmail_csv_path, num_email_skip = existing_emails_count)
+                await loop.run_in_executor(
+                    None,
+                    lambda: download_emails(service, emails_to_download, gmail_csv_path, on_progress, num_email_skip = existing_emails_count)
+                )
 
                 # Update metadata after downloading
                 if metadata_path.exists():
@@ -1578,10 +1588,13 @@ async def gmail_resume_downloading(websocket: WebSocket):
             else:
                 await websocket.send_json({"progress": '100', "message": 'No additional emails needed to be downloaded.', "complete": True})
         else:
-            # If is_sync is true, this endpoint shouldn't handle the request
-            service = create_service_instance(workspace_id)
+            # If is_sync is true
             messages = fetch_emails_after_date(service, gmail_csv_path)
-            latest_email_date_iso, num_emails_sync = await append_emails_to_csv(websocket, service, messages, gmail_csv_path)
+            result = await loop.run_in_executor(
+                    None,
+                    lambda: append_emails_to_csv(service, messages, gmail_csv_path, on_progress)
+            )
+            latest_email_date_iso, num_emails_sync = result
             
             # Update metadata after downloading
             if metadata_path.exists():
@@ -1598,7 +1611,7 @@ async def gmail_resume_downloading(websocket: WebSocket):
 
                 with open(metadata_path, 'w') as file:
                     json.dump(metadata, file, indent=4)
-            await websocket.send_json({"progress": '100', "message": 'finished downloading async emails', "complete": True, 'metadata': metadata})
+            await websocket.send_json({"progress": '100', "message": 'finished sync downloading emails', "complete": True, 'metadata': metadata})
 
 @app.websocket("/gmail_resume_training")
 async def gmail_resume_training(websocket: WebSocket):
