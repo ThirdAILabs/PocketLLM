@@ -1492,6 +1492,8 @@ async def gmail_resume_downloading(websocket: WebSocket):
                 try:
                     stored_creds.refresh(Request())
                     credentials = stored_creds
+                    with open(file_path, 'wb') as token_file:
+                        pickle.dump(credentials, token_file)
                 except Exception as e:
                     return {"success": False, "msg": f"Failed to refresh credentials: {str(e)}"}
 
