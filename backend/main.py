@@ -1219,10 +1219,7 @@ def save_gmail_workspace():
     # Return success response to the frontend
     return { "success": True, "metadata": metadata}
 
-async def append_emails_to_csv(websocket, service, messages, gmail_csv_path):
-
-    async def send_progress_update(progress, message): # Function to send progress updates through the WebSocket connection
-        await websocket.send_json({"progress": progress, "message": message})
+def append_emails_to_csv(service, messages, gmail_csv_path, on_progress):
 
     def extract_text_from_mime(mime_msg):
         text_content = None
@@ -1315,7 +1312,8 @@ async def append_emails_to_csv(websocket, service, messages, gmail_csv_path):
                         chunk = chunk.strip().replace("\r\n", " ").replace("\n", " ")
                         writer.writerow([msg_id, timestamp, from_header, to_header, cc_header, subject, chunk])
 
-                await send_progress_update(round( (idx / len(messages)) * 100, 2), f"Processed {idx} of {len(messages)} messages")
+                progress_percentage = round((idx / len(messages)) * 100, 2)
+                on_progress(progress_percentage, f"Processed {idx + 1} of {len(messages)} messages")
             
             except Exception as e:
                 print(f"Failed to fetch message with ID {msg_id}. Error: {e}")
@@ -1323,11 +1321,10 @@ async def append_emails_to_csv(websocket, service, messages, gmail_csv_path):
     
     return latest_email_date_iso, len(messages)
 
-async def download_emails(websocket, service, num_download, gmail_csv_path, num_email_skip = 0):
+def download_emails(service, num_download, gmail_csv_path, on_progress, num_email_skip = 0):
 
     page_token = None
     all_messages = []
-
     adjusted_download_num = num_download + num_email_skip
 
     while True:
@@ -1346,7 +1343,7 @@ async def download_emails(websocket, service, num_download, gmail_csv_path, num_
     
     all_messages = all_messages[num_email_skip:num_download + num_email_skip]
 
-    latest_email_date_iso, num_emails_appended = await append_emails_to_csv(websocket, service, all_messages, gmail_csv_path)
+    latest_email_date_iso, num_emails_appended = append_emails_to_csv(service, all_messages, gmail_csv_path, on_progress)
 
     return latest_email_date_iso, num_emails_appended
 
@@ -1357,6 +1354,12 @@ async def gmail_initial_download_train(websocket: WebSocket):
     await websocket.accept()
 
     async for message in websocket.iter_text():
+        def on_progress(progress_percentage, message):
+            asyncio.run_coroutine_threadsafe(
+                websocket.send_text(json.dumps({"progress": progress_percentage, "message": message})),
+                loop
+            )
+
         data = json.loads(message)
         
         user_id = data.get('user_id', 'me')
@@ -1366,6 +1369,7 @@ async def gmail_initial_download_train(websocket: WebSocket):
         gmail_csv_path = USER_WORKSPACE_CACHE / workspace_id / 'documents' / 'gmail.csv' # Locate the gmail.csv file
         metadata_path = USER_WORKSPACE_CACHE / workspace_id / 'metadata.json'
         service = backend_instance.gmail_auth_services.get(user_id)
+        loop = asyncio.get_running_loop()
 
         if metadata_path.exists(): # Load the existing metadata, update it, and write it back
             with open(metadata_path, 'r') as file:
@@ -1379,7 +1383,11 @@ async def gmail_initial_download_train(websocket: WebSocket):
             with open(metadata_path, 'w') as file:
                 json.dump(metadata, file, indent=4)
 
-        latest_email_date_iso, num_emails = await download_emails(websocket, service, initial_download_num, gmail_csv_path)
+            result = await loop.run_in_executor(
+                None, 
+                lambda: download_emails(service, initial_download_num, gmail_csv_path, on_progress)
+            )
+            latest_email_date_iso, num_emails = result
 
         if metadata_path.exists():
             with open(metadata_path, 'r') as file:
