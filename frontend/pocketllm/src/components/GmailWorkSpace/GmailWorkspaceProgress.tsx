@@ -26,7 +26,7 @@ export default function GmailWorkspaceProgress({progress, gmailWorkspaceProgress
 
         setCurWorkSpaceID(null)
 
-        gmailWorkspaceProgressRef.current?.click() // Close Gmail progress window
+        gmailWorkspaceCloseRef.current?.click() // Close Gmail progress window
     }
 
     return (
