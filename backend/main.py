@@ -38,7 +38,7 @@ from shutil import move
 from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
 from thirdai import licensing
-
+import trafilatura
 
 
 
@@ -1221,27 +1221,18 @@ def save_gmail_workspace():
 
 def append_emails_to_csv(service, messages, gmail_csv_path, on_progress):
 
-    def extract_text_from_mime(mime_msg):
-        text_content = None
-        
-        # Try to find 'text/plain' part first
+    def extract_text_with_trafilatura(mime_msg):
+        # Combine all parts of the email into one string
+        email_content = ''
         for part in mime_msg.walk():
-            if part.get_content_type() == 'text/plain':
-                charset = part.get_content_charset() or 'utf-8'
-                text_content = part.get_payload(decode=True).decode(charset, 'ignore')
-                break
-
-        # If 'text/plain' is not found, try 'text/html'
-        if not text_content:
-            for part in mime_msg.walk():
-                if part.get_content_type() == 'text/html':
-                    charset = part.get_content_charset() or 'utf-8'
-                    html_content = part.get_payload(decode=True).decode(charset, 'ignore')
-                    soup = BeautifulSoup(html_content, 'html.parser')
-                    text_content = soup.get_text(separator=' ', strip=True)
-                    break
-
-        return text_content
+            charset = part.get_content_charset() or 'utf-8'
+            content_type = part.get_content_type()
+            if content_type in ('text/plain', 'text/html'):
+                email_content += part.get_payload(decode=True).decode(charset, 'ignore')
+        
+        # Use trafilatura to extract text
+        extracted_text = trafilatura.extract(email_content, include_formatting=False, include_comments=False, include_links=False, include_tables=False, favor_precision=True)
+        return extracted_text if extracted_text else ''
     
     @retry(stop_max_attempt_number=3, wait_fixed=5000)
     def fetch_gmail_message(service, msg_id):
@@ -1291,7 +1282,7 @@ def append_emails_to_csv(service, messages, gmail_csv_path, on_progress):
                 to_header = decode_mime_header(mime_msg.get("To", ""))
                 cc_header = decode_mime_header(mime_msg.get("Cc", ""))
                 timestamp = parse_date_to_utc(mime_msg.get('Date'))
-                text_content = extract_text_from_mime(mime_msg) # Get the plain text content from the MIME message
+                text_content = extract_text_with_trafilatura(mime_msg)
 
                 # Update latest email date if this email is more recent
                 if timestamp > latest_email_date_iso:
