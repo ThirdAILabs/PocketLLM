@@ -97,10 +97,20 @@ export default function Teach({curWorkSpaceID, setWorkSpaceMetadata}: TeachProps
                     </div>
                     <div className="modal-body pt-0">
                         <div className='mb-2 rounded-3 bg-secondary bg-opacity-25 p-2' style={{minHeight: "70px"}}>
-                            <input onChange={handleSourceChange} className='font-sm w-100 text-align-left bg-transparent border-0' placeholder='Source concept, e.g. 401(k)'/>
+                            <input 
+                                onChange={handleSourceChange} 
+                                className='font-sm w-100 text-align-left bg-transparent border-0' 
+                                placeholder='Source concept, e.g. 401(k)'
+                                style={{color: "black"}}
+                            />
                         </div>
                         <div className='mb-3 rounded-3 bg-secondary bg-opacity-25 p-2' style={{minHeight: "70px"}}>
-                            <input onChange={handleTargeChange} className='font-sm w-100 text-align-left bg-transparent border-0' placeholder='Target concept, e.g. Roth IRA'/>
+                            <input 
+                                onChange={handleTargeChange} 
+                                className='font-sm w-100 text-align-left bg-transparent border-0' 
+                                placeholder='Target concept, e.g. Roth IRA'
+                                style={{color: "black"}}
+                            />
                         </div>
 
                         <div className='d-flex justify-content-center mb-3'>

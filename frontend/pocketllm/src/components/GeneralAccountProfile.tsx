@@ -5,11 +5,10 @@ import { SubscriptionPlan } from '../App'
 
 type AccountProps = {
     user : { email: string, name: string, subscription_plan: SubscriptionPlan } | null,
-    subscribeTrigger: React.RefObject<HTMLButtonElement>,
     setUser: React.Dispatch<React.SetStateAction<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>>,
 }
 
-export default function GeneralAccountProfile({ user, subscribeTrigger, setUser } : AccountProps) {
+export default function GeneralAccountProfile({ user, setUser } : AccountProps) {
     const { port } = usePort()
 
     const handleLoginClick = async ()=> {
@@ -97,10 +96,7 @@ export default function GeneralAccountProfile({ user, subscribeTrigger, setUser 
     return (
         <div className='px-2 dropdown'>
 
-            <div className='d-flex align-items-center bg-transparent rounded-3 p-2 w-100' 
-                    // data-bs-toggle="dropdown" 
-                    // aria-expanded="false"
-            >
+            <div className='d-flex align-items-center bg-transparent rounded-3 p-2 w-100'>
                 {
                     user ?
                     <div className='w-100 d-flex justify-content-between'>
@@ -120,7 +116,7 @@ export default function GeneralAccountProfile({ user, subscribeTrigger, setUser 
                             }
                         </div>
                         <button className="d-flex btn btn-general2 bg-transparent align-items-center"
-                            style={{minWidth: "110px"}}
+                            style={{minWidth: "110px", color: "black"}}
                                 onClick={()=>{handleLogout()}}>
                             <i className="bi bi-box-arrow-right me-2"></i>
                             <div className='font-sm'>Log out</div>
@@ -134,37 +130,6 @@ export default function GeneralAccountProfile({ user, subscribeTrigger, setUser 
                 }
                 
             </div>
-
-            <ul className="dropdown-menu font-sm mt-1 border-light-subtle border-shadow">
-                {
-                    user 
-                    ?
-                    <>
-                        <li>
-                            <button className="dropdown-item d-flex btn-general2"
-                                    onClick={()=>{subscribeTrigger.current?.click()}}
-                            >
-                                <div className='me-2'>Subscribe</div>
-                            </button>
-                        </li>
-                        
-                        <li>
-                            <button className="dropdown-item d-flex btn-general2"
-                                    onClick={()=>{handleLogout()}}>
-                                <div className='me-2'>Log out</div>
-                                <i className="bi bi-box-arrow-right"></i>
-                            </button>
-                        </li>
-                    </>
-                    :
-                    <li>
-                        <button className="dropdown-item d-flex btn-general2"
-                                onClick={()=>{handleLoginClick()}}>
-                            <div className='me-2'>Sign in with Gmail</div>
-                        </button>
-                    </li>
-                }                
-            </ul>
         </div>
   )
 }

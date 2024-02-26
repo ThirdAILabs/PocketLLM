@@ -710,7 +710,7 @@ export default function SideBar(
                         </div>
 
                         <Subscribe trigger = {subscribeTrigger} user={user} setUser={setUser} setOpen = {setOpen}/>
-                        <GeneralAccountProfile user={user} setUser = {setUser} subscribeTrigger={subscribeTrigger}/>
+                        <GeneralAccountProfile user={user} setUser = {setUser}/>
                     </div>
                 </div>
 
