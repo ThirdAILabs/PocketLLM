@@ -81,7 +81,13 @@ export default function EditableName({
         <input  
                 ref={nameFieldRef}
                 className='bg-transparent border-0'
-                style={{width: "fit-content", maxWidth: "200px", fontStyle: nameEditable ? 'italic' : 'normal'}}
+                style={{
+                    width: "fit-content", 
+                    maxWidth: "200px", 
+                    fontStyle: nameEditable ? 'italic' : 'normal',
+                    color: "black",
+                    backgroundColor: "white",
+                }}
                 readOnly = {!nameEditable}
                 value={name}
                 onKeyDown={(e)=> handleKeyDown(e)}
