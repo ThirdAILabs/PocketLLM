@@ -102,7 +102,7 @@ export default function SummarizerSwitch(
 
                                     <div className='d-flex justify-content-between align-items-center'>
                                         <span>OpenAI API key</span>
-                                        <input className="form-control form-control-sm api-input" type="text" value={cachedOpenAIKey} onChange={(e) => setOpenAiApiKey(e.target.value)} required/>
+                                        <input className="form-control form-control-sm api-input" type="text" defaultValue={ cachedOpenAIKey } onChange={(e) => setOpenAiApiKey(e.target.value)} required/>
                                     </div>
 
                                 </div>
