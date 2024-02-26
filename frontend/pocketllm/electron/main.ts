@@ -419,6 +419,7 @@ async function startBackend() {
 
   console.log('pythonExecutablePath:', pythonExecutablePath)
 
+  console.log('USERDATAPATH: ', USERDATAPATH)
   serverProcess = spawn(pythonExecutablePath, [availablePort.toString(), USERDATAPATH])
 
   console.log('spawn success')

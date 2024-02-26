@@ -54,9 +54,6 @@ licensing.set_path(THIRDAI_LICENSE_PATH)
 WORKING_FOLDER = Path(os.path.dirname(__file__)) / "data"
 BAZAAR_CACHE = WORKING_FOLDER / "bazaar_cache"
 BAZAAR_URL = "https://staging-modelzoo.azurewebsites.net/api/"
-USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
-USER_GMAIL_CACHE = WORKING_FOLDER / "user_gmail_cache"
-USER_GMAIL_LOGIN_CACHE = WORKING_FOLDER / "user_gmail_login_cache"
 
 OUTLOOK_CLIENT_ID = "a0e83608-a426-46ba-be71-040486d5c230"
 OUTLOOK_TENANT_ID = "f8cdef31-a31e-4b4a-93e4-5f571e91255a"
@@ -1788,6 +1785,9 @@ if __name__ == "__main__":
 
     FASTAPI_LOCALHOST_PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
     WORKING_FOLDER = Path(sys.argv[2]) if len(sys.argv) > 2 else WORKING_FOLDER
+    USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
+    USER_GMAIL_CACHE = WORKING_FOLDER / "user_gmail_cache"
+    USER_GMAIL_LOGIN_CACHE = WORKING_FOLDER / "user_gmail_login_cache"
 
     OUTLOOK_REDIRECT_URI = f"http://localhost:{FASTAPI_LOCALHOST_PORT}/outlook_callback"
 
