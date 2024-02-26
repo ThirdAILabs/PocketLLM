@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
 import { usePort } from '../../contexts/PortContext'
 import { WorkSpaceMetadata } from '../../App'
+import { FeatureUsableContext } from '../../contexts/FeatureUsableContext'
 import useTelemetry from '../../hooks/useTelemetry'
 import googleContinue from "../../assets/web_neutral_sq_ctn.svg"
 
@@ -31,6 +32,8 @@ export default function CreateGmailWorkspace(
 
     const recordEvent = useTelemetry()
 
+    const { isPremiumAccount } = useContext(FeatureUsableContext)
+
     const closeBtn = useRef<HTMLButtonElement>(null)
 
     const [loggin, setLoggin] = useState(false)
@@ -45,7 +48,9 @@ export default function CreateGmailWorkspace(
                     console.log(response.data.msg)
                     axios.post(`http://localhost:${port}/gmail_total_emails`)
                     .then(response => {
-                        setTotalEmailNum(response.data.total_emails)
+                        if (! isPremiumAccount ) {
+                            setTotalEmailNum(Math.min(200, response.data.total_emails))
+                        }
 
                         axios.post(`http://localhost:${port}/save_gmail_workspace`)
                             .then(response => {
@@ -88,14 +93,17 @@ export default function CreateGmailWorkspace(
 
         ws.onopen = () => {
             gmailWorkspaceProgressRef.current?.click()
+
+            const initialDownloadNum = isNaN(trainEmailNum) ? 200 : trainEmailNum // Check if trainEmailNum is NaN. If so, set initial_download_num to 200
+
             ws.send(JSON.stringify({
                 user_id: 'me',
-                initial_download_num: trainEmailNum,
+                initial_download_num: initialDownloadNum,
                 workspaceid: createdWorkspaceID
             }))
 
             recordEvent({
-                UserAction: `Train ${trainEmailNum} GmailWorkspace`,
+                UserAction: `Train ${initialDownloadNum} GmailWorkspace`,
                 UIComponent: 'Gmail train button',
                 UI: 'CreateGmailWorkspace',
             })
@@ -173,6 +181,13 @@ export default function CreateGmailWorkspace(
                             ?
                             <div className='font-sm'>
                                 <div className='pt-4 px-5 pb-5'>
+                                    {
+                                        isPremiumAccount
+                                        ?
+                                        <></>
+                                        :
+                                        <>Subscribe to Premium to index your entire Gmail</>
+                                    }
                                     <div className='mb-3'>
                                         Download latest 
                                         <input  className='mx-2 rounded-3 border border-dark-subtle p-1 px-2' 

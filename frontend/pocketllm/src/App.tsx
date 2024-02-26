@@ -20,6 +20,7 @@ import { usePort } from './contexts/PortContext'
 import Subscribe from "./components/Subscribe"
 import SaveNotice from './components/SaveNotice'
 import { SetAlertMessageProvider } from './contexts/SetAlertMessageContext'
+import { FeatureUsableContext } from './contexts/FeatureUsableContext'
 import CustomAlertWrapper from './components/CustomAlertWrapper'
 import FilePage from './pages/FilePage'
 import URLPage from './pages/URLPage'
@@ -220,6 +221,9 @@ function App() {
   }, [workSpaceMetadata])
 
   return (
+    <FeatureUsableContext.Provider value={{
+      isPremiumAccount: !!user && user.subscription_plan !== SubscriptionPlan.FREE
+    }}>
     <SetAlertMessageProvider setAlertMessage={setAlertMessage}>
 
       <div className='full-page-setup p-0'>
@@ -312,6 +316,7 @@ function App() {
       </div>
     
     </SetAlertMessageProvider>
+    </FeatureUsableContext.Provider>
   )
 }
 
