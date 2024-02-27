@@ -48,7 +48,9 @@ export default function CreateGmailWorkspace(
                     console.log(response.data.msg)
                     axios.post(`http://localhost:${port}/gmail_total_emails`)
                     .then(response => {
-                        if (! isPremiumAccount ) {
+                        if ( isPremiumAccount ) {
+                            setTotalEmailNum(response.data.total_emails)
+                        } else {
                             setTotalEmailNum(Math.min(200, response.data.total_emails))
                         }
 
