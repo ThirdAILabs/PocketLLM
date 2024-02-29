@@ -1133,8 +1133,8 @@ def gmail_total_emails(user_id: str = 'me'):
 
 @app.post("/save_gmail_workspace")
 def save_gmail_workspace():
-    def get_first_email_to_field(token_file_path) -> str:
-        """Fetch the first email and return the 'To' field as the user's email account."""
+    def get_user_email_address(token_file_path) -> str:
+        """Fetch the user's email address using their Google account profile."""
 
         def load_user_credentials(token_file_path):
             """Load user's credentials from a pickle file."""
@@ -1143,18 +1143,13 @@ def save_gmail_workspace():
 
         credentials = load_user_credentials(token_file_path)
         service = build('gmail', 'v1', credentials=credentials)
-        messages = service.users().messages().list(userId='me', maxResults=1).execute()
         
-        if messages and 'messages' in messages:
-            message_id = messages['messages'][0]['id']
-            message = service.users().messages().get(userId='me', id=message_id, format='full').execute()
-            
-            headers = message['payload']['headers']
-            to_header = next((header['value'] for header in headers if header['name'] == 'To'), None)
-            
-            if to_header:
-                return to_header
-        return "Unknown email account"
+        try:
+            profile = service.users().getProfile(userId='me').execute()
+            return profile.get('emailAddress', "Unknown email account")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return "Unknown email account"
 
     workspaceID = str(uuid4())
 
@@ -1179,7 +1174,7 @@ def save_gmail_workspace():
         writer = csv.writer(csvfile)
         writer.writerow(['Message ID', 'Timestamp', 'From', 'To', 'CC', 'Subject', 'Email Content'])
 
-    email_account = get_first_email_to_field(target_token_file)
+    email_account = get_user_email_address(target_token_file)
 
     metadata = {
         "workspaceID": workspaceID,
