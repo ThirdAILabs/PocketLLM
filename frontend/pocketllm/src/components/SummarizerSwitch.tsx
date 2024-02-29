@@ -8,7 +8,9 @@ import { SummarizerType } from '../App'
 import { usePort } from '../contexts/PortContext'
 
 type summarizerSwitchProps = {
-    summarizer: SummarizerType | null, setSummarizer: React.Dispatch<React.SetStateAction<SummarizerType | null>>, cachedOpenAIKey: string, setCachedOpenAIKey: React.Dispatch<React.SetStateAction<string>>
+    summarizer: SummarizerType | null, setSummarizer: React.Dispatch<React.SetStateAction<SummarizerType | null>>, cachedOpenAIKey: string, setCachedOpenAIKey: React.Dispatch<React.SetStateAction<string>>,
+    open: boolean ,
+    setOpen:  React.Dispatch<React.SetStateAction<boolean>>,
 }
 
 
@@ -25,12 +27,11 @@ const style = {
 }
 
 export default function SummarizerSwitch(
-    {summarizer, setSummarizer, cachedOpenAIKey, setCachedOpenAIKey}
+    {summarizer, setSummarizer, cachedOpenAIKey, setCachedOpenAIKey, open, setOpen}
     : summarizerSwitchProps
 ) {
     const { port } = usePort()
     
-    const [open, setOpen] = useState(false)
     const [isOpenAIOn, setUseOpenAI] = useState(false)
     const [openAiApiKey, setOpenAiApiKey] = useState('')
 
@@ -51,6 +52,7 @@ export default function SummarizerSwitch(
     const handleSubmit = async (key: string) => {
         const trimmedApiKey = key.trim()
         if (trimmedApiKey) {
+            console.log('trimmedApiKey', trimmedApiKey)
             const response = await axios.post(`http://localhost:${port}/setting`, {
                 model_preference: SummarizerType.OpenAI,
                 open_ai_api_key: trimmedApiKey,

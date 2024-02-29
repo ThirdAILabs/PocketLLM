@@ -145,6 +145,7 @@ function App() {
   // Summarizer setting
   const [cachedOpenAIKey, setCachedOpenAIKey] = useState<string>('') // User cached OpenAI key
   const [summarizer, setSummarizer] = useState<SummarizerType | null>(null) // User summarizer choice
+  const [summarizerWinOpen, setSummarizerWinOpen] = useState(false)
 
   // Workspace
   const [curWorkSpaceID, setCurWorkSpaceID] = useState<string|null>(null) //  Work Space ID: Used to keep track of current chosen workspace
@@ -265,7 +266,7 @@ function App() {
               <Router>
                     <SideBar
                       open = {open} setOpen = {setOpen}
-                      summarizer = {summarizer} setSummarizer = {setSummarizer} cachedOpenAIKey = {cachedOpenAIKey} setCachedOpenAIKey = {setCachedOpenAIKey}
+                      summarizer = {summarizer} setSummarizer = {setSummarizer} cachedOpenAIKey = {cachedOpenAIKey} setCachedOpenAIKey = {setCachedOpenAIKey} summarizerWinOpen = {summarizerWinOpen} setSummarizerWinOpen = {setSummarizerWinOpen}
                       workSpaceMetadata = {workSpaceMetadata} 
                       subscribeTrigger={subscribeTrigger} 
                       curWorkSpaceID = {curWorkSpaceID} 
@@ -301,7 +302,7 @@ function App() {
 
                             <Route path='/gmail/:id' element={
                                 <GmailPage
-                                      summarizer = {summarizer}
+                                      summarizer = {summarizer} setSummarizerWinOpen = {setSummarizerWinOpen}
                                       workSpaceMetadata={workSpaceMetadata} 
                                       curWorkSpaceID = {curWorkSpaceID} 
                                       setWorkSpaceMetadata = {setWorkSpaceMetadata}

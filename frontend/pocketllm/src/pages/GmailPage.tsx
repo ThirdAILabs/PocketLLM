@@ -12,7 +12,7 @@ import { WorkSpaceMetadata, SearchResult } from '../App'
 import EditableName from '../components/EditableName'
 
 type gmailPageProps = {
-    summarizer: string | null,
+    summarizer: string | null, setSummarizerWinOpen:  React.Dispatch<React.SetStateAction<boolean>>,
     workSpaceMetadata: WorkSpaceMetadata[],
     curWorkSpaceID: string | null, setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>,
     setGmailWorkspaceSyncID:  React.Dispatch<React.SetStateAction<string|null>>,
@@ -58,7 +58,7 @@ const formatDate = (dateIsoString: string): string => {
 }
 
 export default function GmailPage({
-        summarizer,
+        summarizer, setSummarizerWinOpen,
         workSpaceMetadata, 
         curWorkSpaceID, setWorkSpaceMetadata,
         setGmailWorkspaceSyncID
@@ -119,6 +119,7 @@ export default function GmailPage({
                             <Extraction searchResults={searchResults}
                                         curWorkSpaceID = {curWorkSpaceID} 
                                         setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                                        setSummarizerWinOpen = {setSummarizerWinOpen}
                             />
                         </div>
                     </div>

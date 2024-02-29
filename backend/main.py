@@ -846,8 +846,7 @@ async def websocket_summarize(websocket: WebSocket):
     summary_query, summary_prompt = parse_prompt(backend_instance.current_query)
 
     if model_preference == 'OpenAI':
-        if not backend_instance.openai_summarizer:
-            backend_instance.openai_summarizer = OpenAI(open_ai_api_key)
+        backend_instance.openai_summarizer = OpenAI(open_ai_api_key)
         
         model = backend_instance.openai_summarizer
         await model.stream_answer(
@@ -859,6 +858,31 @@ async def websocket_summarize(websocket: WebSocket):
         )
 
         await websocket.close()
+
+def get_email_content(emailSource, curWorkSpaceID):
+    # Step 1: Locate the gmail.csv file in the workspace
+    workspace_folder = USER_WORKSPACE_CACHE / curWorkSpaceID
+    documents_folder = workspace_folder / 'documents'
+    gmail_csv_path = documents_folder / 'gmail.csv'
+    
+    if not gmail_csv_path.exists():
+        return "Error: gmail.csv not found."
+    
+    # Step 2: Extract message ID from emailSource
+    message_id = emailSource.split('/')[-1]
+
+    # Step 3: Read gmail.csv to find the email content
+    email_content = ""
+    with open(gmail_csv_path, mode='r', encoding='utf-8') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            if row['Message ID'] == message_id:
+                email_content += row['Email Content'] + " "
+    
+    if not email_content:
+        return "Error: Email content not found."
+
+    return email_content
 
 @app.websocket("/gmail_summarize/ws/")
 async def gmail_summarize(websocket: WebSocket):
@@ -878,13 +902,16 @@ async def gmail_summarize(websocket: WebSocket):
 
     await websocket.accept()
     
-    email_content = await websocket.receive_text()
+    data = await websocket.receive_text()
+    parsed_data = json.loads(data)
+    emailSource = parsed_data["emailSource"]
+    curWorkSpaceID = parsed_data["curWorkSpaceID"]
+    email_content = get_email_content(emailSource, curWorkSpaceID)
     
     model_preference, open_ai_api_key = backend_instance.preferred_summary_model, backend_instance.open_ai_api_key
 
     if model_preference == 'OpenAI':
-        if not backend_instance.openai_summarizer:
-            backend_instance.openai_summarizer = OpenAI(open_ai_api_key)
+        backend_instance.openai_summarizer = OpenAI(open_ai_api_key)
         
         model = backend_instance.openai_summarizer
         await model.stream_answer(
@@ -917,14 +944,15 @@ async def gmail_reply(websocket: WebSocket):
     
     data = await websocket.receive_text()
     parsed_data = json.loads(data)
-    email_content = parsed_data["emailContent"]
     userIntent = parsed_data["userIntent"]
+    emailSource = parsed_data["emailSource"]
+    curWorkSpaceID = parsed_data["curWorkSpaceID"]
+    email_content = get_email_content(emailSource, curWorkSpaceID)
     
     model_preference, open_ai_api_key = backend_instance.preferred_summary_model, backend_instance.open_ai_api_key
 
     if model_preference == 'OpenAI':
-        if not backend_instance.openai_summarizer:
-            backend_instance.openai_summarizer = OpenAI(open_ai_api_key)
+        backend_instance.openai_summarizer = OpenAI(open_ai_api_key)    
         
         model = backend_instance.openai_summarizer
         await model.stream_answer(

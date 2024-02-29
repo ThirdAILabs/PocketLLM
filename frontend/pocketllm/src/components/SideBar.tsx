@@ -34,7 +34,7 @@ const DrawerHeader = styled('div')(({ theme }) => ({
 
 
 type sideBarProps = {
-    summarizer: SummarizerType | null, setSummarizer: React.Dispatch<React.SetStateAction<SummarizerType | null>>, cachedOpenAIKey: string, setCachedOpenAIKey: React.Dispatch<React.SetStateAction<string>>
+    summarizer: SummarizerType | null, setSummarizer: React.Dispatch<React.SetStateAction<SummarizerType | null>>, cachedOpenAIKey: string, setCachedOpenAIKey: React.Dispatch<React.SetStateAction<string>>, summarizerWinOpen: boolean, setSummarizerWinOpen:  React.Dispatch<React.SetStateAction<boolean>>,
 
     workSpaceMetadata: WorkSpaceMetadata[],
     subscribeTrigger: React.RefObject<HTMLButtonElement>;
@@ -56,7 +56,8 @@ export default function SideBar(
         subscribeTrigger, saveWorkSpaceTrigger,
         user, setUser,
         open, setOpen,
-        gmailWorkspaceSyncID, setGmailWorkspaceSyncID
+        gmailWorkspaceSyncID, setGmailWorkspaceSyncID,
+        summarizerWinOpen, setSummarizerWinOpen
     } : sideBarProps
 ){
     const navigate = useNavigate()
@@ -698,7 +699,7 @@ export default function SideBar(
 
                     </div>
                     <div className='rounded-0 py-3 border-0 border-shadow w-100'>
-                        <SummarizerSwitch summarizer = {summarizer} setSummarizer = {setSummarizer} cachedOpenAIKey = {cachedOpenAIKey} setCachedOpenAIKey = {setCachedOpenAIKey}  />
+                        <SummarizerSwitch summarizer = {summarizer} setSummarizer = {setSummarizer} cachedOpenAIKey = {cachedOpenAIKey} setCachedOpenAIKey = {setCachedOpenAIKey} open = {summarizerWinOpen} setOpen = {setSummarizerWinOpen} />
                         <div className='px-2 mb-1'>
                             <button  type="button"  
                                      className='font-sm text-start btn btn-general2 bg-transparent rounded-3 py-2 w-100 d-flex align-items-center'
