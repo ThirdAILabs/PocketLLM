@@ -37,8 +37,7 @@ export default function CreateGmailWorkspace(
     const closeBtn = useRef<HTMLButtonElement>(null)
 
     const [loggin, setLoggin] = useState(false)
-    const [trainEmailNum, setTrainEmailNum] = useState(0)
-    const [totalEmailNum, setTotalEmailNum] = useState<null | number>(null)
+    const [maxEmailNum, setMaxEmailNum] = useState<null | number>(null)
     const [createdWorkspaceID, setCreatedWorkspaceID] = useState<null | string>(null)
 
     const logInGmail = () => {
@@ -49,9 +48,9 @@ export default function CreateGmailWorkspace(
                     axios.post(`http://localhost:${port}/gmail_total_emails`)
                     .then(response => {
                         if ( isPremiumAccount ) {
-                            setTotalEmailNum(response.data.total_emails)
+                            setMaxEmailNum(response.data.total_emails)
                         } else {
-                            setTotalEmailNum(Math.min(200, response.data.total_emails))
+                            setMaxEmailNum(Math.min(200, response.data.total_emails))
                         }
 
                         axios.post(`http://localhost:${port}/save_gmail_workspace`)
@@ -87,7 +86,7 @@ export default function CreateGmailWorkspace(
             })
     }
 
-    const createWorkspace = async () => {
+    const createWorkspace = async (intialEmailNum: number) => {
         // Always first reset neural db before creating a new workspace
         await axios.post(`http://localhost:${port}/reset_neural_db`)
 
@@ -96,16 +95,24 @@ export default function CreateGmailWorkspace(
         ws.onopen = () => {
             gmailWorkspaceProgressRef.current?.click()
 
-            const initialDownloadNum = isNaN(trainEmailNum) ? 200 : trainEmailNum // Check if trainEmailNum is NaN. If so, set initial_download_num to 200
+            console.log('intialEmailNum', intialEmailNum)
+            
+            let num = intialEmailNum
+            
+            if ( ! (num && ! isNaN(num)) || num < 20) { // if num is not a number or a number less than 20:
+                num = 20
+            }
+
+            console.log('num', num)
 
             ws.send(JSON.stringify({
                 user_id: 'me',
-                initial_download_num: initialDownloadNum,
+                initial_download_num: num,
                 workspaceid: createdWorkspaceID
             }))
 
             recordEvent({
-                UserAction: `Train ${initialDownloadNum} GmailWorkspace`,
+                UserAction: `Train ${num} GmailWorkspace`,
                 UIComponent: 'Gmail train button',
                 UI: 'CreateGmailWorkspace',
             })
@@ -194,15 +201,11 @@ export default function CreateGmailWorkspace(
                                         Download latest 
                                         <input  className='mx-2 rounded-3 border border-dark-subtle p-1 px-2' 
                                                 type='number'
+                                                id="emailNumberInput"
                                                 style={{maxWidth: "100px"}}
-                                                defaultValue={totalEmailNum ? totalEmailNum : 0}
-                                                max={totalEmailNum ? totalEmailNum : 0!}
-                                                min={0} 
-                                                onChange={(e)=>{
-                                                    e.preventDefault()
-
-                                                    setTrainEmailNum(e.target.valueAsNumber)
-                                                }}
+                                                defaultValue={maxEmailNum ? maxEmailNum : 20!}
+                                                max={maxEmailNum ? maxEmailNum : 20!}
+                                                min={20}
                                         /> 
                                         emails
                                     </div>
@@ -210,7 +213,15 @@ export default function CreateGmailWorkspace(
                                     <div className='d-flex justify-content-center mt-4'>
                                         <button type="button"
                                                 className='btn bg-secondary bg-opacity-25 btn-sm grey-btn btn-general px-3 rounded-3 mx-1'
-                                                onClick={ (e) => {e.preventDefault(); createWorkspace() }}
+                                                onClick={ (e) => {
+                                                    e.preventDefault(); 
+                                                    const inputElement = document.getElementById('emailNumberInput') as HTMLInputElement
+                                                    if (inputElement) {
+                                                        const emailNum = inputElement.value;
+                                                        console.log('emailNum field:', emailNum)
+                                                        createWorkspace(parseInt(emailNum))
+                                                    }
+                                                }}
                                                 >
                                             Create Workspace
                                         </button>
