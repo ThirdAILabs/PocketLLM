@@ -87,6 +87,11 @@ export default function AddFileWorkspace(
               const data = JSON.parse(message.data);
               setProgress(data.progress);
               console.log(data.progress, data.message)
+              if (data.message === 'No data found for training.') {
+                setStartProgress(false)
+                setSelectedFiles([])
+                closeBtn.current?.click() // Close the training UI
+              }
 
               if (data.complete === true) {
                   // Index new file into existing workspace
