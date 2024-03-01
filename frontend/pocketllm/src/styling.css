@@ -601,3 +601,7 @@ input:focus{
     position: absolute;
     right: -25px;
 }
+
+/* .modal-backdrop {
+    z-index: 1250 !important;
+ } */
