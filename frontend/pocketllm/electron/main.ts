@@ -400,6 +400,7 @@ function createWindow() {
     }
   })
 
+  ipcMain.removeAllListeners('activate-referral')
   ipcMain.on('activate-referral', async (event, userMachineHash) => {
     try {
         const { error } = await supabase.from('activated_referrals').insert([{ user_id: userMachineHash }])
@@ -421,6 +422,7 @@ function createWindow() {
     }
   })
 
+  ipcMain.removeAllListeners('apply-referral')
   ipcMain.on('apply-referral', async (event, { userMachineHash, referralCode }) => {
     try {
         // Check if referral is valid using remote procedure in supabase
@@ -457,8 +459,9 @@ function createWindow() {
             event.reply('apply-referral-response', { success: false, error: 'An unexpected error occurred' })
         }
     }
-  });
+  })
 
+  ipcMain.removeAllListeners('count_referral')
   ipcMain.on('count_referral', async (event) => {
     try {
         const userIDs = userID.split(' | ')
@@ -478,9 +481,19 @@ function createWindow() {
         console.error('Error:', err)
         event.reply('count_referral_response', 0)
     }
-  });
+  })
 
+  ipcMain.removeHandler('get-current-usage')
+  ipcMain.handle('get-current-usage', async (_) => {
+    const usageData = getOrCreateUsageData()
 
+    const formattedUsageData = {
+      size: usageData.size,
+      resetDate: usageData.resetDate.toISOString(),
+      premiumEndDate: usageData.premiumEndDate.toISOString(),
+    }
+    return formattedUsageData
+  })
 
   ipcMain.removeHandler('update-usage')
   ipcMain.handle('update-usage', async (_, newSize) => {

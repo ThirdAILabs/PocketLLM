@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useContext } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 
@@ -21,6 +21,7 @@ import CreateGmailWorkspace from './GmailWorkSpace/CreateGmailWorkspace'
 import Subscribe from './Subscribe'
 import Settings from './Settings'
 import GmailWorkspaceProgress from '../components/GmailWorkSpace/GmailWorkspaceProgress'
+import { FeatureUsableContext } from '../contexts/FeatureUsableContext'
 
 const drawerWidth = 290
 
@@ -45,6 +46,10 @@ type sideBarProps = {
     setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
     user : { email: string, name: string, subscription_plan: SubscriptionPlan  } | null,
     setUser: React.Dispatch<React.SetStateAction<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>>,
+
+    premiumEndDate: Date | null, setPremiumEndDate: React.Dispatch<React.SetStateAction<Date | null>>,
+    currentUsage: number,
+
     open: boolean ,
     setOpen:  React.Dispatch<React.SetStateAction<boolean>>,
     gmailWorkspaceSyncID: string|null, setGmailWorkspaceSyncID:  React.Dispatch<React.SetStateAction<string|null>>
@@ -55,7 +60,7 @@ export default function SideBar(
     {   summarizer, setSummarizer, cachedOpenAIKey, setCachedOpenAIKey,
         workSpaceMetadata, curWorkSpaceID, setCurWorkSpaceID, setWorkSpaceMetadata, 
         subscribeTrigger, saveWorkSpaceTrigger,
-        user, setUser,
+        user, setUser, setPremiumEndDate, premiumEndDate, currentUsage,
         open, setOpen,
         gmailWorkspaceSyncID, setGmailWorkspaceSyncID,
         summarizerWinOpen, setSummarizerWinOpen
@@ -66,6 +71,8 @@ export default function SideBar(
     const { port } = usePort()
 
     const theme = useTheme()
+
+    const { isFeatureUsable } = useContext(FeatureUsableContext)
 
     const fileWorkspaceCreateModalRef = useRef(null)
     const URLWorkspaceCreateModalRef = useRef(null)
@@ -642,14 +649,16 @@ export default function SideBar(
                                         logo = {"📃"} 
                                         workspaceName = "File"
                                         createButtonComponent = {
-                                            // <Tooltip title="New workspace" placement='right'>
-                                            //         <i  className="bi bi-plus-lg btn btn-general p-0 px-1"           
-                                            //                 onClick={handleClickCreateFileWorkspace}
-                                            //         />
-                                            // </Tooltip>
+                                            isFeatureUsable
+                                            ?
+                                            <Tooltip title="New workspace" placement='right'>
+                                                    <i  className="bi bi-plus-lg btn btn-general p-0 px-1"           
+                                                            onClick={handleClickCreateFileWorkspace}
+                                                    />
+                                            </Tooltip>
+                                            :
                                             <Tooltip title="Please subscribe for more workspace" placement='right'>
-                                                <i  className="bi bi-plus-lg p-0 px-1 text-body-tertiary btn"           
-                                                />
+                                                <i className="bi bi-plus-lg p-0 px-1 text-body-tertiary btn"/>
                                             </Tooltip>
                                         }
                                         CreateWorkspaceComponent  = { 
@@ -669,9 +678,15 @@ export default function SideBar(
                                         logo = {"📧"} 
                                         workspaceName = "Gmail"
                                         createButtonComponent = {
+                                            isFeatureUsable
+                                            ?
                                             <Tooltip title="New workspace" placement='right'>
                                                     <i  className="bi bi-plus-lg btn btn-general p-0 px-1"
                                                         onClick={handleClickCreateGmailWorkspace}/>
+                                            </Tooltip>
+                                            :
+                                            <Tooltip title="Please subscribe for more workspace" placement='right'>
+                                                <i className="bi bi-plus-lg p-0 px-1 text-body-tertiary btn"/>
                                             </Tooltip>
                                         }
                                         CreateWorkspaceComponent  = { 
@@ -693,9 +708,15 @@ export default function SideBar(
                                         logo = {"🔗"} 
                                         workspaceName = "Browser"
                                         createButtonComponent = {
+                                            isFeatureUsable
+                                            ?
                                             <Tooltip title="New workspace" placement='right'>
                                                     <i  className="bi bi-plus-lg btn btn-general p-0 px-1"
                                                         onClick={handleClickCreateURLWorkspace}/>
+                                            </Tooltip>
+                                            :
+                                            <Tooltip title="Please subscribe for more workspace" placement='right'>
+                                                <i className="bi bi-plus-lg p-0 px-1 text-body-tertiary btn"/>
                                             </Tooltip>
                                         }
                                         CreateWorkspaceComponent  = { 
@@ -715,7 +736,7 @@ export default function SideBar(
                     <div className='rounded-0 py-3 border-0 border-shadow w-100'>
                         <SummarizerSwitch summarizer = {summarizer} setSummarizer = {setSummarizer} cachedOpenAIKey = {cachedOpenAIKey} setCachedOpenAIKey = {setCachedOpenAIKey} open = {summarizerWinOpen} setOpen = {setSummarizerWinOpen} />
                         <Subscribe trigger = {subscribeTrigger} user={user} setUser={setUser} setOpen = {setOpen}/>
-                        <Settings trigger = {subscribeTrigger} user={user} setUser={setUser} setOpen = {setOpen}/>
+                        <Settings trigger = {subscribeTrigger} user={user} setPremiumEndDate = {setPremiumEndDate} premiumEndDate = {premiumEndDate} currentUsage={currentUsage}/>
                         <GeneralAccountProfile user={user} setUser = {setUser}/>
                     </div>
                 </div>

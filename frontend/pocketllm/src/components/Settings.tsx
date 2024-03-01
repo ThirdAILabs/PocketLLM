@@ -9,19 +9,27 @@ import { Tooltip } from "@mui/material";
 import { SubscriptionPlan } from '../App'
 import ProgressBar from './ProgressBar';
 
+const calculateDaysLeft = (endDate: Date) => {
+  if (!endDate) return 0;
+
+  const today = new Date();
+  const timeDiff = endDate.getTime() - today.getTime();
+  const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+  return Math.max(daysLeft, 0); // Ensure it doesn't go negative
+}
+
 type SettingsProps = {
     trigger: React.RefObject<HTMLButtonElement>;
     user : { email: string, name: string, subscription_plan: SubscriptionPlan  } | null,
-    setUser: React.Dispatch<React.SetStateAction<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>>,
-    setOpen: React.Dispatch<React.SetStateAction<boolean>>,
-  }
+    premiumEndDate: Date | null, setPremiumEndDate: React.Dispatch<React.SetStateAction<Date | null>>, currentUsage: number
+}
 
-export default function Settings({trigger, user, setUser, setOpen}: SettingsProps) {
+export default function Settings({trigger, user, premiumEndDate, setPremiumEndDate, currentUsage}: SettingsProps) {
   return (
     <>
         <div className='px-2 my-1'>
             <button  ref={trigger} type="button" data-bs-toggle="modal" data-bs-target="#settingsModal"
-            // onClick={()=>setOpen(false)}
             className='font-sm text-start btn btn-general2 bg-transparent rounded-3 py-2 w-100 d-flex align-items-center'>
                 <i className="bi bi-gear text-secondary me-3 fs-6"></i>
                 Account info
@@ -38,58 +46,57 @@ export default function Settings({trigger, user, setUser, setOpen}: SettingsProp
                     </div>
                     <div className="modal-body p-0 py-3 font-sm">
                         <Tabs defaultValue={0} orientation="vertical">
-                        <TabsList>
-                            <Tab>Account Info</Tab>
-                            <Tab>Referral</Tab>
-                        </TabsList>
-                        <TabPanel value={0}>
-                            <div className='mx-2 mt-3 pb-1 mb-1 text-start w-100'>
-                                {/* <div className='d-flex align-items-start'>
-                                    {
-                                        premiumEndDate && new Date() <= premiumEndDate 
-                                        ?
-                                        <div className='font-x-sm mb-1 ms-3'>
-                                            Premium days left: {calculateDaysLeft(premiumEndDate)}
-                                        </div>
-                                        :
-                                        <>
-                                            <div className='font-x-sm mb-1 ms-3'>Monthly Premium Credits left: {200 - Math.floor(Math.min(currentUsage, 200))}mb</div>
-                                            <Tooltip title="Free-tier users get 200mbs of premium plan usage at the beginning of every month." placement="right">
-                                                <i className="bi bi-question-circle p-0 font-x-sm ms-1 cursor-pointer text-primary text-opacity-75"></i>
-                                            </Tooltip>
-                                        </>
-                                    }
-                                </div>
+                          <TabsList>
+                              <Tab>Account usage</Tab>
+                              <Tab>Referral</Tab>
+                          </TabsList>
 
-                                {
-                                    premiumEndDate && new Date() <= premiumEndDate 
-                                    ?
-                                    <></>
-                                    :
-                                    <div style={{width: "250px"}}>
-                                        <ProgressBar 
-                                        progress={Math.floor(Math.min(currentUsage / 200 * 100, 100))} 
-                                        color={Math.floor(currentUsage / 200 * 100) < 90 ? "secondary bg-opacity-50" : "warning bg-opacity-50"}
+                          {
+                            user && user.subscription_plan !== SubscriptionPlan.FREE
+                            ?
+                            <TabPanel value={0}>
+                              <div className='mx-2 mt-3 pb-1 mb-1 text-start w-100'>
+                                Thanks for subscribing!
+                              </div>
+                            </TabPanel>
+                            :
+                            <TabPanel value={0}>
+                              <div className='mx-2 mt-3 pb-1 mb-1 text-start w-100'>
+                                  <div className='d-flex align-items-start'>
+                                      {
+                                          premiumEndDate && new Date() <= premiumEndDate 
+                                          ?
+                                          <div className='font-x-sm mb-1 ms-3'>
+                                              Premium days left: {calculateDaysLeft(premiumEndDate)}
+                                          </div>
+                                          :
+                                          <>
+                                              <div className='font-x-sm mb-1 ms-3'>Monthly Premium Credits left: {200 - Math.floor(Math.min(currentUsage, 200))}mb</div>
+                                              <Tooltip title="Free-tier users get 200mbs of premium plan usage at the beginning of every month." placement="right">
+                                                  <i className="bi bi-question-circle p-0 font-x-sm ms-1 cursor-pointer text-primary text-opacity-75"></i>
+                                              </Tooltip>
+                                          </>
+                                      }
+                                  </div>
+
+                                  {
+                                      premiumEndDate && new Date() <= premiumEndDate 
+                                      ?
+                                      <></>
+                                      :
+                                      <div style={{width: "250px"}}>
+                                        <ProgressBar
+                                          progress={Math.floor(Math.min(currentUsage / 200 * 100, 100))} 
+                                          color={Math.floor(currentUsage / 200 * 100) < 90 ? "secondary bg-opacity-50" : "warning bg-opacity-50"}
                                         />
                                     </div>
-                                } */}
-                                <div className='d-flex align-items-start'>
-                                    <div className='font-x-sm mb-1 ms-3'>Monthly Premium Credits left: {200 - Math.floor(Math.min(55, 200))}mb</div>
-                                    <Tooltip title="Free-tier users get 200mbs of premium plan usage at the beginning of every month." placement="right">
-                                        <i className="bi bi-question-circle p-0 font-x-sm ms-1 cursor-pointer text-primary text-opacity-75"></i>
-                                    </Tooltip>
-                                </div>
-                                
-                                <div style={{width: "250px"}}>
-                                    <ProgressBar 
-                                    progress={Math.floor(Math.min(55 / 200 * 100, 100))} 
-                                    color={Math.floor(55 / 200 * 100) < 90 ? "secondary bg-opacity-50" : "warning bg-opacity-50"}
-                                    />
-                                </div>
-                            </div>
-                            
-                        </TabPanel>
-                        <TabPanel value={1}>Second page</TabPanel>
+                                  }
+                              </div>
+                            </TabPanel>
+                          }
+
+
+                          <TabPanel value={1}>Second page</TabPanel>
                         </Tabs>
                     </div>
                 </div>
@@ -174,7 +181,7 @@ const blue = {
   `;
   
   const TabsList = styled(BaseTabsList)(
-    ({ theme }) => `
+    ({}) => `
     min-width: 170px;
     height: 100%;
     background-color: transparent;

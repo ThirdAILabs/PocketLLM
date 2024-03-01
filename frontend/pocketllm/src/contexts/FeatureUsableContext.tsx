@@ -1,14 +1,14 @@
 // FeatureUsableContext.tsx
 
-import { createContext } from 'react';
+import { createContext } from 'react'
 
 export interface FeatureUsableContextProps {
-  isPremiumAccount: boolean
+  isFeatureUsable: boolean
 }
 
 // Set the initial state and updater function
 const defaultState: FeatureUsableContextProps = {
-  isPremiumAccount: false
+  isFeatureUsable: true, // Default to true
 };
 
-export const FeatureUsableContext = createContext<FeatureUsableContextProps>(defaultState);
+export const FeatureUsableContext = createContext<FeatureUsableContextProps>(defaultState)

@@ -159,6 +159,9 @@ function App() {
 
   // User
   const [user, setUser] = useState<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>(null)
+  const [currentUsage, setCurrentUsage] = useState(0)
+  const [premiumEndDate, setPremiumEndDate] = useState<Date | null>(null)
+  const [isFeatureUsable, setIsFeatureUsable] = useState(true)
 
   // GmailPage uses this state to communicate to sidebar to sync
   const [gmailWorkspaceSyncID, setGmailWorkspaceSyncID] = useState<string|null>(null)
@@ -204,8 +207,8 @@ function App() {
 
   // Debug print out all workspaces
   useEffect(() => {
-    workSpaceMetadata.forEach(workspace => {
-      console.log(`Workspace ID: ${workspace.workspaceID}`)
+    workSpaceMetadata.forEach(_ => {
+      // console.log(`Workspace ID: ${workspace.workspaceID}`)
       // console.log(`Workspace Name: ${workspace.workspaceName}`)
       // console.log(`Model Author: ${workspace.model_info.author_name}`)
       // console.log(`Model Name: ${workspace.model_info.model_name}`)
@@ -221,9 +224,59 @@ function App() {
     });
   }, [workSpaceMetadata])
 
+  // Get current usage
+  useEffect(() => {
+    try {
+      window.electron.invoke('get-current-usage').then(usageData => {
+        console.log(`User Current Usage: ${usageData.size} MB`)
+        console.log(`User Usage Reset Date: ${usageData.resetDate}`)
+        console.log(`User Premium End Date: ${usageData.premiumEndDate}`)
+
+        setCurrentUsage(usageData.size) // Update the state with the fetched usage data
+
+        setPremiumEndDate(new Date(usageData.premiumEndDate)) // Update the premium end date state
+      })
+    } catch (error) {
+      console.error('Error fetching current usage:', error)
+    }
+}, [])
+
+  // Write usage to file when currentUsage changes
+  useEffect(() => {
+    // Function to write the updated usage to file
+    const writeUpdatedUsageToFile = async (newSize: number) => {
+      try {
+        const result = await window.electron.invoke('update-usage', newSize)
+        console.log('Usage size updated in file:', result) // result should be 'success'
+      } catch (error) {
+        console.error('Error sending update usage to main process:', error)
+      }
+    }
+  
+    // Call the function with the new size whenever currentUsage changes
+    if ( currentUsage !== 0 )
+      writeUpdatedUsageToFile(currentUsage)
+  }, [currentUsage])
+
+  // Check if premium feature usable
+  useEffect(() => {
+    // Check if premium end date has reached
+    const isPremiumActive = premiumEndDate ? new Date() <= premiumEndDate : false
+
+    // A user can use features if 
+    // 1) they haven't exceeded the usage limit,
+    // 2) or if their premium access is still active,
+    // 3) or if they are logged in (not null) and their subscription plan is not FREE.
+    const canUseFeature = currentUsage <= 200 || isPremiumActive || (user && user.subscription_plan !== SubscriptionPlan.FREE)
+    
+    console.log('canUseFeature', currentUsage <= 200, isPremiumActive, (user && user.subscription_plan !== SubscriptionPlan.FREE), canUseFeature)
+
+    setIsFeatureUsable(!!canUseFeature) // Explicitly cast to boolean to satisfy TypeScript's type checking
+  }, [currentUsage, user, premiumEndDate])
+
   return (
     <FeatureUsableContext.Provider value={{
-      isPremiumAccount: !!user && user.subscription_plan !== SubscriptionPlan.FREE
+      isFeatureUsable: isFeatureUsable
     }}>
     <SetAlertMessageProvider setAlertMessage={setAlertMessage}>
 
@@ -273,7 +326,7 @@ function App() {
                       setCurWorkSpaceID = {setCurWorkSpaceID} 
                       setWorkSpaceMetadata = {setWorkSpaceMetadata} 
                       saveWorkSpaceTrigger = {saveTrigger}
-                      user = {user} setUser = {setUser}
+                      user = {user} setUser = {setUser} setPremiumEndDate = {setPremiumEndDate} premiumEndDate = {premiumEndDate} currentUsage={currentUsage}
                       gmailWorkspaceSyncID = {gmailWorkspaceSyncID} setGmailWorkspaceSyncID = {setGmailWorkspaceSyncID}
                     />
                     
