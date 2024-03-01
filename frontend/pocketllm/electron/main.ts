@@ -60,6 +60,79 @@ const getUserIdentity = () => {
 let  { userID }  = getUserIdentity()
 console.log(`User ID: ${userID}`)
 
+// Define an interface for usage data
+interface UsageData {
+  size: number // Total size used
+  resetDate: Date // The date when the usage was last reset
+  premiumEndDate: Date // The date when the premium access ends
+}
+
+// Usage
+const USAGE_FILE = path.join(USERDATAPATH, 'usage.json')
+
+// Function to get or create the usage data
+const getOrCreateUsageData = (): UsageData => {
+  let usageData: UsageData
+
+  if (fs.existsSync(USAGE_FILE)) {
+      // Read the existing usage data
+      const data = JSON.parse(fs.readFileSync(USAGE_FILE, 'utf8'))
+      usageData = {
+          size: data.size,
+          resetDate: new Date(data.resetDate),
+          premiumEndDate: data.premiumEndDate ? new Date(data.premiumEndDate) : new Date()
+      }
+
+      const lastResetDate = usageData.resetDate
+      const currentDate = new Date()
+
+      // Check if the premiumEndDate field was previously not set
+      // This is to accomodate pre-v1.1.0 where premiumEndDate was not a field.
+      if (!data.premiumEndDate) {
+          usageData.premiumEndDate = new Date()
+          usageData.premiumEndDate.setDate(currentDate.getDate() + 15)
+      }
+
+      // Check if the last reset was more than a month ago
+      if (currentDate.getMonth() !== lastResetDate.getMonth() ||
+          currentDate.getFullYear() !== lastResetDate.getFullYear()) {
+        
+          console.log('Reset the usage data in a new month.')
+          
+          usageData.size = 0
+          usageData.resetDate = new Date() // Keep this as a Date object
+      }
+  } else {
+    console.log('Writing the usage file for first time.')
+
+    // Create new usage data with initial values
+    usageData = {
+        size: 0,
+        resetDate: new Date(), // Keep this as a Date object
+        premiumEndDate: new Date() // Initialize premiumEndDate
+    }
+
+    usageData.premiumEndDate.setDate(usageData.premiumEndDate.getDate() + 15) // Add 15 days for premium access
+  }
+
+  // Serialize and write to file if necessary
+  fs.writeFileSync(USAGE_FILE, JSON.stringify({
+      size: usageData.size,
+      resetDate: usageData.resetDate.toISOString(), // Convert to string here
+      premiumEndDate: usageData.premiumEndDate.toISOString() // Convert to string
+  }, null, 2))
+
+  return usageData
+}
+
+const usageData = getOrCreateUsageData()
+console.log(`Current Usage: ${usageData.size} MB`)
+console.log(`Usage Reset Date: ${usageData.resetDate.toISOString()}`)
+console.log(`Premium Plan End Date: ${usageData.premiumEndDate.toISOString()}`)
+
+
+
+
 function createWindow() {
   win = new BrowserWindow({
     frame: false,
@@ -324,6 +397,124 @@ function createWindow() {
       });
     } else {
       processData('[]');
+    }
+  })
+
+  ipcMain.on('activate-referral', async (event, userMachineHash) => {
+    try {
+        const { error } = await supabase.from('activated_referrals').insert([{ user_id: userMachineHash }])
+        if (error) {
+            console.error("Error activating referral code:", error)
+            event.reply('activate-referral-response', { success: false, error: error.message })
+        } else {
+            console.log("Referral code activated successfully")
+            event.reply('activate-referral-response', { success: true })
+        }
+    } catch (err) {
+      if (err instanceof Error) {
+          console.error('Error activating referral code in Supabase:', err.message)
+          event.reply('activate-referral-response', { success: false, error: err.message })
+      } else {
+          console.error('An unexpected error occurred:', err)
+          event.reply('activate-referral-response', { success: false, error: 'An unexpected error occurred' })
+      }
+    }
+  })
+
+  ipcMain.on('apply-referral', async (event, { userMachineHash, referralCode }) => {
+    try {
+        // Check if referral is valid using remote procedure in supabase
+        const { data, error: validationError } = await supabase
+            .rpc('check_referral_usage_valid', { param_user_id_using: userMachineHash, param_user_id_referred: referralCode })
+
+
+        if (validationError) {
+            console.error("Error validating referral code:", validationError)
+            return event.reply('apply-referral-response', { success: false, error: validationError.message })
+        }
+
+        if (data === true) {
+            // If referral is valid, write it to the referral_usage table
+            const { error: insertError } = await supabase.from('referral_usage').insert([{ user_id_using: userMachineHash, user_id_referred: referralCode }])
+            if (insertError) {
+                console.error("Error writing referral usage:", insertError)
+                return event.reply('apply-referral-response', { success: false, error: insertError.message })
+            }
+
+            // Successfully applied referral
+            console.log("Referral code applied successfully")
+            event.reply('apply-referral-response', { success: true })
+        } else {
+            // Referral is not valid
+            event.reply('apply-referral-response', { success: false, error: 'Invalid referral code' })
+        }
+    } catch (err) {
+        if (err instanceof Error) {
+            console.error('Error applying referral code:', err.message)
+            event.reply('apply-referral-response', { success: false, error: err.message })
+        } else {
+            console.error('An unexpected error occurred:', err)
+            event.reply('apply-referral-response', { success: false, error: 'An unexpected error occurred' })
+        }
+    }
+  });
+
+  ipcMain.on('count_referral', async (event) => {
+    try {
+        const userIDs = userID.split(' | ')
+        const userMachineHash = userIDs.length === 2 ? userIDs[1] : userIDs[0]
+
+        const { data, error } = await supabase
+            .rpc('count_and_mark_referrals', { param_user_id_referred: userMachineHash })
+
+        if (error) {
+            console.error("Error calling Supabase RPC:", error)
+            event.reply('count_referral_response', 0)
+            return
+        }
+
+        event.reply('count_referral_response', data || 0)
+    } catch (err) {
+        console.error('Error:', err)
+        event.reply('count_referral_response', 0)
+    }
+  });
+
+
+
+  ipcMain.removeHandler('update-usage')
+  ipcMain.handle('update-usage', async (_, newSize) => {
+    if (fs.existsSync(USAGE_FILE)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(USAGE_FILE, 'utf8'))
+        data.size = newSize // Assuming newSize is the new total size to set
+  
+        fs.writeFileSync(USAGE_FILE, JSON.stringify(data, null, 2))
+        return 'success'
+      } catch (error) {
+        console.error(`Error writing to file: ${error}`)
+        throw error // This will send an error back to the renderer process
+      }
+    } else {
+      throw new Error('Usage file not found.')
+    }
+  })
+
+  ipcMain.removeHandler('update-premium-end-date');
+  ipcMain.handle('update-premium-end-date', async (_, newPremiumEndDate) => {
+    if (fs.existsSync(USAGE_FILE)) {
+      try {
+        const data: UsageData = JSON.parse(fs.readFileSync(USAGE_FILE, 'utf8'))
+        data.premiumEndDate = newPremiumEndDate // Update the premium end date
+
+        fs.writeFileSync(USAGE_FILE, JSON.stringify(data, null, 2))
+        return 'success'
+      } catch (error) {
+        console.error(`Error writing to file: ${error}`)
+        throw error // This will send an error back to the renderer process
+      }
+    } else {
+      throw new Error('Usage file not found.')
     }
   })
 
