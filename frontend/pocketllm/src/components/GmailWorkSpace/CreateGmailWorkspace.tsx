@@ -32,7 +32,7 @@ export default function CreateGmailWorkspace(
 
     const recordEvent = useTelemetry()
 
-    const { isPremiumAccount } = useContext(FeatureUsableContext)
+    const { isFeatureUsable } = useContext(FeatureUsableContext)
 
     const closeBtn = useRef<HTMLButtonElement>(null)
 
@@ -47,7 +47,7 @@ export default function CreateGmailWorkspace(
                     console.log(response.data.msg)
                     axios.post(`http://localhost:${port}/gmail_total_emails`)
                     .then(response => {
-                        if ( isPremiumAccount ) {
+                        if ( isFeatureUsable ) {
                             setMaxEmailNum(response.data.total_emails)
                         } else {
                             setMaxEmailNum(Math.min(200, response.data.total_emails))
@@ -191,7 +191,7 @@ export default function CreateGmailWorkspace(
                             <div className='font-sm'>
                                 <div className='pt-4 px-5 pb-5'>
                                     {
-                                        isPremiumAccount
+                                        isFeatureUsable
                                         ?
                                         <></>
                                         :

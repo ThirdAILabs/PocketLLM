@@ -30,6 +30,7 @@ import WelcomePage from './pages/WelcomePage';
 
 import './App.css'
 import "./styling.css"
+import { months } from 'moment';
 
 const drawerWidth = 275
 
@@ -289,6 +290,48 @@ function App() {
 
     setIsFeatureUsable(!!canUseFeature) // Explicitly cast to boolean to satisfy TypeScript's type checking
   }, [currentUsage, user, premiumEndDate])
+
+  // Check if premium code used by others every 10 minutes
+  useEffect(() => {
+    checkAndExtendPremium();
+
+    // const intervalId = setInterval(checkAndExtendPremium, 1*60*100); // 1 minute
+    const intervalId = setInterval(checkAndExtendPremium, 10*60*100); // 10 minutes
+
+    return () => clearInterval(intervalId);
+  }, [])
+  
+  const checkAndExtendPremium = () => {
+    window.electron.send('count_referral') // Request to count referrals and mark them
+
+    // Handle the response
+    window.electron.once('count_referral_response', (monthsToAdd) => {
+        if (monthsToAdd > 0) {
+            console.log('monthsToAdd', monthsToAdd)
+
+            setPremiumEndDate(originalPremiumEndDate => {
+              const currentDate = new Date()
+              let newPremiumEndDate
+
+              if (originalPremiumEndDate && originalPremiumEndDate > currentDate) {
+                  // If the original premium end date is in the future, add 1 month to it
+                  newPremiumEndDate = new Date(originalPremiumEndDate)
+                  
+                  console.log('originalPremiumEndDate', originalPremiumEndDate)
+                  console.log('newPremiumEndDate', newPremiumEndDate)
+
+                  newPremiumEndDate.setMonth(newPremiumEndDate.getMonth() + monthsToAdd)
+              } else {
+                  // If the original premium end date is today or in the past, set it to 1 month from today
+                  newPremiumEndDate = new Date()
+                  newPremiumEndDate.setMonth(currentDate.getMonth() + monthsToAdd)
+              }
+
+              return newPremiumEndDate
+            })
+        }
+    })
+  }
 
   return (
     <FeatureUsableContext.Provider value={{
