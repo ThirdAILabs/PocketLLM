@@ -531,6 +531,12 @@ function createWindow() {
     }
   })
 
+  // Get and send user id as referral code
+  ipcMain.removeAllListeners('get-user-id')
+  ipcMain.on('get-user-id', (event) => {
+    event.sender.send('send-user-id', userID);
+  })
+
   ipcMain.removeAllListeners('open-external-url')
   ipcMain.on('open-external-url', (_, url) => {
     const { shell } = require('electron');

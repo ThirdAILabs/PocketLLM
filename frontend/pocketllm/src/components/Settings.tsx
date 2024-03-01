@@ -174,13 +174,14 @@ const blue = {
   
   const TabPanel = styled(BaseTabPanel)`
     width: 100%;
+    min-width: 300px;
     font-size: 0.875rem;
   `;
   
   const Tabs = styled(BaseTabs)`
     display: flex;
     gap: 16px;
-    width: 200px;
+    width: 400px;
   `;
   
   const TabsList = styled(BaseTabsList)(

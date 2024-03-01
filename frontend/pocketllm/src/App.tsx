@@ -258,6 +258,22 @@ function App() {
       writeUpdatedUsageToFile(currentUsage)
   }, [currentUsage])
 
+  // Write PremiumEndDate to file when premiumEndDate changes
+  useEffect(() => {
+    const updatePremiumEndDateInFile = async () => {
+      if (premiumEndDate) {
+        try {
+          const result = await window.electron.invoke('update-premium-end-date', premiumEndDate.toISOString())
+          console.log('Premium end date updated in file:', result)
+        } catch (error) {
+          console.error('Error sending update to main process for premium end date:', error)
+        }
+      }
+    }
+  
+    updatePremiumEndDateInFile()
+  }, [premiumEndDate])
+
   // Check if premium feature usable
   useEffect(() => {
     // Check if premium end date has reached
@@ -269,7 +285,7 @@ function App() {
     // 3) or if they are logged in (not null) and their subscription plan is not FREE.
     const canUseFeature = currentUsage <= 200 || isPremiumActive || (user && user.subscription_plan !== SubscriptionPlan.FREE)
     
-    console.log('canUseFeature', currentUsage <= 200, isPremiumActive, (user && user.subscription_plan !== SubscriptionPlan.FREE), canUseFeature)
+    // console.log('canUseFeature', currentUsage <= 200, isPremiumActive, (user && user.subscription_plan !== SubscriptionPlan.FREE), canUseFeature)
 
     setIsFeatureUsable(!!canUseFeature) // Explicitly cast to boolean to satisfy TypeScript's type checking
   }, [currentUsage, user, premiumEndDate])
