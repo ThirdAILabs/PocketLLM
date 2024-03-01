@@ -1,13 +1,14 @@
 import React from 'react'
-import { styled } from '@mui/system';
-import { Tabs as BaseTabs } from '@mui/base/Tabs';
-import { TabsList as BaseTabsList } from '@mui/base/TabsList';
-import { TabPanel as BaseTabPanel } from '@mui/base/TabPanel';
-import { buttonClasses } from '@mui/base/Button';
-import { Tab as BaseTab, tabClasses } from '@mui/base/Tab';
-import { Tooltip } from "@mui/material";
+import { styled } from '@mui/system'
+import { Tabs as BaseTabs } from '@mui/base/Tabs'
+import { TabsList as BaseTabsList } from '@mui/base/TabsList'
+import { TabPanel as BaseTabPanel } from '@mui/base/TabPanel'
+import { buttonClasses } from '@mui/base/Button'
+import { Tab as BaseTab, tabClasses } from '@mui/base/Tab'
+import { Tooltip } from "@mui/material"
 import { SubscriptionPlan } from '../App'
-import ProgressBar from './ProgressBar';
+import ProgressBar from './ProgressBar'
+import Referral from './Referral'
 
 const calculateDaysLeft = (endDate: Date) => {
   if (!endDate) return 0;
@@ -96,7 +97,9 @@ export default function Settings({trigger, user, premiumEndDate, setPremiumEndDa
                           }
 
 
-                          <TabPanel value={1}>Second page</TabPanel>
+                          <TabPanel value={1}>
+                            <Referral setPremiumEndDate = {setPremiumEndDate}/>
+                          </TabPanel>
                         </Tabs>
                     </div>
                 </div>
