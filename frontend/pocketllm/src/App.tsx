@@ -30,7 +30,6 @@ import WelcomePage from './pages/WelcomePage';
 
 import './App.css'
 import "./styling.css"
-import { months } from 'moment';
 
 const drawerWidth = 275
 
