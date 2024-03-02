@@ -14,13 +14,15 @@ import EditableName from '../components/EditableName'
 type urlPageProps = {
     summarizer: string | null,
     workSpaceMetadata: WorkSpaceMetadata[],
-    curWorkSpaceID: string | null, setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
+    curWorkSpaceID: string | null, setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>,
+    setCurrentUsage: React.Dispatch<React.SetStateAction<number>>
 }
 
 export default function URLPage({
         summarizer,
         workSpaceMetadata, 
         curWorkSpaceID, setWorkSpaceMetadata,
+        setCurrentUsage
     } : urlPageProps
     ){
 
@@ -83,6 +85,7 @@ export default function URLPage({
                             <AddURLWorkspace
                                 curWorkSpaceID = {curWorkSpaceID}
                                 setWorkSpaceMetadata = {setWorkSpaceMetadata} 
+                                setCurrentUsage = {setCurrentUsage}
                             />
                         </div>
 

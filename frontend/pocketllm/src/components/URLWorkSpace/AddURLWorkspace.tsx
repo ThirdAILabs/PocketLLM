@@ -10,11 +10,13 @@ import URLDropBox from './UrlFileDropbox';
 type addURLWorkspaceProps = {
   curWorkSpaceID: string | null,
   setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>,
+  setCurrentUsage: React.Dispatch<React.SetStateAction<number>>
 }
 export default function AddURLWorkspace(    
   {
     curWorkSpaceID,
     setWorkSpaceMetadata,
+    setCurrentUsage
   } : addURLWorkspaceProps) {
 
     const [url, setURL] = useState<string>('')
@@ -36,6 +38,8 @@ export default function AddURLWorkspace(
             ws.send(JSON.stringify({ urls: selectedUrls }))
             setStartProgress(true)
         
+            setCurrentUsage(prevUsage => prevUsage + 2)
+
             recordEvent({
                 UserAction: `Upload ${selectedUrls.length} urls`,
                 UIComponent: 'URL CSV drop area',

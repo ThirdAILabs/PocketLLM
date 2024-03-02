@@ -10,12 +10,14 @@ import SearchBar from '../components/GmailWorkSpace/SearchBar'
 import Extraction from '../components/GmailWorkSpace/Extraction'
 import { WorkSpaceMetadata, SearchResult } from '../App'
 import EditableName from '../components/EditableName'
+import useTelemetry from '../hooks/useTelemetry'
 
 type gmailPageProps = {
     summarizer: string | null, setSummarizerWinOpen:  React.Dispatch<React.SetStateAction<boolean>>,
     workSpaceMetadata: WorkSpaceMetadata[],
     curWorkSpaceID: string | null, setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>,
     setGmailWorkspaceSyncID:  React.Dispatch<React.SetStateAction<string|null>>,
+    setCurrentUsage: React.Dispatch<React.SetStateAction<number>>
 }
 
 const formatDate = (dateIsoString: string): string => {
@@ -61,11 +63,14 @@ export default function GmailPage({
         summarizer, setSummarizerWinOpen,
         workSpaceMetadata, 
         curWorkSpaceID, setWorkSpaceMetadata,
-        setGmailWorkspaceSyncID
+        setGmailWorkspaceSyncID,
+        setCurrentUsage
     } : gmailPageProps
     ){
 
     const { id } = useParams()
+
+  const recordEvent = useTelemetry()
 
     const workspaceid = id?.substring(id?.indexOf(':')+1)
     const gmailWorkspaceInfo = workSpaceMetadata.find(workspace => workspace.workspaceID === workspaceid)
@@ -104,7 +109,16 @@ export default function GmailPage({
                             </div>
 
                             <Tooltip title="Sync inbox" placement='right' style={{cursor: 'pointer'}}>
-                                <i className="bi bi-arrow-repeat fs-5" onClick={()=>setGmailWorkspaceSyncID(workspaceid ?? null)}/>
+                                <i className="bi bi-arrow-repeat fs-5" onClick={()=>{
+                                    setGmailWorkspaceSyncID(workspaceid ?? null)
+                                    setCurrentUsage(prevUsage => prevUsage + 2)
+
+                                    recordEvent({
+                                      UserAction: `Sync gmail inbox`,
+                                      UIComponent: 'Gmail sync button',
+                                      UI: 'GmailPage',
+                                  })
+                                }}/>
                             </Tooltip>
                             
                         </div>

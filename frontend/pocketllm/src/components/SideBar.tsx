@@ -48,7 +48,8 @@ type sideBarProps = {
     setUser: React.Dispatch<React.SetStateAction<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>>,
 
     premiumEndDate: Date | null, setPremiumEndDate: React.Dispatch<React.SetStateAction<Date | null>>,
-    currentUsage: number,
+    currentUsage: number, setCurrentUsage: React.Dispatch<React.SetStateAction<number>>,
+
 
     open: boolean ,
     setOpen:  React.Dispatch<React.SetStateAction<boolean>>,
@@ -60,7 +61,7 @@ export default function SideBar(
     {   summarizer, setSummarizer, cachedOpenAIKey, setCachedOpenAIKey,
         workSpaceMetadata, curWorkSpaceID, setCurWorkSpaceID, setWorkSpaceMetadata, 
         subscribeTrigger, saveWorkSpaceTrigger,
-        user, setUser, setPremiumEndDate, premiumEndDate, currentUsage,
+        user, setUser, setPremiumEndDate, premiumEndDate, currentUsage, setCurrentUsage,
         open, setOpen,
         gmailWorkspaceSyncID, setGmailWorkspaceSyncID,
         summarizerWinOpen, setSummarizerWinOpen
@@ -666,6 +667,7 @@ export default function SideBar(
                                                 setCurWorkSpaceID = {setCurWorkSpaceID}
                                                 setWorkSpaceMetadata = {setWorkSpaceMetadata}
                                                 modalRef={fileWorkspaceCreateModalRef}
+                                                setCurrentUsage = {setCurrentUsage}
                                             />
                                         }
                                         workspaces = {fileWorkSpaces} curWorkSpaceID = {curWorkSpaceID}
@@ -696,6 +698,7 @@ export default function SideBar(
                                                 modalRef={gmailWorkspaceCreateModalRef}
                                                 gmailWorkspaceProgressRef={gmailWorkspaceProgressRef} gmailWorkspaceCloseRef = {gmailWorkspaceCloseRef}
                                                 setGmailWorkspaceProgress={setGmailWorkspaceProgress}
+                                                setCurrentUsage = {setCurrentUsage}
                                             />
                                         }
                                         workspaces = {gmailWorkSpaces} curWorkSpaceID = {curWorkSpaceID}
@@ -724,6 +727,7 @@ export default function SideBar(
                                                 setCurWorkSpaceID = {setCurWorkSpaceID}
                                                 setWorkSpaceMetadata = {setWorkSpaceMetadata}
                                                 modalRef={URLWorkspaceCreateModalRef}
+                                                setCurrentUsage = {setCurrentUsage}
                                             />
                                         }
                                         workspaces = {urlWorkSpaces} curWorkSpaceID = {curWorkSpaceID}

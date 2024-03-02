@@ -386,6 +386,7 @@ function App() {
                       saveWorkSpaceTrigger = {saveTrigger}
                       user = {user} setUser = {setUser} setPremiumEndDate = {setPremiumEndDate} premiumEndDate = {premiumEndDate} currentUsage={currentUsage}
                       gmailWorkspaceSyncID = {gmailWorkspaceSyncID} setGmailWorkspaceSyncID = {setGmailWorkspaceSyncID}
+                      setCurrentUsage = {setCurrentUsage}
                     />
                     
                     <Main open={open}>
@@ -399,6 +400,7 @@ function App() {
                                     workSpaceMetadata={workSpaceMetadata} 
                                     curWorkSpaceID = {curWorkSpaceID} 
                                     setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                                    setCurrentUsage = {setCurrentUsage}
                                 />} 
                             />
 
@@ -408,6 +410,7 @@ function App() {
                                     workSpaceMetadata={workSpaceMetadata} 
                                     curWorkSpaceID = {curWorkSpaceID} 
                                     setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                                    setCurrentUsage = {setCurrentUsage}
                                 />
                             }/>
 
@@ -418,6 +421,7 @@ function App() {
                                       curWorkSpaceID = {curWorkSpaceID} 
                                       setWorkSpaceMetadata = {setWorkSpaceMetadata}
                                       setGmailWorkspaceSyncID = {setGmailWorkspaceSyncID}
+                                      setCurrentUsage = {setCurrentUsage}
                                   />
                             }/>
                         </Routes>

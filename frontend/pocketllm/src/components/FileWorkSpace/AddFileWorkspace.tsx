@@ -9,12 +9,14 @@ import useTelemetry from '../../hooks/useTelemetry'
 type addFileWorkspaceProps = {
   curWorkSpaceID: string | null,
   setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>,
+  setCurrentUsage: React.Dispatch<React.SetStateAction<number>>
 }
 
 export default function AddFileWorkspace(    
   {
     curWorkSpaceID,
     setWorkSpaceMetadata,
+    setCurrentUsage
   } : addFileWorkspaceProps) {
 
     const [draggover, setDraggover] = useState(false)
@@ -71,6 +73,7 @@ export default function AddFileWorkspace(
               const totalSizeInMB = totalSize / (1024 * 1024)
 
               console.log(`Total file trained size: ${totalSizeInMB}`)
+              setCurrentUsage(prevUsage => prevUsage + totalSizeInMB)
 
               const filePaths = selectedFiles.map(file => file.filePath)
 

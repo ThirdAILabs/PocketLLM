@@ -15,6 +15,7 @@ type createGmailWorkspaceProps = {
     gmailWorkspaceProgressRef: React.RefObject<HTMLButtonElement>,
     setGmailWorkspaceProgress: React.Dispatch<React.SetStateAction<number>>,
     gmailWorkspaceCloseRef: React.RefObject<HTMLButtonElement>,
+    setCurrentUsage: React.Dispatch<React.SetStateAction<number>>
 }
 
 export default function CreateGmailWorkspace(
@@ -23,7 +24,8 @@ export default function CreateGmailWorkspace(
     setWorkSpaceMetadata,
     modalRef,
     gmailWorkspaceProgressRef,
-    setGmailWorkspaceProgress, gmailWorkspaceCloseRef
+    setGmailWorkspaceProgress, gmailWorkspaceCloseRef,
+    setCurrentUsage
   } : createGmailWorkspaceProps) {
 
     const { port } = usePort()
@@ -56,6 +58,8 @@ export default function CreateGmailWorkspace(
                         axios.post(`http://localhost:${port}/save_gmail_workspace`)
                             .then(response => {
                                 if (response.data.success) {
+                                    setCurrentUsage(prevUsage => prevUsage + 5)
+
                                     const metadata: WorkSpaceMetadata = response.data.metadata
 
                                     setWorkSpaceMetadata(prevMetadata => [...prevMetadata, {

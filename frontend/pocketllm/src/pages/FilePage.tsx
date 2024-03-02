@@ -14,13 +14,15 @@ import EditableName from '../components/EditableName'
 type filePageProps = {
     summarizer: string | null,
     workSpaceMetadata: WorkSpaceMetadata[],
-    curWorkSpaceID: string | null, setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>
+    curWorkSpaceID: string | null, setWorkSpaceMetadata: React.Dispatch<React.SetStateAction<WorkSpaceMetadata[]>>,
+    setCurrentUsage: React.Dispatch<React.SetStateAction<number>>
 }
 
 export default function FilePage({
         summarizer,
         workSpaceMetadata, 
         curWorkSpaceID, setWorkSpaceMetadata,
+        setCurrentUsage
     } : filePageProps
     ){
 
@@ -79,6 +81,7 @@ export default function FilePage({
                             </Tooltip>
                             
                             <AddFileWorkspace
+                                setCurrentUsage = {setCurrentUsage}
                                 curWorkSpaceID = {curWorkSpaceID}
                                 setWorkSpaceMetadata = {setWorkSpaceMetadata} 
                             />
