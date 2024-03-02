@@ -494,7 +494,7 @@ export default function SideBar(
                 } else {
                     // Check if all documents in the workspace are files
                     const isFile = (fileName: string) => {
-                        const fileExtensions = ['.pdf', '.csv', '.doc']
+                        const fileExtensions = ['.pdf', '.csv', '.docx']
                         return fileExtensions.some(ext => fileName.toLowerCase().endsWith(ext))
                     }
                     const allFiles = workspace.documents.every(doc => isFile(doc.fileName))
