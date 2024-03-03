@@ -89,7 +89,7 @@ export default function GmailPage({
 
     return (
         <div className='w-100 h-100 d-flex flex-column justify-content-between'>
-                <div className="w-100 h-100 mt-5 mb-2" style={{maxHeight: "95vh", overflowY: "auto"}}>
+                <div className="w-100 h-100 mt-5 mb-2" style={{maxHeight: "70vh", overflowY: "auto"}}>
                     <div className='d-flex flex-column align-items-center'>
 
                         <EditableName   workspaceName = {gmailWorkspaceInfo?.workspaceName || ''} 
@@ -128,7 +128,7 @@ export default function GmailPage({
                             <Teach curWorkSpaceID = {curWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}/>
                         </div>
 
-                        <div style={{minWidth: "60vw", maxWidth: "70vw"}}>
+                        <div style={{width: '60vw', padding: '20px'}}>
                             <Summary summary = {summaryResult}/>
                             <Extraction searchResults={searchResults}
                                         curWorkSpaceID = {curWorkSpaceID} 

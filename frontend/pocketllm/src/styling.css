@@ -212,14 +212,14 @@ input:focus{
 }
 
 .summary{
-    width: 100%;
+    width: 97%;
     background-color: rgb(218, 240, 255);
     font-size: small;
     text-align: left;
 }
 
 .extraction{
-    width: 100%;
+    width: 97%;
     overflow: hidden;
     background-color: rgb(242, 242, 242);
     text-align: left;

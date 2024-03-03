@@ -349,7 +349,7 @@ function App() {
           />
 
 
-          <Box sx={{ display: 'flex' }}>
+          <Box sx={{ display: 'flex', p: 0}}>
               <CssBaseline />
               
               <AppBar position="fixed" open={open} elevation={0}>
