@@ -334,7 +334,8 @@ function App() {
 
   return (
     <FeatureUsableContext.Provider value={{
-      isFeatureUsable: isFeatureUsable
+      isFeatureUsable: isFeatureUsable,
+      isPremiumAccount: !!user && user.subscription_plan !== SubscriptionPlan.FREE
     }}>
     <SetAlertMessageProvider setAlertMessage={setAlertMessage}>
 
