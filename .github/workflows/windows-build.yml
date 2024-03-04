@@ -32,19 +32,11 @@ jobs:
       run: Get-ChildItem ./frontend/pocketllm/dist -Force | Format-Table
       shell: pwsh
 
-    - name: Find the ZIP file for packaging
-      run: |
-        $FILE = Get-ChildItem frontend/pocketllm/dist -Name 'PocketLLM-*-win.zip' | Select-Object -First 1
-        echo "Found file: $FILE"
-        echo "FILE_PATH=$FILE" >> $env:GITHUB_ENV
-      shell: pwsh
-
     - name: Prepare Artifacts for Upload
       run: |
         New-Item -ItemType Directory -Force -Path artifacts_for_upload
-        Get-ChildItem frontend/pocketllm/dist -Filter 'PocketLLM-*-win.zip' | ForEach-Object { Copy-Item $_.FullName artifacts_for_upload }
-        Get-ChildItem frontend/pocketllm/dist -Filter 'PocketLLM-*.exe' | ForEach-Object { Copy-Item $_.FullName artifacts_for_upload }
-        Get-ChildItem frontend/pocketllm/dist -Filter 'latest-win.yml' | ForEach-Object { Copy-Item $_.FullName artifacts_for_upload }
+        Get-ChildItem frontend/pocketllm/dist -Filter '*.exe' | ForEach-Object { Copy-Item $_.FullName artifacts_for_upload }
+        Get-ChildItem frontend/pocketllm/dist -Filter 'latest.yml' | ForEach-Object { Copy-Item $_.FullName artifacts_for_upload }
       shell: pwsh
 
     - name: Upload Artifacts
