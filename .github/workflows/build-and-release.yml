@@ -55,7 +55,6 @@ jobs:
     - name: Notarize and Staple
       run: |
         xcrun notarytool submit ${{ env.FILE_PATH }} --keychain-profile "AC_PASSWORD" --wait
-        xcrun stapler staple pocketllm.app
       env:
         AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
 
