@@ -79,7 +79,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '20' # Specify Node.js version
+        node-version: 'node' # Use the latest stable Node.js version
 
     - name: Install Frontend Dependencies
       run: |

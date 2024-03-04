@@ -11,10 +11,49 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11' # Specify Python version as v3.11
+
+    - name: Install Backend Dependencies
+      run: pip install -r backend/requirements.txt
+
+    - name: Install ThirdAI NDB
+      run: |
+        python -m pip install thirdai[neural_db]
+
+    - name: Install NLTK and Download Stopwords
+      run: |
+        python -m pip install nltk
+        python -m nltk.downloader stopwords
+
+    - name: Get Langchain Path
+      run: echo "LANGCHAIN_PATH=$(pip show langchain | findstr Location | cut -d' ' -f2)/langchain" >> $env:GITHUB_ENV
+
+    - name: Get Trafilatura Path
+      run: echo "TRAFILATURA_PATH=$(pip show trafilatura | findstr Location | cut -d' ' -f2)/trafilatura" >> $env:GITHUB_ENV
+
+    - name: Get NLTK Stopwords Path
+      run: |
+        echo "NLTK_STOPWORDS_PATH=$(python -c 'import nltk; print(nltk.data.find(\"corpora/stopwords\"))')" >> $env:GITHUB_ENV
+
+    - name: Update main_git_action.spec Paths
+      run: |
+        (Get-Content backend/main_git_action.spec) -replace 'LANGCHAIN_PATH', $env:LANGCHAIN_PATH -replace 'TRAFILATURA_PATH', $env:TRAFILATURA_PATH -replace 'NLTK_STOPWORDS_PATH', $env:NLTK_STOPWORDS_PATH | Set-Content backend/main_git_action.spec
+
+    - name: Compile the Backend
+      run: |
+        cd backend
+        pyinstaller main_git_action.spec
+    
+    - name: Copy Backend to Frontend
+      run: Copy-Item -Path backend/dist/main -Destination frontend/pocketllm -Recurse
+
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '20' # Specify Node.js version
+        node-version: 'node' # Use the latest stable Node.js version
 
     - name: Install Frontend Dependencies
       run: |
