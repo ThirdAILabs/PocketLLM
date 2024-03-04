@@ -82,7 +82,7 @@ langchain-core==0.1.22
 langchainplus-sdk==0.0.17
 langcodes==3.3.0
 langsmith==0.0.87
-lxml==4.9.2
+lxml>=4.9.2
 macholib==1.16.2
 Mako==1.2.4
 Markdown==3.5
