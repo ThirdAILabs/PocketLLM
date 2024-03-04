@@ -103,7 +103,7 @@ jobs:
     - name: Find the ZIP file for notarization
       run: |
         cd frontend/pocketllm/dist
-        FILE=$(find . -name 'PocketLLM-*-arm64.zip' | head -n 1 | sed 's|^\./||')
+        FILE=$(find . -name 'PocketLLM-*-arm64-mac.zip' | head -n 1 | sed 's|^\./||')
         if [ -z "$FILE" ]; then
           echo "No file found for notarization"
           exit 1
