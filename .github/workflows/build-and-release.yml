@@ -34,7 +34,7 @@ jobs:
 
     - name: Get NLTK Stopwords Path
       run: |
-        echo "NLTK_STOPWORDS_PATH=$(python -c 'import nltk; print(nltk.data.find(\"corpora/stopwords\"))')" >> $GITHUB_ENV
+        echo "NLTK_STOPWORDS_PATH=$(python -c 'import nltk; print(nltk.data.find("corpora/stopwords"))')" >> $GITHUB_ENV
 
     - name: Update main_git_action.spec Paths
       run: |
