@@ -47,7 +47,6 @@ jobs:
 
     - name: Find the ZIP file for notarization
       run: |
-        cd frontend/pocketllm/dist
         FILE=$(find . -name 'PocketLLM-*-arm64-mac.zip' | head -n 1 | sed 's|^\./||')
         echo "Found file: $FILE"
         echo "FILE_PATH=$FILE" >> $GITHUB_ENV
@@ -55,7 +54,6 @@ jobs:
 
     - name: Notarize and Staple
       run: |
-        cd frontend/pocketllm/dist
         xcrun notarytool submit ${{ env.FILE_PATH }} --keychain-profile "AC_PASSWORD" --wait
         xcrun stapler staple pocketllm.app
       env:
