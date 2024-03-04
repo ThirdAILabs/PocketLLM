@@ -201,7 +201,7 @@ export default function CreateGmailWorkspace(
                                     {
                                         isPremiumAccount
                                         ?
-                                        <></>
+                                        <>We recommend less than 1000 emails for download speed experience</>
                                         :
                                         <>Subscribe to Premium to index your entire Gmail</>
                                     }
