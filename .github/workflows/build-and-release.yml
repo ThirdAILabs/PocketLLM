@@ -11,16 +11,28 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Import Certificate
+    - name: Create temporary keychain
+      run: |
+        security create-keychain -p "temp-keychain-password" temp.keychain
+        security default-keychain -s temp.keychain
+        security unlock-keychain -p "temp-keychain-password" temp.keychain
+        security set-keychain-settings -t 3600 -l temp.keychain
+
+    - name: Import certificate to temporary keychain
       run: |
         echo "${{ secrets.CERTIFICATE_BASE64 }}" | base64 --decode > thirdai.p12
-        security create-keychain -p "" build.keychain
-        security import thirdai.p12 -k build.keychain -P ${{ secrets.CERTIFICATE_PASSWORD }} -T /usr/bin/codesign
-        security list-keychains -s build.keychain
-        security default-keychain -s build.keychain
-        security unlock-keychain -p "" build.keychain
-        security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+        security import thirdai.p12 -k ~/Library/Keychains/temp.keychain -P ${{ secrets.CERTIFICATE_PASSWORD }} -T "/usr/bin/codesign"
+        security set-key-partition-list -S apple-tool:,apple: -s -k "temp-keychain-password" temp.keychain
+
+    # remove later
+    - name: Sign Python Binaries
+      run: |
+        cd backend
+        chmod +x sign_all.sh
+        ./sign_all.sh
       shell: bash
+      env:
+        AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
 
     - name: Setup Python
       uses: actions/setup-python@v4
