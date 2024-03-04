@@ -11,6 +11,17 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Import Certificate
+      run: |
+        echo "${{ secrets.CERTIFICATE_BASE64 }}" | base64 --decode > thirdai.p12
+        security create-keychain -p "" build.keychain
+        security import thirdai.p12 -k build.keychain -P ${{ secrets.CERTIFICATE_PASSWORD }} -T /usr/bin/codesign
+        security list-keychains -s build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "" build.keychain
+        security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+      shell: bash
+
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -49,7 +60,16 @@ jobs:
         pyinstaller main_git_action.spec
     
     - name: Copy Backend to Frontend
-      run: cp -R dist/main frontend/pocketllm
+      run: cp -R backend/dist/main frontend/pocketllm
+
+    - name: Sign Python Binaries
+      run: |
+        cd backend
+        chmod +x sign_all.sh
+        ./sign_all.sh
+      shell: bash
+      env:
+        AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
 
     - name: Setup Node.js
       uses: actions/setup-node@v3
@@ -60,19 +80,6 @@ jobs:
       run: |
         cd frontend/pocketllm
         npm install
-
-    - name: Hide Frontend Debug Console
-      run: |
-        cd frontend/pocketllm/electron
-        sed -i '' 's/\/\/ Menu.setApplicationMenu(Menu.buildFromTemplate([]));/Menu.setApplicationMenu(Menu.buildFromTemplate([]));/' main.ts
-
-    - name: Sign Python Binaries
-      run: |
-        cd path/to/dist/main
-        chmod +x sign_all.sh
-        ./sign_all.sh
-      env:
-        AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
 
     - name: Package the Frontend
       run: |
