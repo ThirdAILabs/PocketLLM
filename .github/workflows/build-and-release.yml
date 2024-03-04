@@ -119,8 +119,16 @@ jobs:
       env:
         AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
 
-    - name: Upload Artifact
+    - name: Prepare Artifacts for Upload
+      run: |
+        mkdir -p artifacts_for_upload
+        find frontend/pocketllm/dist -name 'PocketLLM-*-arm64-mac.zip' -exec cp {} artifacts_for_upload/ \;
+        find frontend/pocketllm/dist -name 'PocketLLM-*-arm64.dmg' -exec cp {} artifacts_for_upload/ \;
+        find frontend/pocketllm/dist -name 'latest-mac.yml' -exec cp {} artifacts_for_upload/ \;
+      shell: bash
+
+    - name: Upload Artifacts
       uses: actions/upload-artifact@v3
       with:
         name: macOS-app
-        path: frontend/pocketllm/dist/pocketllm.app
+        path: artifacts_for_upload/
