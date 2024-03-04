@@ -47,7 +47,7 @@ jobs:
 
     - name: Find the ZIP file for notarization
       run: |
-        FILE=$(find . -name 'PocketLLM-*-arm64-mac.zip' | head -n 1 | sed 's|^\./||')
+        FILE=$(find frontend/pocketllm/dist -name 'PocketLLM-*-arm64-mac.zip' | head -n 1 | sed 's|^\./||')
         echo "Found file: $FILE"
         echo "FILE_PATH=$FILE" >> $GITHUB_ENV
       shell: bash
