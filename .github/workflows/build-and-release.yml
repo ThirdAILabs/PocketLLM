@@ -47,7 +47,7 @@ jobs:
 
     - name: Find the ZIP file for notarization
       run: |
-        FILE=$(find frontend/pocketllm/dist -name 'PocketLLM-*-arm64-mac.zip' | head -n 1 | sed 's|^\./||')
+        FILE=$(find frontend/pocketllm/dist -name 'PocketLLM-*-mac.zip' | head -n 1 | sed 's|^\./||')
         echo "Found file: $FILE"
         echo "FILE_PATH=$FILE" >> $GITHUB_ENV
       shell: bash
@@ -61,8 +61,8 @@ jobs:
     - name: Prepare Artifacts for Upload
       run: |
         mkdir -p artifacts_for_upload
-        find frontend/pocketllm/dist -name 'PocketLLM-*-arm64-mac.zip' -exec cp {} artifacts_for_upload/ \;
-        find frontend/pocketllm/dist -name 'PocketLLM-*-arm64.dmg' -exec cp {} artifacts_for_upload/ \;
+        find frontend/pocketllm/dist -name 'PocketLLM-*-mac.zip' -exec cp {} artifacts_for_upload/ \;
+        find frontend/pocketllm/dist -name 'PocketLLM-*.dmg' -exec cp {} artifacts_for_upload/ \;
         find frontend/pocketllm/dist -name 'latest-mac.yml' -exec cp {} artifacts_for_upload/ \;
       shell: bash
 
