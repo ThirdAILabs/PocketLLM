@@ -107,6 +107,10 @@ export default function CreateGmailWorkspace(
                 num = 20
             }
 
+            if ( ! isPremiumAccount && num >= 200 ) { // if num is greater than 200:
+                num = 200
+            }
+
             console.log('num', num)
 
             ws.send(JSON.stringify({
