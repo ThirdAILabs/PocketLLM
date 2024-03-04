@@ -54,7 +54,7 @@ jobs:
 
     - name: Notarize and Staple
       run: |
-        xcrun notarytool submit ${{ env.FILE_PATH }} --keychain-profile "AC_PASSWORD" --wait
+        xcrun notarytool submit ${{ env.FILE_PATH }} --apple-id ${{ secrets.APPLE_ID }} --password ${{ secrets.APP_SPECIFIC_PASSWORD }} --team-id KJ35JRW2T6 --wait
       env:
         AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
 
