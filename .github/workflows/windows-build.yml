@@ -25,6 +25,8 @@ jobs:
       run: |
         cd frontend/pocketllm
         npm run build
+      env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
     - name: Debug - List files in dist directory
       run: Get-ChildItem ./frontend/pocketllm/dist -Force | Format-Table
