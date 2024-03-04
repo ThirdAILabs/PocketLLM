@@ -97,6 +97,8 @@ jobs:
       run: |
         cd frontend/pocketllm
         npm run build
+      env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
     - name: Find the ZIP file for notarization
       run: |
