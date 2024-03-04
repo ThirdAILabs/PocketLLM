@@ -29,14 +29,14 @@ jobs:
         python -m nltk.downloader stopwords
 
     - name: Get Langchain Path
-      run: echo "LANGCHAIN_PATH=$(pip show langchain | findstr Location | cut -d' ' -f2)/langchain" >> $env:GITHUB_ENV
+      run: echo "LANGCHAIN_PATH=$(pip show langchain | findstr Location | cut -d' ' -f2 | sed 's|\\|/|g')/langchain" >> $GITHUB_ENV
 
     - name: Get Trafilatura Path
-      run: echo "TRAFILATURA_PATH=$(pip show trafilatura | findstr Location | cut -d' ' -f2)/trafilatura" >> $env:GITHUB_ENV
+      run: echo "TRAFILATURA_PATH=$(pip show trafilatura | findstr Location | cut -d' ' -f2 | sed 's|\\|/|g')/trafilatura" >> $GITHUB_ENV
 
     - name: Get NLTK Stopwords Path
       run: |
-        echo "NLTK_STOPWORDS_PATH=$(python -c 'import nltk; print(nltk.data.find("corpora/stopwords"))')" >> $env:GITHUB_ENV
+        echo "NLTK_STOPWORDS_PATH=$(python -c 'import nltk; print(nltk.data.find("corpora/stopwords").replace("\\", "/"))')" >> $GITHUB_ENV
 
     - name: Update main_git_action.spec Paths
       run: |
