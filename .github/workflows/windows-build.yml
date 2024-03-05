@@ -30,15 +30,23 @@ jobs:
 
     - name: Get Langchain Path
       run: |
-        $langchainLocation = pip show langchain | Select-String -Pattern "Location: (.*)" | ForEach-Object { $_.Matches.Groups[1].Value }
-        $langchainPath = "${langchainLocation.replace('\', '/')}/langchain"
-        echo "LANGCHAIN_PATH=$langchainPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        $langchainLocation = pip show langchain | Select-String -Pattern "Location: (.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+        if (-not [String]::IsNullOrWhiteSpace($langchainLocation)) {
+            $langchainPath = "${langchainLocation.replace('\', '/')}/langchain"
+            echo "LANGCHAIN_PATH=$langchainPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        } else {
+            echo "Langchain path not found"
+        }
 
     - name: Get Trafilatura Path
       run: |
-        $trafilaturaLocation = pip show trafilatura | Select-String -Pattern "Location: (.*)" | ForEach-Object { $_.Matches.Groups[1].Value }
-        $trafilaturaPath = "${trafilaturaLocation.replace('\', '/')}/trafilatura"
-        echo "TRAFILATURA_PATH=$trafilaturaPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        $trafilaturaLocation = pip show trafilatura | Select-String -Pattern "Location: (.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+        if (-not [String]::IsNullOrWhiteSpace($trafilaturaLocation)) {
+            $trafilaturaPath = "${trafilaturaLocation.replace('\', '/')}/trafilatura"
+            echo "TRAFILATURA_PATH=$trafilaturaPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        } else {
+            echo "Trafilaruta path not found"
+        }
 
     - name: Get NLTK Stopwords Path
       run: |
