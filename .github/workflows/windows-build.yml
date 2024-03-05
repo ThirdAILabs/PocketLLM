@@ -19,9 +19,9 @@ jobs:
     - name: Install Backend Dependencies
       run: pip install -r backend/requirements.txt
 
-    - name: Install ThirdAI NDB
-      run: |
-        python -m pip install thirdai[neural_db]
+    # - name: Install ThirdAI NDB
+    #   run: |
+    #     python -m pip install thirdai[neural_db]
 
     - name: Install NLTK and Download Stopwords
       run: |
