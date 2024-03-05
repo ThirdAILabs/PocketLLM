@@ -1,9 +1,9 @@
-name: Build and Release on macOS
+name: Build and Release on macOS-M1
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'mac-m1-v*'
 
 jobs:
   build-macos:
