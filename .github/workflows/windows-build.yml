@@ -30,12 +30,14 @@ jobs:
 
     - name: Get Langchain Path
       run: |
-        $langchainPath = pip show langchain | Select-String -Pattern "Location" | ForEach-Object { $_.Matches } | ForEach-Object { $_.Value.split(' ')[1].replace('\','/') + '/langchain' }
+        $langchainLocation = pip show langchain | Select-String -Pattern "Location: (.*)" | ForEach-Object { $_.Matches.Groups[1].Value }
+        $langchainPath = "${langchainLocation.replace('\', '/')}/langchain"
         echo "LANGCHAIN_PATH=$langchainPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
     - name: Get Trafilatura Path
       run: |
-        $trafilaturaPath = pip show trafilatura | Select-String -Pattern "Location" | ForEach-Object { $_.Matches } | ForEach-Object { $_.Value.split(' ')[1].replace('\','/') + '/trafilatura' }
+        $trafilaturaLocation = pip show trafilatura | Select-String -Pattern "Location: (.*)" | ForEach-Object { $_.Matches.Groups[1].Value }
+        $trafilaturaPath = "${trafilaturaLocation.replace('\', '/')}/trafilatura"
         echo "TRAFILATURA_PATH=$trafilaturaPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
     - name: Get NLTK Stopwords Path
@@ -45,7 +47,9 @@ jobs:
 
     - name: Update main_git_action.spec Paths
       run: |
-        (Get-Content backend/main_git_action.spec).replace('LANGCHAIN_PATH', $env:LANGCHAIN_PATH).replace('TRAFILATURA_PATH', $env:TRAFILATURA_PATH).replace('NLTK_STOPWORDS_PATH', $env:NLTK_STOPWORDS_PATH) | Set-Content backend/main_git_action.spec
+        $content = Get-Content backend/main_git_action.spec
+        $content = $content -replace 'LANGCHAIN_PATH', $env:LANGCHAIN_PATH -replace 'TRAFILATURA_PATH', $env:TRAFILATURA_PATH -replace 'NLTK_STOPWORDS_PATH', $env:NLTK_STOPWORDS_PATH
+        $content | Set-Content backend/main_git_action.spec
 
     - name: Compile the Backend
       run: |
