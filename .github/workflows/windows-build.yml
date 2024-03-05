@@ -29,18 +29,23 @@ jobs:
         python -m nltk.downloader stopwords
 
     - name: Get Langchain Path
-      run: echo "LANGCHAIN_PATH=$(pip show langchain | findstr Location | cut -d' ' -f2 | sed 's|\\|/|g')/langchain" >> $GITHUB_ENV
+      run: |
+        $langchainPath = pip show langchain | Select-String -Pattern "Location" | ForEach-Object { $_.Matches } | ForEach-Object { $_.Value.split(' ')[1].replace('\','/') + '/langchain' }
+        echo "LANGCHAIN_PATH=$langchainPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
     - name: Get Trafilatura Path
-      run: echo "TRAFILATURA_PATH=$(pip show trafilatura | findstr Location | cut -d' ' -f2 | sed 's|\\|/|g')/trafilatura" >> $GITHUB_ENV
+      run: |
+        $trafilaturaPath = pip show trafilatura | Select-String -Pattern "Location" | ForEach-Object { $_.Matches } | ForEach-Object { $_.Value.split(' ')[1].replace('\','/') + '/trafilatura' }
+        echo "TRAFILATURA_PATH=$trafilaturaPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
     - name: Get NLTK Stopwords Path
       run: |
-        echo "NLTK_STOPWORDS_PATH=$(python -c 'import nltk; print(nltk.data.find("corpora/stopwords").replace("\\", "/"))')" >> $GITHUB_ENV
+        $nltkPath = python -c "import nltk; print(nltk.data.find('corpora/stopwords').replace('\\', '/'))"
+        echo "NLTK_STOPWORDS_PATH=$nltkPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
     - name: Update main_git_action.spec Paths
       run: |
-        (Get-Content backend/main_git_action.spec) -replace 'LANGCHAIN_PATH', $env:LANGCHAIN_PATH -replace 'TRAFILATURA_PATH', $env:TRAFILATURA_PATH -replace 'NLTK_STOPWORDS_PATH', $env:NLTK_STOPWORDS_PATH | Set-Content backend/main_git_action.spec
+        (Get-Content backend/main_git_action.spec).replace('LANGCHAIN_PATH', $env:LANGCHAIN_PATH).replace('TRAFILATURA_PATH', $env:TRAFILATURA_PATH).replace('NLTK_STOPWORDS_PATH', $env:NLTK_STOPWORDS_PATH) | Set-Content backend/main_git_action.spec
 
     - name: Compile the Backend
       run: |
