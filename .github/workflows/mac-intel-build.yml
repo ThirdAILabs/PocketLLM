@@ -1,4 +1,4 @@
-name: Build and Release on macOS-M1
+name: Build and Release on macOS-Intel
 
 on:
   push:
