@@ -1,0 +1,607 @@
+/* styling placeholders */
+::-webkit-input-placeholder { /* WebKit, Blink, Edge */
+    color:    rgb(172, 172, 172) !important;
+}
+:-moz-placeholder { /* Mozilla Firefox 4 to 18 */
+   color:    rgb(172, 172, 172) !important;
+   opacity:  1;
+}
+::-moz-placeholder { /* Mozilla Firefox 19+ */
+   color:    rgb(172, 172, 172) !important;
+   opacity:  1;
+}
+:-ms-input-placeholder { /* Internet Explorer 10-11 */
+   color:    rgb(172, 172, 172) !important;
+}
+::-ms-input-placeholder { /* Microsoft Edge */
+   color:    rgb(172, 172, 172) !important;
+}
+
+::placeholder { /* Most modern browsers support this now. */
+   color:    rgb(172, 172, 172) !important;
+}
+
+
+/* Styling scrollbars */
+/* width */
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  
+  /* Track */
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+  
+  /* Handle */
+  ::-webkit-scrollbar-thumb {
+    background: #ababab;
+    border-radius: 5px;
+  }
+  
+  /* Handle on hover */
+  ::-webkit-scrollbar-thumb:hover {
+    background: #808080;
+  }
+  
+
+.url-scroll {
+    overflow-x: scroll;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none; 
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.url-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+
+#input-search:focus {
+    border: inherit;
+    outline: none !important;
+    outline-width: 0 !important;
+    box-shadow: none;
+    -moz-box-shadow: none;
+    -webkit-box-shadow: none;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.cursor-auto {
+    cursor: auto;
+}
+
+.bi-login {
+    
+    background: conic-gradient(from -45deg, #ea4335 110deg, #4285f4 90deg 180deg, #34a853 180deg 270deg, #fbbc05 270deg) 73% 55%/150% 150% no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+      
+}
+
+
+.font-x-sm{
+    font-size: x-small;
+}
+
+.font-sm{
+    font-size: small;
+}
+
+.font-lg{
+    font-size: large;
+}
+
+input:focus{
+    -webkit-box-shadow: none;
+    border-color: none;
+    box-shadow: none;
+    outline: none;
+}
+
+#input-search{
+    width: 30vw;
+    max-width: 30vw;
+    font-size: small;
+}
+
+.border-shadow {
+    box-shadow: 1px 1px 5px 2px rgba(224, 224, 224, 0.777);
+}
+
+.title-bar {
+    /* position: absolute;
+    left: 0px;
+    top: 0px; */
+    width: 100%;
+    -webkit-app-region: drag;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.title-functions{
+    -webkit-app-region: no-drag !important;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.no-drag {
+    -webkit-app-region: no-drag !important;
+}
+
+.btn-general2{
+    cursor: pointer;
+    transition: all 0.5s ease;
+    background-color: white;
+}
+
+.btn-general2:hover {
+    background-color: rgb(242, 242, 242) !important;
+}
+
+.btn-general{
+    cursor: pointer;
+    transition: all 0.5s ease;
+    border: none;
+}
+
+.btn-general:hover{
+    background-color: rgb(193, 193, 193) !important;
+}
+
+.btn-general:focus{
+    border: none;
+}
+
+#select-file-btn {
+    font-size: x-large;
+}
+
+.grey-btn{
+    font-size: 10pt;
+    border: none;
+}
+
+.full-page-setup{
+    /* width: 100vw; */
+    height: 100vh;
+    overflow: hidden;
+}
+
+.full-page-height{
+    min-height: 80vh;
+}
+
+.model-name{
+    font-weight: bold;
+}
+
+.model-type{
+    font-size: small;
+}
+
+.modal-close-btn{
+    font-size: x-small;
+}
+
+.model-chip {
+    transition: all 0.5s ease;
+}
+
+.chip-selected {
+    background-color: rgb(174, 215, 250) !important;
+}
+
+#navbar-expand{
+    background-color: black;
+}
+
+.file-item{
+    font-size: small;
+    list-style: none;
+    text-align: left;
+}
+
+.summary{
+    width: 97%;
+    background-color: rgb(218, 240, 255);
+    font-size: small;
+    text-align: left;
+}
+
+.extraction{
+    width: 97%;
+    overflow: hidden;
+    background-color: rgb(242, 242, 242);
+    text-align: left;
+    border: 1px solid rgb(224, 224, 224);
+}
+
+.short-vertical-line{
+    border-left: 2px solid rgb(181, 181, 181);
+    height: 60px;
+}
+
+.short-vertical-line-xs{
+    border-left: 2px solid rgb(181, 181, 181);
+    height: 40px;
+}
+
+.horizontal-line{
+    border-bottom: 2px solid rgb(181, 181, 181);
+}
+
+.collect{
+    transition: all 1s ease;
+}
+
+/* disable user select when readonly */
+.history-item:read-only{
+    color: rgb(78, 78, 78) !important;
+    cursor: pointer;
+    -webkit-user-select:none;
+    -moz-user-select:none;
+    -ms-user-select:none;
+    user-select:none;
+}
+
+.prevent-select {
+    -webkit-user-select:none;
+    -moz-user-select:none;
+    -ms-user-select:none;
+    user-select:none;
+}
+
+
+.model-cards-wrapper{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: white;
+    overflow: hidden;
+}
+
+.model-card{
+    width: 100%;
+    background-color: rgb(242, 242, 242);
+    text-align: left;
+    border: 1px solid rgb(224, 224, 224);
+    width: 375px;
+    height: 300px;
+}
+
+.model-card-mini{
+    width: 100%;
+    text-align: left;
+    background-color: rgb(245, 245, 245);
+    width: 250px;
+    height: 300px;
+    cursor: pointer;
+    transition: all 0.5s ease;
+}
+
+.model-card-mini:hover {
+    background-color: rgb(235, 235, 235);
+}
+
+.model-card-functions{
+    position: absolute;
+    right: 5px;
+    top: 5px;
+}
+
+.specify-model-dialog {
+    max-width: 300px;
+}
+
+.summary-model-wrapper {
+    background-color: rgb(242, 242, 242);
+    border: 1px solid rgb(224, 224, 224);
+    border-radius: 5px;
+    padding: 10px;
+}
+
+.summerize-warning{
+    position: absolute;
+    top: 5px;
+    left: 0px;
+    width: 100%;
+}
+
+.api-input{
+    font-size: small;
+    max-height: 15px;
+    max-width: 130px;
+}
+
+.progress-bar-style{
+    transition: all 0.3s ease;
+}
+
+.landing-animation-wrapper{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: white;
+    opacity: 0;
+    animation: landing-page-animation 3.5s ease;
+}
+
+.logo-wrapper{
+    position: relative;
+    width: 120px;
+    height: 120px;
+    max-width: 20vw;
+    max-height: 20vw;
+}
+
+.logo-upper{
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.logo-middle{
+    position: absolute;
+    top: 34.5%;
+    left: 1.4%;
+}
+
+.logo-lower{
+    position: absolute;
+    top: 53.5%;
+    left: 8%;
+}
+
+.logo-words{
+    width: 300px;
+    max-width: 50vw;
+    animation: logo-words-animation 2.5s ease-in-out;
+}
+
+.logo-middle-wrapper::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: white;
+    opacity: 0;
+    animation: logo-middle-animation 0.9s ease-out;
+}
+
+.logo-upper-wrapper::after{
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 63.5%;
+    background-color: rgb(255, 255, 255);
+    opacity: 0;
+    animation: logo-upper-animation 1.5s ease-out;
+}
+
+.logo-lower-wrapper::after{
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 64%;
+    width: 100%;
+    height: 50%;
+    background-color: white;
+    opacity: 0;
+    animation: logo-lower-animation 1.5s ease-out;
+}
+
+@keyframes logo-middle-animation {
+    0% {
+        opacity: 100%;
+        transform: translateX(0);
+    }
+
+    100% {
+        opacity: 100%;
+        transform: translateX(-100%);
+    }
+}
+
+@keyframes logo-upper-animation {
+    0%, 60% {
+        opacity: 100%;
+        transform: translateX(0);
+    }
+
+    100% {
+        opacity: 100%;
+        transform: translateX(100%);
+    }
+}
+
+@keyframes logo-lower-animation {
+    0%, 60% {
+        opacity: 100%;
+        transform: translateX(0);
+    }
+
+    100% {
+        opacity: 100%;
+        transform: translateX(-100%);
+    }
+}
+
+@keyframes logo-words-animation {
+    0%, 70% {
+        opacity: 0;
+        transform: translateY(20%);
+    }
+
+    88% {
+        opacity: 1;
+        transform: translateY(-7%);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes landing-page-animation {
+    0%, 75% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+/* .toast-wrapper{
+    animation: toast-animation 2s ease;
+    text-overflow: clip;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+@keyframes toast-animation {
+    0% {
+        width: 0px;
+    } 20%, 80% {
+        width: 150px;
+    } 100% {
+        width: 0px;
+    }
+} */
+
+.toast-wrapper {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.datePicker-wrapper input{
+    max-width: 150px;
+    border-radius: 8px;
+    border: rgb(198, 198, 198) 1px solid;
+    margin: 5px;
+    padding: 5px;
+}
+
+.url-popover {
+    background-color: white;
+}
+
+.subscribe-frame {
+    border-radius: 15px;
+    padding: 20px;
+    width: 300px;
+}
+
+.subcribed {
+    background: linear-gradient( rgb(169, 211, 255), azure, white, white, white);
+}
+
+.subcribe-save {
+    position: absolute;
+    top: 5px;
+    right: 0px;
+    transform: rotate(15deg);
+}
+
+.userHeadshot {
+    width: 30px;
+    height: 30px;
+    border-radius: 15px;
+    border: 1px solid rgb(224, 224, 224);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sidebar-curent-select{
+    position: absolute;
+    transform: rotate(-45deg);
+    top: 0;
+    right: 1.5px;
+}
+
+.selected-file-list-wrapper {
+    text-align: left;
+    min-width: 250px;
+    max-width: 350px;
+    border-radius: 10px;
+    border: rgb(224, 224, 224) 1px solid;
+    padding: 10px;
+    padding-right: 5px;
+    max-height: 120px;
+    overflow: hidden;
+}
+
+.selected-file-list-scrollbar-wrapper {
+    overflow: auto;
+    width: 100%;
+    max-height: 60px;
+}
+
+.addfile-btn {
+    width: 40px;
+    height: 40px;
+    border: #808080 1px solid;
+    border-radius: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.drop-zone-wrapper {
+    width: 100%;
+    min-height: 100px;
+    border: rgb(198, 198, 198) 2px dashed;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+.drop-zone-innerwrapper {
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: small;
+    padding: 15px;
+}
+
+.drop-zone-drag {
+    background-color: rgb(224, 224, 224);
+}
+
+.feature-not-available-mark {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+}
+
+.editablename-icon {
+    position: absolute;
+    right: -25px;
+}
+
+/* .modal-backdrop {
+    z-index: 1250 !important;
+ } */
