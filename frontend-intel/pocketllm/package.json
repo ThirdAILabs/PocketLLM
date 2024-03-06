@@ -73,7 +73,7 @@
       {
         "provider": "github",
         "owner": "ThirdAILabs",
-        "repo": "pocketllm-release"
+        "repo": "pocketllm-release-mac-intel"
       }
     ],
     "productName": "PocketLLM"
