@@ -20,7 +20,7 @@ import CreateURLWorkspace from './URLWorkSpace/CreateURLWorkspace'
 import CreateGmailWorkspace from './GmailWorkSpace/CreateGmailWorkspace'
 import Subscribe from './Subscribe'
 import Settings from './Settings'
-import GmailWorkspaceProgress from './GmailWorkSpace/GmailWorkspaceProgress'
+import GmailWorkspaceProgress from '../components/GmailWorkSpace/GmailWorkspaceProgress'
 import { FeatureUsableContext } from '../contexts/FeatureUsableContext'
 
 const drawerWidth = 290
