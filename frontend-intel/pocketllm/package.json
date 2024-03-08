@@ -2,7 +2,7 @@
   "name": "pocketllm",
   "productName": "PocketLLM",
   "private": true,
-  "version": "2.2.0",
+  "version": "1.0.0",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
@@ -72,7 +72,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "ThirdAILabs",
+        "owner": "Mr-Ye-Cao",
         "repo": "pocketllm-release-mac-intel"
       }
     ],
