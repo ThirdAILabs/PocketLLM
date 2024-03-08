@@ -121,7 +121,7 @@ jobs:
     - name: Upload Artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: macOS-app
+        name: macOS-app-intel
         path: artifacts_for_upload/
 
   build-macos-m1:
@@ -239,7 +239,7 @@ jobs:
     - name: Upload Artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: macOS-app
+        name: macOS-app-m1
         path: artifacts_for_upload/
 
   build-windows:
