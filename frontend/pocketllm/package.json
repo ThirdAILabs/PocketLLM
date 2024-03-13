@@ -68,12 +68,12 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*"
-    ],
-    "repository": {
-      "type": "git",
-      "url": "https://github.com/ThirdAILabs/PocketLLM.git"
-    },    
+    ],    
     "productName": "PocketLLM"
   },
-  "main": "dist-electron/main.js"
+  "main": "dist-electron/main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ThirdAILabs/PocketLLM.git"
+  }
 }
