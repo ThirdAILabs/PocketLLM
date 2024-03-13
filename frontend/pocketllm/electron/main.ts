@@ -658,7 +658,12 @@ app.whenReady().then(async () => {
 
   autoUpdater.on('update-available', () => {
     console.log('Update available.')
-    win?.webContents.send('update-available') // send message to render process to notify users about an available update.
+    // win?.webContents.send('update-available') // send message to render process to notify users about an available update.
+  })
+
+  autoUpdater.on('update-downloaded', () => {
+    console.log('Update downloaded.')
+    win?.webContents.send('update-available') // notify the renderer process that the update is ready for installation.
   })
 
   autoUpdater.on('error', (error) => {
