@@ -14,12 +14,12 @@ import { WorkSpaceMetadata, SubscriptionPlan, SummarizerType } from '../App'
 import CreateFileWorkspace from './FileWorkSpace/CreateFileWorkspace'
 import { usePort } from '../contexts/PortContext'
 import SummarizerSwitch from './SummarizerSwitch'
-import GeneralAccountProfile from './GeneralAccountProfile'
+// import GeneralAccountProfile from './GeneralAccountProfile'
 import SideBarItem from './SideBarItem'
 import CreateURLWorkspace from './URLWorkSpace/CreateURLWorkspace'
 import CreateGmailWorkspace from './GmailWorkSpace/CreateGmailWorkspace'
-import Subscribe from './Subscribe'
-import Settings from './Settings'
+// import Subscribe from './Subscribe'
+// import Settings from './Settings'
 import GmailWorkspaceProgress from '../components/GmailWorkSpace/GmailWorkspaceProgress'
 import { FeatureUsableContext } from '../contexts/FeatureUsableContext'
 
@@ -60,8 +60,8 @@ type sideBarProps = {
 export default function SideBar(
     {   summarizer, setSummarizer, cachedOpenAIKey, setCachedOpenAIKey,
         workSpaceMetadata, curWorkSpaceID, setCurWorkSpaceID, setWorkSpaceMetadata, 
-        subscribeTrigger, saveWorkSpaceTrigger,
-        user, setUser, setPremiumEndDate, premiumEndDate, currentUsage, setCurrentUsage,
+        saveWorkSpaceTrigger,
+        setCurrentUsage,
         open, setOpen,
         gmailWorkspaceSyncID, setGmailWorkspaceSyncID,
         summarizerWinOpen, setSummarizerWinOpen
@@ -739,9 +739,9 @@ export default function SideBar(
                     </div>
                     <div className='rounded-0 py-3 border-0 border-shadow w-100'>
                         <SummarizerSwitch summarizer = {summarizer} setSummarizer = {setSummarizer} cachedOpenAIKey = {cachedOpenAIKey} setCachedOpenAIKey = {setCachedOpenAIKey} open = {summarizerWinOpen} setOpen = {setSummarizerWinOpen} />
-                        <Subscribe trigger = {subscribeTrigger} user={user} setUser={setUser} setOpen = {setOpen}/>
-                        <Settings trigger = {subscribeTrigger} user={user} setPremiumEndDate = {setPremiumEndDate} premiumEndDate = {premiumEndDate} currentUsage={currentUsage}/>
-                        <GeneralAccountProfile user={user} setUser = {setUser}/>
+                        {/* <Subscribe trigger = {subscribeTrigger} user={user} setUser={setUser} setOpen = {setOpen}/> */}
+                        {/* <Settings trigger = {subscribeTrigger} user={user} setPremiumEndDate = {setPremiumEndDate} premiumEndDate = {premiumEndDate} currentUsage={currentUsage}/> */}
+                        {/* <GeneralAccountProfile user={user} setUser = {setUser}/> */}
                     </div>
                 </div>
 

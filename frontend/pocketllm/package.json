@@ -69,13 +69,6 @@
       "dist/**/*",
       "dist-electron/**/*"
     ],
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "ThirdAILabs",
-        "repo": "pocketllm-release"
-      }
-    ],
     "productName": "PocketLLM"
   },
   "main": "dist-electron/main.js"

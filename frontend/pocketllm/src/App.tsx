@@ -161,7 +161,7 @@ function App() {
   const [user, setUser] = useState<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>(null)
   const [currentUsage, setCurrentUsage] = useState(0)
   const [premiumEndDate, setPremiumEndDate] = useState<Date | null>(null)
-  const [isFeatureUsable, setIsFeatureUsable] = useState(true)
+  const [isFeatureUsable, _] = useState(true)
 
   // GmailPage uses this state to communicate to sidebar to sync
   const [gmailWorkspaceSyncID, setGmailWorkspaceSyncID] = useState<string|null>(null)
@@ -274,21 +274,21 @@ function App() {
     updatePremiumEndDateInFile()
   }, [premiumEndDate])
 
-  // Check if premium feature usable
-  useEffect(() => {
-    // Check if premium end date has reached
-    const isPremiumActive = premiumEndDate ? new Date() <= premiumEndDate : false
+  // // Check if premium feature usable
+  // useEffect(() => {
+  //   // Check if premium end date has reached
+  //   const isPremiumActive = premiumEndDate ? new Date() <= premiumEndDate : false
 
-    // A user can use features if 
-    // 1) they haven't exceeded the usage limit,
-    // 2) or if their premium access is still active,
-    // 3) or if they are logged in (not null) and their subscription plan is not FREE.
-    const canUseFeature = currentUsage <= 200 || isPremiumActive || (user && user.subscription_plan !== SubscriptionPlan.FREE)
+  //   // A user can use features if 
+  //   // 1) they haven't exceeded the usage limit,
+  //   // 2) or if their premium access is still active,
+  //   // 3) or if they are logged in (not null) and their subscription plan is not FREE.
+  //   const canUseFeature = currentUsage <= 200 || isPremiumActive || (user && user.subscription_plan !== SubscriptionPlan.FREE)
     
-    // console.log('canUseFeature', currentUsage <= 200, isPremiumActive, (user && user.subscription_plan !== SubscriptionPlan.FREE), canUseFeature)
+  //   // console.log('canUseFeature', currentUsage <= 200, isPremiumActive, (user && user.subscription_plan !== SubscriptionPlan.FREE), canUseFeature)
 
-    setIsFeatureUsable(!!canUseFeature) // Explicitly cast to boolean to satisfy TypeScript's type checking
-  }, [currentUsage, user, premiumEndDate])
+  //   setIsFeatureUsable(!!canUseFeature) // Explicitly cast to boolean to satisfy TypeScript's type checking
+  // }, [currentUsage, user, premiumEndDate])
 
   // Check if premium code used by others every 10 minutes
   useEffect(() => {
