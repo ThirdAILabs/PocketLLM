@@ -47,8 +47,8 @@ if getattr(sys, 'frozen', False):
     APPLICATION_PATH = sys._MEIPASS
 else:
     APPLICATION_PATH = os.path.dirname(os.path.abspath(__file__))
-THIRDAI_LICENSE_PATH = os.path.join(APPLICATION_PATH, 'license_may_11_2024.serialized')
-licensing.activate('8B5B23-BB59FC-214CB4-95DFD9-A1D1BC-V3')
+THIRDAI_LICENSE_PATH = os.path.join(APPLICATION_PATH, 'license_03_14_2025.serialized')
+licensing.set_path(THIRDAI_LICENSE_PATH)
 
 
 WORKING_FOLDER = Path(os.path.dirname(__file__)) / "data"
