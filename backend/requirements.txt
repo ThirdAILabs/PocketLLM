@@ -202,5 +202,5 @@ Werkzeug==3.0.0
 yarl==1.9.2
 zeep==4.2.1
 zipp==3.17.0
-thirdai==0.7.32
 urllib3
+thirdai
