@@ -49,6 +49,9 @@ jobs:
     - name: Get Langchain Path
       run: echo "LANGCHAIN_PATH=$(pip show langchain | grep Location | cut -d' ' -f2)/langchain" >> $GITHUB_ENV
 
+    - name: Get Langchain Community Path
+      run: echo "LANGCHAIN_COMMUNITY_PATH=$(pip show langchain_community | grep Location | cut -d' ' -f2)/langchain_community" >> $GITHUB_ENV
+
     - name: Get Trafilatura Path
       run: echo "TRAFILATURA_PATH=$(pip show trafilatura | grep Location | cut -d' ' -f2)/trafilatura" >> $GITHUB_ENV
 
@@ -59,6 +62,7 @@ jobs:
     - name: Update main_git_action.spec Paths
       run: |
         sed -i '' "s|LANGCHAIN_PATH|${{ env.LANGCHAIN_PATH }}|g" backend/main_git_action.spec
+        sed -i '' "s|LANGCHAIN_COMMUNITY_PATH|${{ env.LANGCHAIN_COMMUNITY_PATH }}|g" backend/main_git_action.spec
         sed -i '' "s|TRAFILATURA_PATH|${{ env.TRAFILATURA_PATH }}|g" backend/main_git_action.spec
         sed -i '' "s|NLTK_STOPWORDS_PATH|${{ env.NLTK_STOPWORDS_PATH }}|g" backend/main_git_action.spec
 
