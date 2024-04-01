@@ -177,7 +177,7 @@ export default function Extraction({ searchResults, curWorkSpaceID, setWorkSpace
     <div>
       {
           searchResults.map((result, index) => (
-              <div key={index} className='extraction font-sm p-4 rounded-3 mb-3 w-100'>
+              <div key={index} className='extraction font-sm p-4 rounded-3 mb-3'>
                  <div className='d-flex align-items-center'>
                     <div>
                       <button className='btn btn-general p-1 px-2' onClick={() => handleUpvote(index)}>

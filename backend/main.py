@@ -39,7 +39,7 @@ from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
 from thirdai import licensing
 import trafilatura
-
+from chat import open_ai_chat
 
 
 
@@ -786,16 +786,21 @@ def get_cached_openai_key():
 
 class SettingInput(BaseModel):
     model_preference: str
-    open_ai_api_key: str
+    open_ai_api_key: Optional[str]
 
 @app.post("/setting")
 def setting(input_data: SettingInput):
     global backend_instance
-    backend_instance.open_ai_api_key = input_data.open_ai_api_key
     backend_instance.preferred_summary_model = input_data.model_preference
     
-    # Check if the preferred summary model is 'OpenAI'
-    if input_data.model_preference == "OpenAI":
+    if input_data.model_preference == "NONE":
+
+        return {"success": True, "msg": f'Settings updated: model_preference: {backend_instance.preferred_summary_model}'}
+    
+    elif input_data.model_preference == "OpenAI": # Check if the preferred summary model is 'OpenAI'
+
+        backend_instance.open_ai_api_key = input_data.open_ai_api_key
+
         # Ensure the cache directory exists
         WORKING_FOLDER.mkdir(parents=True, exist_ok=True)
 
@@ -803,8 +808,8 @@ def setting(input_data: SettingInput):
         with open(WORKING_FOLDER / 'user_openai_key.txt', 'w') as key_file:
             key_file.write(input_data.open_ai_api_key)
 
-    return {"success": True, 
-            "msg": f'Settings updated: open_ai_api_key: {backend_instance.open_ai_api_key} | model_preference: {backend_instance.preferred_summary_model}'}
+        return {"success": True, 
+                "msg": f'Settings updated: open_ai_api_key: {backend_instance.open_ai_api_key} | model_preference: {backend_instance.preferred_summary_model}'}
 
 @app.post("/summarize")
 def summarize():
@@ -858,6 +863,68 @@ async def websocket_summarize(websocket: WebSocket):
         )
 
         await websocket.close()
+
+class ChatRequest(BaseModel):
+    prompt: str
+    session_id: str
+
+@app.post("/chat")
+def chat(request: ChatRequest):
+    os.makedirs(os.path.dirname(USER_CHAT_HISTORY_CACHE), exist_ok=True)
+    chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
+    genai_key = backend_instance.open_ai_api_key
+
+    if backend_instance.preferred_summary_model != 'OpenAI': # If summarizer is not on
+        raise HTTPException(status_code=400, detail="Summarizer is not turned on.") # return an error
+
+    if not genai_key: # If API key is not defined
+        raise HTTPException(status_code=400, detail="OpenAI API key is not defined.") # return an error
+        
+    ct = open_ai_chat.OpenAIChat(
+        backend_instance.backend, chat_history_sql_uri, genai_key
+    )
+
+    try:
+        chat_result = {"response": ct.chat(request.prompt, request.session_id)}
+        return chat_result
+    except Exception as e:
+        # Handle other errors, e.g., errors from the OpenAIChat instance
+        raise HTTPException(status_code=500, detail=str(e))
+
+class ChatHistoryRequest(BaseModel):
+    session_id: str
+
+@app.post("/get_chat_history")
+def get_chat_history(request: ChatHistoryRequest):
+    if not os.path.exists(USER_CHAT_HISTORY_CACHE):
+        # If the cache doesn't exist, return an empty list
+        # This prevents error for the case where cache file hasn't been created yet or 
+        # hasn't been populated with anything.
+        return []
+
+    chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
+    genai_key = backend_instance.open_ai_api_key if backend_instance.open_ai_api_key else 'sk-pseudo-key'
+    ct = open_ai_chat.OpenAIChat(
+        backend_instance.backend, chat_history_sql_uri, genai_key
+    )
+    return ct.get_chat_history(request.session_id)
+
+class DeleteChatHistoryRequest(BaseModel):
+    session_id: str
+
+@app.post("/delete_chat_history")
+def delete_chat_history(request: DeleteChatHistoryRequest):
+    try:
+        chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
+        genai_key = backend_instance.open_ai_api_key if backend_instance.open_ai_api_key else 'sk-pseudo-key'
+        ct = open_ai_chat.OpenAIChat(
+            backend_instance.backend, chat_history_sql_uri, genai_key
+        )
+
+        ct.delete_chat_history(request.session_id)
+        return {"detail": "Chat history deleted successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 def get_email_content(emailSource, curWorkSpaceID):
     # Step 1: Locate the gmail.csv file in the workspace
@@ -1811,6 +1878,7 @@ if __name__ == "__main__":
     USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
     USER_GMAIL_CACHE = WORKING_FOLDER / "user_gmail_cache"
     USER_GMAIL_LOGIN_CACHE = WORKING_FOLDER / "user_gmail_login_cache"
+    USER_CHAT_HISTORY_CACHE = WORKING_FOLDER / "chat_cache" / "chat_history.db"
 
     OUTLOOK_REDIRECT_URI = f"http://localhost:{FASTAPI_LOCALHOST_PORT}/outlook_callback"
 

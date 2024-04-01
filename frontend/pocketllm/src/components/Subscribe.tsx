@@ -303,18 +303,16 @@ export default function Subscribe({trigger, user, setUser, setOpen}: SubscribePr
         </div>
       </>
       :
-      <div className='px-2 my-2'>
-        <Tooltip title="Please login first" placement="right">
-          <div className='px-2 my-1'>
-          <button  type="button"  onClick={(e)=>e.preventDefault()}
-              style={{opacity: 0.5}}
-              className='font-sm border-0 text-start btn btn-general2 bg-transparent rounded-3 py-2 w-100 d-flex align-items-center'>
-                <i className="bi bi-credit-card text-secondary me-2"></i>
-                Subscribe
-            </button>
-          </div>
-        </Tooltip>
-      </div>
+      <Tooltip title="Please login first" placement="right">
+        <div className='px-2 my-1'>
+        <button  type="button"  onClick={(e)=>e.preventDefault()}
+            style={{opacity: 0.5}}
+            className='font-sm border-0 text-start btn btn-general2 bg-transparent rounded-3 py-2 w-100 d-flex align-items-center'>
+              <i className="bi bi-credit-card text-secondary me-2"></i>
+              Subscribe
+          </button>
+        </div>
+      </Tooltip>
     }
         
     </>

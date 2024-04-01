@@ -20,6 +20,9 @@ a = Analysis(
 # change to Langchain package location
 a.datas += Tree('LANGCHAIN_PATH', prefix='langchain')
 
+# change to Langchain community package location
+a.datas += Tree('LANGCHAIN_COMMUNITY_PATH', prefix='langchain_community')
+
 #### Add stopwords data from NLTK. Used in ./parsing_utils/summarize.py: from nltk.corpus import stopwords
 # First make sure you download nltk's stopwords: 
 # import nltk

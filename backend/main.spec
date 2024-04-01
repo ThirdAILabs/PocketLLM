@@ -20,6 +20,9 @@ a = Analysis(
 # change to Langchain package location
 a.datas += Tree('/opt/homebrew/lib/python3.11/site-packages/langchain', prefix='langchain')
 
+# change to Langchain community package location
+a.datas += Tree('/Users/yecao/anaconda3/envs/pllm/lib/python3.11/site-packages/langchain_community', prefix='langchain_community')
+
 #### Add stopwords data from NLTK. Used in ./parsing_utils/summarize.py: from nltk.corpus import stopwords
 # First make sure you download nltk's stopwords: 
 # import nltk
