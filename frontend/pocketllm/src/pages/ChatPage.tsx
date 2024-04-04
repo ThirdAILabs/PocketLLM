@@ -19,6 +19,8 @@ export default function ChatPage({curWorkSpaceID}: chatPageProps) {
   const { port } = usePort()
   const [message, setMessage] = useState('')
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
+  const [references, setReferences] = useState([])
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const setAlertMessage = useContext(SetAlertMessageContext)
 
@@ -54,9 +56,12 @@ export default function ChatPage({curWorkSpaceID}: chatPageProps) {
         prompt: message,
         session_id: curWorkSpaceID
       })
-      console.log('Response:', response.data)
 
       const aiResponse: string = response.data.response;
+      const references = response.data.references || []
+
+      // console.log('references', references)
+      setReferences(references)
 
       setChatHistory((prevChatHistory) =>
         prevChatHistory.map((chat) => {
@@ -146,7 +151,7 @@ export default function ChatPage({curWorkSpaceID}: chatPageProps) {
             <div style={{height: "60vh", overflowY: "auto"}}>
               <div ref={scrollRef}>
                 {chatHistory.map((chat, index) => chat.sender === 'AI' ?
-                  <ChatBot key={index} message={chat.content} /> : 
+                  <ChatBot key={index} message={chat.content} references={references.slice(0, 3)} /> : 
                   <ChatCustomer key={index} message={chat.content} />
                 )}
               </div>

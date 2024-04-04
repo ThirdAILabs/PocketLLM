@@ -60,9 +60,10 @@ class ChatInterface(ABC):
             self.llm(), question_answering_prompt
         )
 
+        self.references = []
         self.conversational_retrieval_chain = RunnablePassthrough.assign(
             context=query_transforming_retriever_chain
-            | ChatInterface.parse_retriever_output,
+            | self.parse_retriever_output,
         ).assign(
             answer=document_chain,
         )
@@ -71,13 +72,10 @@ class ChatInterface(ABC):
     def llm(self) -> LLM:
         raise NotImplementedError()
 
-    @staticmethod
-    def parse_retriever_output(documents: List[Document]):
+    def parse_retriever_output(self, documents: List[Document]):
         top_k_docs = documents
 
-        # The chatbot currently doesn't utilize any metadata, so we delete it to save memory
-        for doc in top_k_docs:
-            doc.metadata = {}
+        self.references = top_k_docs
 
         return top_k_docs
 
@@ -115,4 +113,4 @@ class ChatInterface(ABC):
         )
         chat_history.add_ai_message(response["answer"])
 
-        return response["answer"]
+        return response["answer"], self.references

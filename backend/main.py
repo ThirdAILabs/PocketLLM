@@ -145,6 +145,17 @@ def get_cached_workspace_metajson():
 
 
 
+@app.get("/highlighted_pdf_from_chat")
+def highlighted_pdf_from_chat(reference_id: Optional[int] = Query(None)):
+    # This method is necessary because backend_instance.current_results is not reset during chat RAG.
+    # whereas during normal searcch it would reset
+    # so we get the "id":47 field right before "upvote_ids":[47],
+
+    reference = backend_instance.backend._savable_state.documents.reference(reference_id)
+    buffer = io.BytesIO(hl.highlighted_pdf_bytes(reference))
+    headers = {'Content-Disposition': f'inline; filename="{Path(reference.source).name}"'}
+    return Response(buffer.getvalue(), headers=headers, media_type='application/pdf')
+
 @app.get("/highlighted_pdf")
 def highlighted_pdf(index: Optional[int] = Query(None)):
     global backend_instance
@@ -152,6 +163,7 @@ def highlighted_pdf(index: Optional[int] = Query(None)):
     # Check if index is provided and it's valid
     if index is None or index >= len(backend_instance.current_results):
         return {"error": "Invalid index provided"}
+    # print('backend_instance.current_results[1].upvote_ids', backend_instance.current_results[1].upvote_ids)
 
     reference_id = backend_instance.current_results[index].id
     reference = backend_instance.backend._savable_state.documents.reference(reference_id)
@@ -885,7 +897,12 @@ def chat(request: ChatRequest):
     )
 
     try:
-        chat_result = {"response": ct.chat(request.prompt, request.session_id)}
+        chat_output = ct.chat(request.prompt, request.session_id)
+        response_text, references_list = chat_output
+        for reference in references_list:
+            if "score" in reference:
+                reference["score"] = round(reference["score"], 2) # Adjusts score to 2 decimal places so as to be sent to json
+        chat_result = {"response": response_text, "references": references_list}
         return chat_result
     except Exception as e:
         # Handle other errors, e.g., errors from the OpenAIChat instance
