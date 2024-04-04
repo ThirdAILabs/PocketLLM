@@ -1,11 +1,15 @@
 import Tooltip from '@mui/material/Tooltip'
+import { ChatReference } from '../pages/ChatPage'
+import { usePort } from '../contexts/PortContext'
 
 interface ChatBotProps {
   message: string
-  references: any[]
+  reference?: ChatReference
 }
 
-export default function ChatBot({message, references}: ChatBotProps) {
+export default function ChatBot({message, reference}: ChatBotProps) {
+  const { port } = usePort()
+
   const isLoading = message === 'Loading...'
 
   const loadingElem = ()=>{
@@ -23,6 +27,24 @@ export default function ChatBot({message, references}: ChatBotProps) {
       </div>
     )
   }
+  async function openReferencePDF(index: number, pageToOpen: number) {
+    function openPDFInNewWindow(pdfURL: string) {
+      window.electron.send('open-pdf-window', pdfURL);
+    }
+
+    try {
+        let response = await fetch(`http://localhost:${port}/highlighted_pdf_from_chat?reference_id=${index}`)
+        if (!response.ok)
+          throw new Error('Network response was not ok')
+        
+        let blob = await response.blob()
+        let url = URL.createObjectURL(blob)
+        openPDFInNewWindow(`${url}#page=${pageToOpen}`)
+    } catch (error) {
+        console.error('Failed to fetch PDF:', error)
+    }
+  }
+
   return (
       isLoading
       ?
@@ -32,65 +54,24 @@ export default function ChatBot({message, references}: ChatBotProps) {
           <div className='chat-bubble bg-secondary bg-opacity-25 p-3'>
               {message}
 
-            <div className='d-flex flex-column align-items-end'>
-              {references && references.map((ref, index) => (
-                <div key={index} className='font-x-sm mt-2 text-dark-emphasis'>
-                  <a 
-                    style={{ color: 'blue', cursor: 'pointer' }}
-                    onClick={() => {/* Handle opening reference PDF here */}}
-                  >
-                    {ref.metadata.filename} - Pages: {ref.metadata.page}
-                  </a>
-                  {/* Tooltip and icon can be added here */}
-                </div>
-              ))}
-              
-              <div className='font-x-sm mt-2 text-dark-emphasis'>
-                  <>
-                    <a 
-                      style={{ color: 'blue', cursor: 'pointer' }} 
-                      // onClick={() => openReferencePDF(index)}
-                    >
-                      {/* {result.result_source.split(/[/\\]/).pop()} */}
-                      Pages: 11 - 12
-                    </a>
-                    <Tooltip title="view PDF" placement='right'>
-                      {/* <i className="bi bi-box-arrow-in-up-right cursor-pointer font-sm text-primary ms-1" onClick={()=>openReferencePDF(index)}></i> */}
-                      <i className="bi bi-box-arrow-in-up-right cursor-pointer font-sm text-primary ms-1"></i>
-                    </Tooltip>
-                  </>
+              <div className='d-flex flex-column align-items-end'>
+                {reference && reference.filtered_doc_ref_info.map((docRef, index) => (
+                  <div key={index} className='font-x-sm mt-2 text-dark-emphasis'>
+
+                      <a 
+                        style={{ color: 'blue', cursor: 'pointer' }} 
+                        onClick={() => openReferencePDF(parseInt(docRef.id), docRef.page + 1)}
+                      >
+                        {docRef.filename.split(/[/\\]/).pop()} Pages: {docRef.page + 1}
+                      </a>
+
+                      <Tooltip title="View PDF" placement='right'>
+                        <i className="bi bi-box-arrow-in-up-right cursor-pointer font-sm text-primary ms-1" onClick={() => openReferencePDF(parseInt(docRef.id), docRef.page)}></i>
+                      </Tooltip>
+                  </div>
+                ))}
+
               </div>
-              <div className='font-x-sm mt-2 text-dark-emphasis'>
-                  <>
-                    <a 
-                      style={{ color: 'blue', cursor: 'pointer' }} 
-                      // onClick={() => openReferencePDF(index)}
-                    >
-                      {/* {result.result_source.split(/[/\\]/).pop()} */}
-                      Pages: 11 - 12
-                    </a>
-                    <Tooltip title="view PDF" placement='right'>
-                      {/* <i className="bi bi-box-arrow-in-up-right cursor-pointer font-sm text-primary ms-1" onClick={()=>openReferencePDF(index)}></i> */}
-                      <i className="bi bi-box-arrow-in-up-right cursor-pointer font-sm text-primary ms-1"></i>
-                    </Tooltip>
-                  </>
-              </div>
-              <div className='font-x-sm mt-2 text-dark-emphasis'>
-                  <>
-                    <a 
-                      style={{ color: 'blue', cursor: 'pointer' }} 
-                      // onClick={() => openReferencePDF(index)}
-                    >
-                      {/* {result.result_source.split(/[/\\]/).pop()} */}
-                      Pages: 11 - 12
-                    </a>
-                    <Tooltip title="view PDF" placement='right'>
-                      {/* <i className="bi bi-box-arrow-in-up-right cursor-pointer font-sm text-primary ms-1" onClick={()=>openReferencePDF(index)}></i> */}
-                      <i className="bi bi-box-arrow-in-up-right cursor-pointer font-sm text-primary ms-1"></i>
-                    </Tooltip>
-                  </>
-              </div>
-            </div>
           </div>
       </div>
   )

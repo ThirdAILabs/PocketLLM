@@ -15,11 +15,24 @@ interface ChatMessage {
   tempId?: number // Optional property for temporary chat messages
 }
 
+// Define the structure of a chat reference, which includes the AI answer and the document reference
+export interface ChatReference {
+  ai_answer: string
+  filtered_doc_ref_info: DocumentReference[]
+}
+
+// Define the structure of a single document reference
+interface DocumentReference {
+  id: string
+  filename: string
+  page: number
+}
+
 export default function ChatPage({curWorkSpaceID}: chatPageProps) {
   const { port } = usePort()
   const [message, setMessage] = useState('')
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
-  const [references, setReferences] = useState([])
+  const [chatReferences, setChatReferences] = useState<ChatReference[]>([])
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const setAlertMessage = useContext(SetAlertMessageContext)
@@ -29,7 +42,8 @@ export default function ChatPage({curWorkSpaceID}: chatPageProps) {
       const response = await axios.post(`http://localhost:${port}/get_chat_history`, {
         session_id: sessionId
       })
-      setChatHistory(response.data)
+      setChatHistory(response.data.chat_history)
+      setChatReferences(response.data.chat_references)
     } catch (error) {
       console.error("Failed to fetch chat history", error)
     }
@@ -60,8 +74,7 @@ export default function ChatPage({curWorkSpaceID}: chatPageProps) {
       const aiResponse: string = response.data.response;
       const references = response.data.references || []
 
-      // console.log('references', references)
-      setReferences(references)
+      setChatReferences(references)
 
       setChatHistory((prevChatHistory) =>
         prevChatHistory.map((chat) => {
@@ -119,6 +132,7 @@ export default function ChatPage({curWorkSpaceID}: chatPageProps) {
 
       if (response.status === 200) {
         setChatHistory([]) // Reset chat history
+        setChatReferences([]) // Reset reference
       }
     } catch (error) {
       console.error("Error clearing chat history:", error)
@@ -150,8 +164,8 @@ export default function ChatPage({curWorkSpaceID}: chatPageProps) {
         <div className='d-flex flex-column justify-content-between' style={{height: "74vh"}}>
             <div style={{height: "60vh", overflowY: "auto"}}>
               <div ref={scrollRef}>
-                {chatHistory.map((chat, index) => chat.sender === 'AI' ?
-                  <ChatBot key={index} message={chat.content} references={references.slice(0, 3)} /> : 
+                {chatHistory && chatHistory.map((chat, index) => chat.sender === 'AI' ?
+                  <ChatBot key={index} message={chat.content} reference={chatReferences.find(chatReference => chatReference.ai_answer === chat.content)} /> : 
                   <ChatCustomer key={index} message={chat.content} />
                 )}
               </div>

@@ -913,7 +913,7 @@ def get_chat_history(request: ChatHistoryRequest):
         # If the cache doesn't exist, return an empty list
         # This prevents error for the case where cache file hasn't been created yet or 
         # hasn't been populated with anything.
-        return []
+        return {"chat_history": [], "chat_references": []}
 
     chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
     genai_key = backend_instance.open_ai_api_key if backend_instance.open_ai_api_key else 'sk-pseudo-key'

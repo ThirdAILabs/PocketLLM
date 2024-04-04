@@ -37,7 +37,14 @@ class ChatReferenceManager:
         references = self.load_references()
         if session_id not in references:
             references[session_id] = []
-        references[session_id].append((ai_answer, filtered_doc_ref_info))
+        
+        new_reference_entry = {
+            "ai_answer": ai_answer,
+            "filtered_doc_ref_info": filtered_doc_ref_info
+        }
+
+        # Append the new entry to this session's list of references
+        references[session_id].append(new_reference_entry)
         self.save_references(references)
     
     def delete_chat_history_references(self, session_id):
@@ -46,6 +53,11 @@ class ChatReferenceManager:
         if session_id in references:
             del references[session_id]
             self.save_references(references)
+
+    def get_references_by_session_id(self, session_id: str):
+        """Get the retrieval history references associated with the given session_id."""
+        references = self.load_references()
+        return references.get(session_id, [])
 
 class ChatInterface(ABC):
     def __init__(
@@ -123,9 +135,6 @@ class ChatInterface(ABC):
                 'page': page
             }
 
-            print(filtered_doc_info)
-            print('=============================')
-            
             filtered_docs.append(filtered_doc_info)
         
         # The chatbot currently doesn't utilize any metadata, so we delete it to save memory
@@ -148,14 +157,9 @@ class ChatInterface(ABC):
             for message in chat_history.messages
         ]
 
-        references = self.chat_reference_manager.load_references()
-
-        # Extract the chat references for the specified session ID, if available
-        chat_references = references.get(session_id, [])
-
         return {
             "chat_history": chat_history_list,
-            "chat_references": chat_references
+            "chat_references": self.chat_reference_manager.get_references_by_session_id(session_id)
         }
 
     def delete_chat_history(self, session_id: str, **kwargs) -> None:
@@ -182,4 +186,4 @@ class ChatInterface(ABC):
 
         self.chat_reference_manager.update_reference(session_id, response["answer"], self.references)
 
-        return response["answer"], self.references
+        return response["answer"], self.chat_reference_manager.get_references_by_session_id(session_id)
