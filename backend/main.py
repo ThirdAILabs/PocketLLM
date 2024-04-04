@@ -982,10 +982,8 @@ async def gmail_summarize(websocket: WebSocket):
         
         model = backend_instance.openai_summarizer
         await model.stream_answer(
-            prompt=(
-                "Summarize this email"
-            ),
-            question='What is this email about?',
+            # prompt=summary_prompt,
+            question='what is this email about?',
             context=email_content,
             websocket=websocket,
             on_error=reset_summarizers,
