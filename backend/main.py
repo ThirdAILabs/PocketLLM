@@ -969,27 +969,35 @@ async def gmail_summarize(websocket: WebSocket):
 
     await websocket.accept()
     
-    data = await websocket.receive_text()
-    parsed_data = json.loads(data)
-    emailSource = parsed_data["emailSource"]
-    curWorkSpaceID = parsed_data["curWorkSpaceID"]
-    email_content = get_email_content(emailSource, curWorkSpaceID)
-    
-    model_preference, open_ai_api_key = backend_instance.preferred_summary_model, backend_instance.open_ai_api_key
-
-    if model_preference == 'OpenAI':
-        backend_instance.openai_summarizer = OpenAI(open_ai_api_key)
+    try:
+        data = await websocket.receive_text()
+        parsed_data = json.loads(data)
+        emailSource = parsed_data["emailSource"]
+        curWorkSpaceID = parsed_data["curWorkSpaceID"]
+        email_content = get_email_content(emailSource, curWorkSpaceID)
         
-        model = backend_instance.openai_summarizer
-        await model.stream_answer(
-            # prompt=summary_prompt,
-            question='what is this email about?',
-            context=email_content,
-            websocket=websocket,
-            on_error=reset_summarizers,
-            model="gpt-3.5-turbo-16k",
-        )
+        model_preference, open_ai_api_key = backend_instance.preferred_summary_model, backend_instance.open_ai_api_key
 
+        if model_preference == 'OpenAI':
+            backend_instance.openai_summarizer = OpenAI(open_ai_api_key)
+            
+            model = backend_instance.openai_summarizer
+            await model.stream_answer(
+                # prompt=summary_prompt,
+                question='what is this email about?',
+                context=email_content,
+                websocket=websocket,
+                on_error=reset_summarizers,
+                model="gpt-3.5-turbo-16k",
+            )
+
+    except Exception as e:
+        # This captures any exception, logs it, and sends an error message to the frontend
+        error_message = str(e)
+        print(f"Exception in gmail_summarize: {error_message}")
+        await websocket.send_text(f"Error: An unexpected error occurred - {error_message}")
+    finally:
+        # Ensure the WebSocket is closed after handling the request or encountering an error
         await websocket.close()
 
 @app.websocket("/gmail_reply/ws/")
@@ -1009,31 +1017,39 @@ async def gmail_reply(websocket: WebSocket):
 
     await websocket.accept()
     
-    data = await websocket.receive_text()
-    parsed_data = json.loads(data)
-    userIntent = parsed_data["userIntent"]
-    emailSource = parsed_data["emailSource"]
-    curWorkSpaceID = parsed_data["curWorkSpaceID"]
-    email_content = get_email_content(emailSource, curWorkSpaceID)
-    
-    model_preference, open_ai_api_key = backend_instance.preferred_summary_model, backend_instance.open_ai_api_key
-
-    if model_preference == 'OpenAI':
-        backend_instance.openai_summarizer = OpenAI(open_ai_api_key)    
+    try:
+        data = await websocket.receive_text()
+        parsed_data = json.loads(data)
+        userIntent = parsed_data["userIntent"]
+        emailSource = parsed_data["emailSource"]
+        curWorkSpaceID = parsed_data["curWorkSpaceID"]
+        email_content = get_email_content(emailSource, curWorkSpaceID)
         
-        model = backend_instance.openai_summarizer
-        await model.stream_answer(
-            prompt = (
-                "Write a reply that is about 100 words "
-                "Answer in a friendly tone. "
-            ),
-            question=f'I am writing a reply to the email. In this case I want to say: {userIntent}. Help me write what I want to say fully.',
-            context=email_content,
-            websocket=websocket,
-            on_error=reset_summarizers,
-            model="gpt-3.5-turbo-16k",
-        )
+        model_preference, open_ai_api_key = backend_instance.preferred_summary_model, backend_instance.open_ai_api_key
 
+        if model_preference == 'OpenAI':
+            backend_instance.openai_summarizer = OpenAI(open_ai_api_key)    
+            
+            model = backend_instance.openai_summarizer
+            await model.stream_answer(
+                prompt = (
+                    "Write a reply that is about 100 words "
+                    "Answer in a friendly tone. "
+                ),
+                question=f'I am writing a reply to the email. In this case I want to say: {userIntent}. Help me write what I want to say fully.',
+                context=email_content,
+                websocket=websocket,
+                on_error=reset_summarizers,
+                model="gpt-3.5-turbo-16k",
+            )
+
+    except Exception as e:
+        # This captures any exception, logs it, and sends an error message to the frontend
+        error_message = str(e)
+        print(f"Exception in gmail_summarize: {error_message}")
+        await websocket.send_text(f"Error: An unexpected error occurred - {error_message}")
+    finally:
+        # Ensure the WebSocket is closed after handling the request or encountering an error
         await websocket.close()
 
 @app.post("/gmail_inbox_delete_credential")
