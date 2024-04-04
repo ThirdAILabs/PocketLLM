@@ -882,7 +882,6 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 def chat(request: ChatRequest):
-    os.makedirs(os.path.dirname(USER_CHAT_HISTORY_CACHE), exist_ok=True)
     chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
     genai_key = backend_instance.open_ai_api_key
 
@@ -893,15 +892,12 @@ def chat(request: ChatRequest):
         raise HTTPException(status_code=400, detail="OpenAI API key is not defined.") # return an error
         
     ct = open_ai_chat.OpenAIChat(
-        backend_instance.backend, chat_history_sql_uri, genai_key
+        backend_instance.backend, chat_history_sql_uri, USER_CHAT_HISTORY_REFERENCE_CACHE, genai_key
     )
 
     try:
         chat_output = ct.chat(request.prompt, request.session_id)
         response_text, references_list = chat_output
-        for reference in references_list:
-            if "score" in reference:
-                reference["score"] = round(reference["score"], 2) # Adjusts score to 2 decimal places so as to be sent to json
         chat_result = {"response": response_text, "references": references_list}
         return chat_result
     except Exception as e:
@@ -922,7 +918,7 @@ def get_chat_history(request: ChatHistoryRequest):
     chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
     genai_key = backend_instance.open_ai_api_key if backend_instance.open_ai_api_key else 'sk-pseudo-key'
     ct = open_ai_chat.OpenAIChat(
-        backend_instance.backend, chat_history_sql_uri, genai_key
+        backend_instance.backend, chat_history_sql_uri, USER_CHAT_HISTORY_REFERENCE_CACHE, genai_key
     )
     return ct.get_chat_history(request.session_id)
 
@@ -935,7 +931,7 @@ def delete_chat_history(request: DeleteChatHistoryRequest):
         chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
         genai_key = backend_instance.open_ai_api_key if backend_instance.open_ai_api_key else 'sk-pseudo-key'
         ct = open_ai_chat.OpenAIChat(
-            backend_instance.backend, chat_history_sql_uri, genai_key
+            backend_instance.backend, chat_history_sql_uri, USER_CHAT_HISTORY_REFERENCE_CACHE, genai_key
         )
 
         ct.delete_chat_history(request.session_id)
@@ -1912,8 +1908,12 @@ if __name__ == "__main__":
     USER_GMAIL_CACHE = WORKING_FOLDER / "user_gmail_cache"
     USER_GMAIL_LOGIN_CACHE = WORKING_FOLDER / "user_gmail_login_cache"
     USER_CHAT_HISTORY_CACHE = WORKING_FOLDER / "chat_cache" / "chat_history.db"
+    USER_CHAT_HISTORY_REFERENCE_CACHE = WORKING_FOLDER / "chat_cache" / "chat_reference.json"
 
     OUTLOOK_REDIRECT_URI = f"http://localhost:{FASTAPI_LOCALHOST_PORT}/outlook_callback"
+
+    os.makedirs(os.path.dirname(USER_CHAT_HISTORY_CACHE), exist_ok=True)
+    os.makedirs(os.path.dirname(USER_CHAT_HISTORY_REFERENCE_CACHE), exist_ok=True)
 
     print(f'backend: FASTAPI_LOCALHOST_PORT = {FASTAPI_LOCALHOST_PORT}')
     print(f'backend: WORKING_FOLDER = {WORKING_FOLDER}')

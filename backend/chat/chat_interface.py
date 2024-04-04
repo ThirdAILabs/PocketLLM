@@ -1,3 +1,6 @@
+import os
+import json
+
 from abc import ABC, abstractmethod
 from typing import List
 
@@ -12,17 +15,50 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableBranch, RunnablePassthrough
 from thirdai import neural_db as ndb
 
+class ChatReferenceManager:
+    def __init__(self, cache_file_path):
+        self.cache_file_path = cache_file_path
+        os.makedirs(os.path.dirname(cache_file_path), exist_ok=True) # Ensure the directory exists
+
+    def load_references(self):
+        """Load the chat reference data from the JSON file, returning an empty dict if the file does not exist."""
+        if not self.cache_file_path.is_file():
+            return {}
+        with open(self.cache_file_path, 'r') as file:
+            return json.load(file)
+
+    def save_references(self, references):
+        """Save the updated chat reference data to the JSON file."""
+        with open(self.cache_file_path, 'w') as file:
+            json.dump(references, file, indent=4)
+
+    def update_reference(self, session_id, ai_answer, filtered_doc_ref_info):
+        """Update the chat reference file with a new entry for a specific session."""
+        references = self.load_references()
+        if session_id not in references:
+            references[session_id] = []
+        references[session_id].append((ai_answer, filtered_doc_ref_info))
+        self.save_references(references)
+    
+    def delete_chat_history_references(self, session_id):
+        """Deletes the retrieval history associated with the given session_id."""
+        references = self.load_references()
+        if session_id in references:
+            del references[session_id]
+            self.save_references(references)
 
 class ChatInterface(ABC):
     def __init__(
         self,
         db: ndb.NeuralDB,
         chat_history_sql_uri: str,
+        chat_ref_file_path: str,
         top_k: int = 5,
         chat_prompt: str = "Answer the user's questions based on the below context:",
         query_reformulation_prompt: str = "Given the above conversation, generate a search query that would help retrieve relevant sources for responding to the last message.",
     ):
         self.chat_history_sql_uri = chat_history_sql_uri
+        self.chat_reference_manager = ChatReferenceManager(chat_ref_file_path)
         vectorstore = NeuralDBVectorStore(db)
         retriever = vectorstore.as_retriever(search_kwargs={"k": top_k})
 
@@ -74,8 +110,29 @@ class ChatInterface(ABC):
 
     def parse_retriever_output(self, documents: List[Document]):
         top_k_docs = documents
+        filtered_docs = []
 
-        self.references = top_k_docs
+        for doc in top_k_docs:
+            doc_id = doc.metadata['id']
+            filename = doc.metadata['metadata']['filename']
+            page = doc.metadata['metadata']['page']
+
+            filtered_doc_info = {
+                'id': doc_id,
+                'filename': filename,
+                'page': page
+            }
+
+            print(filtered_doc_info)
+            print('=============================')
+            
+            filtered_docs.append(filtered_doc_info)
+        
+        # The chatbot currently doesn't utilize any metadata, so we delete it to save memory
+        for doc in top_k_docs:
+            doc.metadata = {}
+
+        self.references = filtered_docs
 
         return top_k_docs
 
@@ -90,7 +147,16 @@ class ChatInterface(ABC):
             }
             for message in chat_history.messages
         ]
-        return chat_history_list
+
+        references = self.chat_reference_manager.load_references()
+
+        # Extract the chat references for the specified session ID, if available
+        chat_references = references.get(session_id, [])
+
+        return {
+            "chat_history": chat_history_list,
+            "chat_references": chat_references
+        }
 
     def delete_chat_history(self, session_id: str, **kwargs) -> None:
         """
@@ -102,6 +168,7 @@ class ChatInterface(ABC):
         
         # Use the existing clear method to delete the chat history
         chat_history.clear()
+        self.chat_reference_manager.delete_chat_history_references(session_id)
 
     def chat(self, user_input: str, session_id: str, **kwargs):
         chat_history = SQLChatMessageHistory(
@@ -112,5 +179,7 @@ class ChatInterface(ABC):
             {"messages": chat_history.messages}
         )
         chat_history.add_ai_message(response["answer"])
+
+        self.chat_reference_manager.update_reference(session_id, response["answer"], self.references)
 
         return response["answer"], self.references

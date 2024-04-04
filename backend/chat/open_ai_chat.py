@@ -9,6 +9,7 @@ class OpenAIChat(ChatInterface):
         self,
         db: ndb.NeuralDB,
         chat_history_sql_uri: str,
+        chat_ref_file_path: str,
         openai_api_key: str,
         top_k: int = 5,
         openai_model: str = "gpt-3.5-turbo",
@@ -23,7 +24,7 @@ class OpenAIChat(ChatInterface):
         self.temperature = temperature
 
         super().__init__(
-            db, chat_history_sql_uri, top_k, chat_prompt, query_reformulation_prompt
+            db, chat_history_sql_uri, chat_ref_file_path, top_k, chat_prompt, query_reformulation_prompt
         )
 
     def llm(self):
