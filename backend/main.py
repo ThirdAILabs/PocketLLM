@@ -145,6 +145,17 @@ def get_cached_workspace_metajson():
 
 
 
+@app.get("/highlighted_pdf_from_chat")
+def highlighted_pdf_from_chat(reference_id: Optional[int] = Query(None)):
+    # This method is necessary because backend_instance.current_results is not reset during chat RAG.
+    # whereas during normal searcch it would reset
+    # so we get the "id":47 field right before "upvote_ids":[47],
+
+    reference = backend_instance.backend._savable_state.documents.reference(reference_id)
+    buffer = io.BytesIO(hl.highlighted_pdf_bytes(reference))
+    headers = {'Content-Disposition': f'inline; filename="{Path(reference.source).name}"'}
+    return Response(buffer.getvalue(), headers=headers, media_type='application/pdf')
+
 @app.get("/highlighted_pdf")
 def highlighted_pdf(index: Optional[int] = Query(None)):
     global backend_instance
@@ -152,6 +163,7 @@ def highlighted_pdf(index: Optional[int] = Query(None)):
     # Check if index is provided and it's valid
     if index is None or index >= len(backend_instance.current_results):
         return {"error": "Invalid index provided"}
+    # print('backend_instance.current_results[1].upvote_ids', backend_instance.current_results[1].upvote_ids)
 
     reference_id = backend_instance.current_results[index].id
     reference = backend_instance.backend._savable_state.documents.reference(reference_id)
@@ -870,7 +882,6 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 def chat(request: ChatRequest):
-    os.makedirs(os.path.dirname(USER_CHAT_HISTORY_CACHE), exist_ok=True)
     chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
     genai_key = backend_instance.open_ai_api_key
 
@@ -881,11 +892,13 @@ def chat(request: ChatRequest):
         raise HTTPException(status_code=400, detail="OpenAI API key is not defined.") # return an error
         
     ct = open_ai_chat.OpenAIChat(
-        backend_instance.backend, chat_history_sql_uri, genai_key
+        backend_instance.backend, chat_history_sql_uri, USER_CHAT_HISTORY_REFERENCE_CACHE, genai_key
     )
 
     try:
-        chat_result = {"response": ct.chat(request.prompt, request.session_id)}
+        chat_output = ct.chat(request.prompt, request.session_id)
+        response_text, references_list = chat_output
+        chat_result = {"response": response_text, "references": references_list}
         return chat_result
     except Exception as e:
         # Handle other errors, e.g., errors from the OpenAIChat instance
@@ -900,12 +913,12 @@ def get_chat_history(request: ChatHistoryRequest):
         # If the cache doesn't exist, return an empty list
         # This prevents error for the case where cache file hasn't been created yet or 
         # hasn't been populated with anything.
-        return []
+        return {"chat_history": [], "chat_references": []}
 
     chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
     genai_key = backend_instance.open_ai_api_key if backend_instance.open_ai_api_key else 'sk-pseudo-key'
     ct = open_ai_chat.OpenAIChat(
-        backend_instance.backend, chat_history_sql_uri, genai_key
+        backend_instance.backend, chat_history_sql_uri, USER_CHAT_HISTORY_REFERENCE_CACHE, genai_key
     )
     return ct.get_chat_history(request.session_id)
 
@@ -918,7 +931,7 @@ def delete_chat_history(request: DeleteChatHistoryRequest):
         chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
         genai_key = backend_instance.open_ai_api_key if backend_instance.open_ai_api_key else 'sk-pseudo-key'
         ct = open_ai_chat.OpenAIChat(
-            backend_instance.backend, chat_history_sql_uri, genai_key
+            backend_instance.backend, chat_history_sql_uri, USER_CHAT_HISTORY_REFERENCE_CACHE, genai_key
         )
 
         ct.delete_chat_history(request.session_id)
@@ -1895,8 +1908,12 @@ if __name__ == "__main__":
     USER_GMAIL_CACHE = WORKING_FOLDER / "user_gmail_cache"
     USER_GMAIL_LOGIN_CACHE = WORKING_FOLDER / "user_gmail_login_cache"
     USER_CHAT_HISTORY_CACHE = WORKING_FOLDER / "chat_cache" / "chat_history.db"
+    USER_CHAT_HISTORY_REFERENCE_CACHE = WORKING_FOLDER / "chat_cache" / "chat_reference.json"
 
     OUTLOOK_REDIRECT_URI = f"http://localhost:{FASTAPI_LOCALHOST_PORT}/outlook_callback"
+
+    os.makedirs(os.path.dirname(USER_CHAT_HISTORY_CACHE), exist_ok=True)
+    os.makedirs(os.path.dirname(USER_CHAT_HISTORY_REFERENCE_CACHE), exist_ok=True)
 
     print(f'backend: FASTAPI_LOCALHOST_PORT = {FASTAPI_LOCALHOST_PORT}')
     print(f'backend: WORKING_FOLDER = {WORKING_FOLDER}')
