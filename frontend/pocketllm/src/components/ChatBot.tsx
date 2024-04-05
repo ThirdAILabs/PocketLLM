@@ -1,6 +1,8 @@
+import { useContext } from "react"
 import Tooltip from '@mui/material/Tooltip'
 import { AIReference } from '../pages/ChatPage'
 import { usePort } from '../contexts/PortContext'
+import { SetAlertMessageContext } from '../contexts/SetAlertMessageContext'
 
 interface ChatBotProps {
   message: string
@@ -11,6 +13,8 @@ export default function ChatBot({message, reference}: ChatBotProps) {
   const { port } = usePort()
 
   const isLoading = message === 'Loading...'
+
+  const setAlertMessage = useContext(SetAlertMessageContext)
 
   const loadingElem = ()=>{
     return (
@@ -49,12 +53,22 @@ export default function ChatBot({message, reference}: ChatBotProps) {
     window.electron.openExternalUrl(link)
   }
 
+  const copyTextToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(message)
+      console.log('Text copied to clipboard')
+    } catch (err) {
+      console.error('Failed to copy: ', err)
+      setAlertMessage(`Failed to copy to clipboard: ${err}`)
+    }
+  }
+
   return (
       isLoading
       ?
       loadingElem()
       :
-      <div className='d-flex mb-3'>
+      <div className='d-flex mb-3 align-items-center'>
           <div className='chat-bubble bg-secondary bg-opacity-25 p-3'>
               {message}
 
@@ -117,6 +131,12 @@ export default function ChatBot({message, reference}: ChatBotProps) {
                 })}
               </div>
           </div>
+          <Tooltip title="Copy" placement='top'>
+            <i className="bi bi-clipboard ms-2 btn-general2 p-2 rounded-2" onClick={copyTextToClipboard}/>
+          </Tooltip>
+          <Tooltip title="Bad response" placement='top'>
+            <i className="bi bi-hand-thumbs-down btn-general2 p-2 rounded-2"/>
+          </Tooltip>
       </div>
   )
 }
