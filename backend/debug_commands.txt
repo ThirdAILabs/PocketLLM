@@ -1,0 +1,58 @@
+
+curl -X POST http://localhost:8000/gmail_auth
+
+curl -X POST http://localhost:8000/save_gmail_workspace
+
+websocat ws://0.0.0.0:8000/gmail_initial_download_train
+{"user_id": "me", "initial_download_num": 5, "workspaceid": "58107bc0-bd0e-4070-84d9-b330a8b448a7"}
+
+---------------------------------------------------------------------------------------------------------
+
+websocat ws://0.0.0.0:8000/index_files
+{"filePaths": ["/Users/yecao/Downloads/COMP140.pdf"]}
+
+---------------------------------------------------------------------------------------------------------
+
+websocat ws://0.0.0.0:8000/url_train
+{ "urls": ["https://en.wikipedia.org/wiki/Machine_learning"]}
+
+---------------------------------------------------------------------------------------------------------
+
+
+curl -X POST http://localhost:8000/setting \
+     -H "Content-Type: application/json" \
+     -d '{"model_preference": "OpenAI","open_ai_api_key": "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"}'
+
+curl -X POST http://localhost:8000/chat \
+     -H "Content-Type: application/json" \
+     -d '{"prompt": "when is office hour","session_id": "123"}'
+
+websocat ws://0.0.0.0:8000/summarize/ws/
+
+---------------------------------------------------------------------------------------------------------
+
+curl -X POST http://localhost:8000/query \
+     -H "Content-Type: application/json" \
+     -d '{"search_str": "when is office hour"}'
+
+curl -X GET "http://localhost:8000/highlighted_pdf?index=1"
+
+---------------------------------------------------------------------------------------------------------
+
+curl -X POST http://localhost:8000/get_chat_history \
+     -H "Content-Type: application/json" \
+     -d '{"session_id": "123"}'
+
+curl -X POST http://localhost:8000/chat \
+     -H "Content-Type: application/json" \
+     -d '{"prompt": "How are you","session_id": "1"}'
+
+curl -X POST http://localhost:8000/get_chat_history \
+     -H "Content-Type: application/json" \
+     -d '{"session_id": "1"}'
+
+curl -X POST http://localhost:8000/delete_chat_history \
+     -H "Content-Type: application/json" \
+     -d '{"session_id": "123"}'
+
+---------------------------------------------------------------------------------------------------------

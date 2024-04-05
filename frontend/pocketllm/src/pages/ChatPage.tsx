@@ -16,23 +16,21 @@ interface ChatMessage {
 }
 
 // Define the structure of a chat reference, which includes the AI answer and the document reference
-export interface ChatReference {
+export interface AIReference {
   ai_answer: string
-  filtered_doc_ref_info: DocumentReference[]
+  ai_refs: Reference[]
 }
 
-// Define the structure of a single document reference
-interface DocumentReference {
-  id: string
-  filename: string
-  page: number
-}
+type Reference =
+  | { reference_type: 'File'; id: string; filename: string; page: number }
+  | { reference_type: 'Gmail'; reference_link: string; email_subject: string }
+  | { reference_type: 'URL'; reference_link: string; website_title: string }
 
 export default function ChatPage({curWorkSpaceID}: chatPageProps) {
   const { port } = usePort()
   const [message, setMessage] = useState('')
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
-  const [chatReferences, setChatReferences] = useState<ChatReference[]>([])
+  const [aiReferences, setAIReferences] = useState<AIReference[]>([])
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const setAlertMessage = useContext(SetAlertMessageContext)
@@ -43,7 +41,7 @@ export default function ChatPage({curWorkSpaceID}: chatPageProps) {
         session_id: sessionId
       })
       setChatHistory(response.data.chat_history)
-      setChatReferences(response.data.chat_references)
+      setAIReferences(response.data.chat_references)
     } catch (error) {
       console.error("Failed to fetch chat history", error)
     }
@@ -74,7 +72,7 @@ export default function ChatPage({curWorkSpaceID}: chatPageProps) {
       const aiResponse: string = response.data.response;
       const references = response.data.references || []
 
-      setChatReferences(references)
+      setAIReferences(references)
 
       setChatHistory((prevChatHistory) =>
         prevChatHistory.map((chat) => {
@@ -132,7 +130,7 @@ export default function ChatPage({curWorkSpaceID}: chatPageProps) {
 
       if (response.status === 200) {
         setChatHistory([]) // Reset chat history
-        setChatReferences([]) // Reset reference
+        setAIReferences([]) // Reset reference
       }
     } catch (error) {
       console.error("Error clearing chat history:", error)
@@ -165,7 +163,7 @@ export default function ChatPage({curWorkSpaceID}: chatPageProps) {
             <div style={{height: "60vh", overflowY: "auto"}}>
               <div ref={scrollRef}>
                 {chatHistory && chatHistory.map((chat, index) => chat.sender === 'AI' ?
-                  <ChatBot key={index} message={chat.content} reference={chatReferences.find(chatReference => chatReference.ai_answer === chat.content)} /> : 
+                  <ChatBot key={index} message={chat.content} reference={aiReferences.find(aiReference => aiReference.ai_answer === chat.content)} /> : 
                   <ChatCustomer key={index} message={chat.content} />
                 )}
               </div>

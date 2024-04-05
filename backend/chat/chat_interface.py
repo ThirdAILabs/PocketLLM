@@ -40,7 +40,7 @@ class ChatReferenceManager:
         
         new_reference_entry = {
             "ai_answer": ai_answer,
-            "filtered_doc_ref_info": filtered_doc_ref_info
+            "ai_refs": filtered_doc_ref_info
         }
 
         # Append the new entry to this session's list of references
@@ -124,16 +124,38 @@ class ChatInterface(ABC):
         top_k_docs = documents
         filtered_docs = []
 
-        for doc in top_k_docs:
-            doc_id = doc.metadata['id']
-            filename = doc.metadata['metadata']['filename']
-            page = doc.metadata['metadata']['page']
+        # print(documents)
 
-            filtered_doc_info = {
-                'id': doc_id,
-                'filename': filename,
-                'page': page
-            }
+        for doc in top_k_docs:
+            if 'Message ID' in doc.metadata['metadata']:
+                msg_id = doc.metadata['metadata']['Message ID']
+                email_subject = doc.metadata['metadata']['Subject']
+
+                filtered_doc_info = {
+                    'reference_type': 'Gmail',
+                    'reference_link': f'https://mail.google.com/mail/u/0/?tab=rm&ogbl#inbox/{msg_id}',
+                    'email_subject': email_subject
+                }
+            elif 'filename' in doc.metadata['metadata']:
+                doc_id = doc.metadata['id']
+                filename = doc.metadata['metadata']['filename']
+                page = doc.metadata['metadata']['page']
+
+                filtered_doc_info = {
+                    'reference_type': 'File',
+                    'id': doc_id,
+                    'filename': filename,
+                    'page': page
+                }
+            else:
+                reference_link = doc.metadata['metadata']['source']
+                website_title = doc.metadata['metadata']['title']
+
+                filtered_doc_info = {
+                    'reference_type': 'URL',
+                    'reference_link': reference_link,
+                    'website_title': website_title,
+                }
 
             filtered_docs.append(filtered_doc_info)
         
