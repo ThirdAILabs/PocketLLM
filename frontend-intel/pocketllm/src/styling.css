@@ -602,6 +602,110 @@ input:focus{
     right: -25px;
 }
 
+.search-chat-switch {
+    border: #e7e7e7 1px solid;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.nav-pills .nav-link, .nav-tabs .nav-link.active, .nav-tabs .nav-link:hover {
+    border: 0;
+    padding: 6px;
+    padding-left: 12px;
+    padding-right: 12px;
+    color: #000000;
+}
+
+.nav-pills .nav-link.active {
+    color: #000000;
+    border-radius: 15px;
+    padding: 6px;
+    padding-left: 12px;
+    padding-right: 12px;
+    background-color: #e7e7e7;
+}
+
+.chat-input-box {
+    display: block;
+    width: 100%;
+    width: calc(100vw - 300px);
+    max-width: 950px;
+}
+
+.chat-textarea {
+    max-height: 100px;
+    height: 100px;
+    /* border: #ababab 1px solid; */
+    border: none;
+    border-radius: 10px;
+    background-color: #f1f1f1;
+    overflow: auto;
+    outline: none;
+    resize: none; 
+    width: 100%;
+    padding: 10px;
+}
+
+.chat-profile {
+    width: 40px;
+    height: 40px;
+    padding: 10px;
+    border-radius: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.chat-bubble {
+    padding: 10px;
+    border-radius: 10px;
+    font-size: small;
+    max-width: 500px;
+    height: fit-content;
+    text-align: left;
+}
+
+.clear-chat {
+    /* position: fixed;
+    right: 15px;
+    bottom: 125px; */
+    
+    /* width: 40px;
+    height: 40px; */
+    display: flex;
+    align-items: center;
+   /* background-color: white;
+    padding: 5px;
+    border-radius: 10px;
+    box-shadow: 1px 1px 5px 1px #e7e7e7; */
+    font-size: small;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: all 0.5s ease;
+}
+
+.clear-chat:hover {
+    opacity: 1;
+}
+
+.thumb-down-content-wrapper {
+    position: absolute;
+    top: 0px;
+    left: 35px;
+    padding: 15px;
+    border: #e7e7e7 1px solid;
+    border-radius: 5px;
+    box-shadow: 0 0 3px 1px #e7e7e7;
+    min-width: 200px;
+}
+
+.thumb-down-content {
+    border: #e7e7e7 1px solid;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+
 /* .modal-backdrop {
     z-index: 1250 !important;
  } */

@@ -1,7 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import ProgressBar from '../ProgressBar'
+import ProgressBar from '../ProgressBar.tsx'
 import { useBackendControl } from '../../contexts/BackendControlContext.tsx'
 
 type gmailWorkspaceProgressProps = {

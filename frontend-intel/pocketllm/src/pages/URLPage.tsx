@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 
 import { useParams } from 'react-router-dom'
 import Tooltip from '@mui/material/Tooltip'
-
+import SwitchPage from './SwitchPage'
 import Teach from "../components/Teach"
 import Summary from '../components/Summary'
 import SearchBar from '../components/URLWorkSpace/SearchBar'
@@ -10,6 +10,8 @@ import Extraction from '../components/URLWorkSpace/Extraction'
 import { WorkSpaceMetadata, SearchResult } from '../App'
 import AddURLWorkspace from "../components/URLWorkSpace/AddURLWorkspace"
 import EditableName from '../components/EditableName'
+import ChatPage from './ChatPage'
+import { SummarizerType } from '../App'
 
 type urlPageProps = {
     summarizer: string | null,
@@ -42,8 +44,10 @@ export default function URLPage({
     },[curWorkSpaceID])
 
     return (
-        <div className='w-100 h-100 d-flex flex-column justify-content-between'>
-                <div className="w-100 h-100 mt-5 mb-2" style={{maxHeight: "95vh", overflowY: "auto"}}>
+        <div className='w-100 h-100 d-flex flex-column'>
+            <SwitchPage
+                searchContent ={
+                <div className="w-100 h-100 my-2" style={{maxHeight: "95vh", overflowY: "auto"}}>
                     <div className='d-flex flex-column align-items-center'>
 
                         <EditableName   workspaceName = {urlWorkspaceInfo?.workspaceName || ''} 
@@ -104,6 +108,13 @@ export default function URLPage({
                     </div>
                         
                 </div>
+                }
+                isSummarizerOn = {summarizer === SummarizerType.OpenAI}
+                chatContent={
+                    <ChatPage curWorkSpaceID = {curWorkSpaceID}/>
+                }
+            />
+                
         </div>
     )
   }
