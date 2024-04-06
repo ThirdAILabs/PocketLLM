@@ -688,6 +688,22 @@ input:focus{
     opacity: 1;
 }
 
+.thumb-down-content-wrapper {
+    position: absolute;
+    top: 0px;
+    left: 35px;
+    padding: 15px;
+    border: #e7e7e7 1px solid;
+    border-radius: 5px;
+    box-shadow: 0 0 3px 1px #e7e7e7;
+    min-width: 200px;
+}
+
+.thumb-down-content {
+    border: #e7e7e7 1px solid;
+    border-radius: 5px;
+    padding: 10px;
+}
 
 
 /* .modal-backdrop {

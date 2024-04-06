@@ -1,20 +1,60 @@
-import { useContext } from "react"
+import { useContext, useState } from "react"
 import Tooltip from '@mui/material/Tooltip'
 import { AIReference } from '../pages/ChatPage'
 import { usePort } from '../contexts/PortContext'
 import { SetAlertMessageContext } from '../contexts/SetAlertMessageContext'
+import useTelemetry from '../hooks/useTelemetry'
 
 interface ChatBotProps {
   message: string
   reference?: AIReference
+  previousHumanMessage?: string
 }
 
-export default function ChatBot({message, reference}: ChatBotProps) {
+export default function ChatBot({message, reference, previousHumanMessage}: ChatBotProps) {
   const { port } = usePort()
 
   const isLoading = message === 'Loading...'
 
   const setAlertMessage = useContext(SetAlertMessageContext)
+
+  const [clipboard, setClipboard] = useState("clipboard")
+  const [thumb, setThumb] = useState("")
+  const [thumbDownReason, setThumbDownReason] = useState("none")
+
+  // For telemetry
+  const recordEvent = useTelemetry()
+
+  function handleClipboardClick() {
+    setClipboard("check-lg")
+    copyTextToClipboard()
+    setTimeout(()=>{setClipboard("clipboard")}, 2000)
+  }
+
+  function handleThumbClick() {
+    if (thumb == "" ) {
+      setThumb("-fill")
+      setThumbDownReason("")
+    } else {
+      setThumb("")
+      setThumbDownReason("none")
+    }
+  }
+
+  // Telemetry action modified to include the previous human message
+  const handleFeedbackClick = (feedbackType: string) => {
+    recordEvent({
+      UserAction: 'Click',
+      UIComponent: feedbackType,
+      UI: 'ChatBot',
+      data: {
+        'ai_answer': message,
+        'ai_refs': reference,
+        'human_prompt': previousHumanMessage || "No previous human message", // Handle undefined case
+      }
+    })
+    setThumbDownReason("none")
+  }
 
   const loadingElem = ()=>{
     return (
@@ -131,12 +171,26 @@ export default function ChatBot({message, reference}: ChatBotProps) {
                 })}
               </div>
           </div>
+
           <Tooltip title="Copy" placement='top'>
-            <i className="bi bi-clipboard ms-2 btn-general2 p-2 rounded-2" onClick={copyTextToClipboard}/>
+            <i className={`bi text-secondary ms-2 btn-general2 p-2 rounded-2 bi-${clipboard}`} onClick={handleClipboardClick}/>
           </Tooltip>
-          <Tooltip title="Bad response" placement='top'>
-            <i className="bi bi-hand-thumbs-down btn-general2 p-2 rounded-2"/>
-          </Tooltip>
+          <div className='position-relative'>
+              <Tooltip title="Bad response" placement='top'>
+                <i className={`bi btn-general2 position-relative p-2 rounded-2 bi-hand-thumbs-down${thumb}`} onClick={handleThumbClick}/>
+              </Tooltip>
+              <div className='thumb-down-content-wrapper' style={{display: `${thumbDownReason}`}}>
+                <div className='d-flex justify-content-between'>
+                  <div className='font-sm'>Tell us more:</div>
+                  <i className="bi bi-x cursor-pointer" onClick={()=>setThumbDownReason("none")}></i>
+                </div>
+                <div className='thumb-down-content btn-general2 font-sm mb-2' onClick={()=>handleFeedbackClick('Not-Accurate-Feedback button')}>
+                    Not accurate<br/> (made-up truth)
+                </div>
+                <div className='thumb-down-content btn-general2 font-sm' onClick={()=>handleFeedbackClick('Not-Relevnant-Feedback button')}>
+                  Not relevnant <br/> (not what I am asking)</div>
+              </div>
+          </div>
       </div>
   )
 }

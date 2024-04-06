@@ -161,12 +161,24 @@ export default function ChatPage({curWorkSpaceID}: chatPageProps) {
       
         <div className='d-flex flex-column justify-content-between' style={{height: "74vh"}}>
             <div style={{height: "60vh", overflowY: "auto"}}>
-              <div ref={scrollRef}>
-                {chatHistory && chatHistory.map((chat, index) => chat.sender === 'AI' ?
-                  <ChatBot key={index} message={chat.content} reference={aiReferences.find(aiReference => aiReference.ai_answer === chat.content)} /> : 
+            <div ref={scrollRef}>
+              {chatHistory && chatHistory.map((chat, index) => {
+                // Check if the current message is from AI and there is a previous message
+                const isAI = chat.sender === 'AI';
+                const prevMessage = isAI && index > 0 ? chatHistory[index - 1].content : undefined;
+
+                return isAI ? (
+                  <ChatBot
+                    key={index}
+                    message={chat.content}
+                    reference={aiReferences.find(aiReference => aiReference.ai_answer === chat.content)}
+                    previousHumanMessage={prevMessage}
+                  />
+                ) : (
                   <ChatCustomer key={index} message={chat.content} />
-                )}
-              </div>
+                );
+              })}
+            </div>
 
             </div>
             
