@@ -136,18 +136,7 @@ class ChatInterface(ABC):
                     'reference_link': f'https://mail.google.com/mail/u/0/?tab=rm&ogbl#inbox/{msg_id}',
                     'email_subject': email_subject
                 }
-            elif 'filename' in doc.metadata['metadata']:
-                doc_id = doc.metadata['id']
-                filename = doc.metadata['metadata']['filename']
-                page = doc.metadata['metadata']['page']
-
-                filtered_doc_info = {
-                    'reference_type': 'File',
-                    'id': doc_id,
-                    'filename': filename,
-                    'page': page
-                }
-            else:
+            elif 'title' in doc.metadata['metadata']:
                 reference_link = doc.metadata['metadata']['source']
                 website_title = doc.metadata['metadata']['title']
 
@@ -155,6 +144,17 @@ class ChatInterface(ABC):
                     'reference_type': 'URL',
                     'reference_link': reference_link,
                     'website_title': website_title,
+                }
+            else:
+                doc_id = doc.metadata['id']
+                file_path = doc.metadata['metadata']['source']
+                page = doc.metadata['metadata']['page']
+
+                filtered_doc_info = {
+                    'reference_type': 'File',
+                    'id': doc_id,
+                    'file_path': file_path,
+                    'page': page
                 }
 
             filtered_docs.append(filtered_doc_info)
