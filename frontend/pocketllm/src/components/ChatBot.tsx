@@ -187,8 +187,8 @@ export default function ChatBot({message, reference, previousHumanMessage}: Chat
                 <div className='thumb-down-content btn-general2 font-sm mb-2' onClick={()=>handleFeedbackClick('Not-Accurate-Feedback button')}>
                     Not accurate<br/> (made-up truth)
                 </div>
-                <div className='thumb-down-content btn-general2 font-sm' onClick={()=>handleFeedbackClick('Not-Relevnant-Feedback button')}>
-                  Not relevnant <br/> (not what I am asking)</div>
+                <div className='thumb-down-content btn-general2 font-sm' onClick={()=>handleFeedbackClick('Not-Relevant-Feedback button')}>
+                  Not relevant <br/> (not what I am asking)</div>
               </div>
           </div>
       </div>
