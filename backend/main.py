@@ -187,7 +187,7 @@ async def index_files(websocket: WebSocket):
 
         documents = []
 
-        for path in filePaths:
+        for index, path in enumerate(filePaths):
             if path.lower().endswith(".pdf"):
                 documents.append(ndb.PDF(path))
             elif path.lower().endswith(".docx"):
@@ -195,10 +195,22 @@ async def index_files(websocket: WebSocket):
             elif path.lower().endswith(".csv"):
                 documents.append(ndb.CSV(path))
 
+            # Calculate progress for the loading phase (75% of total progress)
+            load_progress = int(75 * (index + 1) / len(filePaths))
+            await websocket.send_json({
+                "progress": load_progress,
+                "message": 'Loading files into RAM',
+                "complete": False
+            })
+
         async def async_on_progress(fraction):
-            progress = int(100 * fraction)
-            message = "Indexing in progress"
-            await websocket.send_json({"progress": progress, "message": message, "complete": False})
+            # Calculate progress for the insertion phase (remaining 25% of total progress)
+            insert_progress = 75 + int(25 * fraction)
+            await websocket.send_json({
+                "progress": insert_progress,
+                "message": 'Indexing in progress',
+                "complete": False
+            })
 
         def on_progress(fraction):
             loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
@@ -220,6 +232,7 @@ async def index_files(websocket: WebSocket):
                 on_progress=on_progress,
                 on_error=on_error,
                 on_success=on_success,
+                batch_size=500
             ))
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
@@ -1559,6 +1572,7 @@ async def gmail_initial_download_train(websocket: WebSocket):
                 on_progress=on_progress,
                 on_error=on_error,
                 on_success=on_success,
+                batch_size=500,
             ))
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
@@ -1775,13 +1789,14 @@ async def gmail_resume_training(websocket: WebSocket):
 
         try:
             # Resume training
-            db = ndb.NeuralDB()
+            db = ndb.NeuralDB(low_memory = True)
             loop.run_in_executor(None, lambda: db.insert(
                 sources=docs_to_insert,
                 train=True,
                 on_progress=on_progress,
                 on_error=on_error,
                 on_success=on_success,
+                batch_size=500
                 # checkpoint_config=checkpoint_config
             ))
         except Exception as e:
@@ -1888,6 +1903,7 @@ async def url_train(websocket: WebSocket):
                 on_progress=on_progress,
                 on_error=on_error,
                 on_success=on_success,
+                batch_size=500,
             ))
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
