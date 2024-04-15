@@ -74,9 +74,7 @@ app.add_middleware(
 
 class Backend:
     def __init__(self):
-        self.backend = ndb.NeuralDB(
-            fhr=50_000, embedding_dimension=1024, extreme_output_dim=10_000
-        )
+        self.backend = ndb.NeuralDB(low_memory=True)
         self.current_results: Optional[List[Reference]] = None
         self.current_query: Optional[str] = None
         self.bazaar = Bazaar(base_url=BAZAAR_URL, cache_dir=BAZAAR_CACHE)
@@ -90,9 +88,7 @@ class Backend:
         self.outlook_query_switch = False
     
     def reset_neural_db(self):
-        self.backend = ndb.NeuralDB(
-            fhr=50_000, embedding_dimension=1024, extreme_output_dim=10_000
-        )
+        self.backend = ndb.NeuralDB(low_memory=True)
 
 backend_instance: Backend = Backend()
 
@@ -1786,7 +1782,7 @@ async def gmail_resume_training(websocket: WebSocket):
                 on_progress=on_progress,
                 on_error=on_error,
                 on_success=on_success,
-                checkpoint_config=checkpoint_config
+                # checkpoint_config=checkpoint_config
             ))
         except Exception as e:
             await websocket.send_json({"error": str(e)})

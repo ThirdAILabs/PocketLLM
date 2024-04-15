@@ -132,7 +132,7 @@ pyinstaller==6.0.0
 pyinstaller-hooks-contrib==2023.4
 PyJWT==2.8.0
 Pympler==1.0.1
-PyMuPDF==1.22.5
+PyMuPDF==1.23.26
 pyparsing==3.1.1
 PyQt6==6.5.1
 PyQt6-Qt6==6.5.1
@@ -146,7 +146,7 @@ python-dotenv==1.0.0
 python-http-client==3.3.7
 python-multipart==0.0.6
 PyTrie==0.4.0
-pytz==2023.3.post1
+pytz==2023.4
 pytzdata==2020.1
 pywin32-ctypes==0.2.2
 PyYAML==6.0
@@ -203,5 +203,5 @@ Werkzeug==3.0.0
 yarl==1.9.2
 zeep==4.2.1
 zipp==3.17.0
+thirdai>=0.7.41
 urllib3
-thirdai
