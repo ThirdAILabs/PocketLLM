@@ -22,9 +22,7 @@ jobs:
     - name: Install Updated ThirdAI wheel
       run: pip install backend/artifact/thirdai-0.7.33+ac86e52-cp311-cp311-win_amd64.whl --force-reinstall
 
-    - name: Install ThirdAI NDB
-      run: |
-        python -m pip install thirdai[neural_db]
+
 
     - name: Install NLTK and Download Stopwords
       run: |
