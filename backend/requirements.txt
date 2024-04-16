@@ -58,7 +58,7 @@ gunicorn==21.2.0
 h11==0.14.0
 htmldate==1.5.2
 httplib2==0.22.0
-huggingface-hub==0.17.3
+huggingface-hub==0.22.2
 idna==3.6
 importlib-metadata==6.8.0
 iniconfig==2.0.0
@@ -92,7 +92,7 @@ marshmallow==3.19.0
 marshmallow-enum==1.5.1
 matplotlib==3.8.0
 matplotlib-inline==0.1.6
-mlflow==2.7.1
+mlflow==2.11.3
 more-itertools==10.1.0
 msal==1.25.0
 multidict==6.0.4
@@ -122,7 +122,7 @@ psutil==5.9.5
 psycopg2-binary==2.9.6
 ptyprocess==0.7.0
 pure-eval==0.2.2
-pyarrow==13.0.0
+pyarrow==15.0.2
 pyasn1==0.5.0
 pyasn1-modules==0.3.0
 pycparser==2.21

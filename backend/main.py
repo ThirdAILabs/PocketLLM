@@ -1749,11 +1749,11 @@ async def gmail_resume_training(websocket: WebSocket):
 
     def on_success():
         # Move the trained model to the target location
-        if checkpoint_dir.exists():
-            if target_model_path.exists():
-                shutil.rmtree(target_model_path)  # Remove the existing model directory
-            shutil.move(str(checkpoint_dir / 'trained.ndb'), str(target_model_path))  # Move the new model to the target location
-            shutil.rmtree(checkpoint_dir) # Remove the saved_training_model directory
+        model_path = USER_WORKSPACE_CACHE / workspace_id / 'model.ndb'
+        if model_path.exists():
+            shutil.rmtree(model_path)  # Remove the existing model directory
+        # Save the model in the workspace
+        backend_instance.backend.save(model_path)
 
         if metadata_path.exists():
             with open(metadata_path, 'r') as file:
@@ -1768,36 +1768,32 @@ async def gmail_resume_training(websocket: WebSocket):
             # Save the updated metadata back to the file
             with open(metadata_path, 'w') as file:
                 json.dump(metadata, file, indent=4)
+
+        # Turn on Gmail query switch
+        backend_instance.gmail_query_switch = True
         loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Resumed training completed successfully", "complete": True, "metadata": metadata}))
 
     async for message in websocket.iter_text():
         data = json.loads(message)
 
+        backend_instance.reset_neural_db()
+
         workspace_id = data.get("workspaceid")
         workspace_folder = USER_WORKSPACE_CACHE / workspace_id
         metadata_path = workspace_folder / 'metadata.json'
         gmail_file_path = str(workspace_folder / 'documents' / 'gmail.csv')
-        checkpoint_dir = workspace_folder / "saved_training_model"
         docs_to_insert = [ndb.CSV(gmail_file_path, strong_columns = ['Subject'], weak_columns=['Email Content'], reference_columns = ['Message ID', 'Email Content'])]
-        checkpoint_config = ndb.CheckpointConfig(
-            checkpoint_dir=checkpoint_dir,
-            resume_from_checkpoint=checkpoint_dir.exists() and any(checkpoint_dir.iterdir()),
-            checkpoint_interval=1,
-        )
-        target_model_path = workspace_folder / 'model.ndb'
         loop = asyncio.get_running_loop()
 
         try:
-            # Resume training
-            db = ndb.NeuralDB(low_memory = True)
-            loop.run_in_executor(None, lambda: db.insert(
+            # Training from scratch
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, lambda: backend_instance.backend.insert(
                 sources=docs_to_insert,
-                train=True,
                 on_progress=on_progress,
                 on_error=on_error,
                 on_success=on_success,
                 batch_size=500
-                # checkpoint_config=checkpoint_config
             ))
         except Exception as e:
             await websocket.send_json({"error": str(e)})
