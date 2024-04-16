@@ -32,6 +32,9 @@ jobs:
     - name: Install Backend Dependencies
       run: pip install -r backend/requirements.txt
 
+    - name: Update PyInstaller Hooks
+      run: pip install --upgrade pyinstaller-hooks-contrib
+
     - name: Install Updated ThirdAI wheel
       run: pip install backend/artifact/thirdai-0.7.43-cp311-cp311-macosx_12_0_arm64.whl --force-reinstall
 
