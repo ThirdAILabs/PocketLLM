@@ -39,7 +39,7 @@ from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
 from thirdai import licensing
 import trafilatura
-from chat import open_ai_chat
+# from chat import open_ai_chat
 
 
 
@@ -889,64 +889,64 @@ class ChatRequest(BaseModel):
     prompt: str
     session_id: str
 
-@app.post("/chat")
-def chat(request: ChatRequest):
-    chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
-    genai_key = backend_instance.open_ai_api_key
+# @app.post("/chat")
+# def chat(request: ChatRequest):
+#     chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
+#     genai_key = backend_instance.open_ai_api_key
 
-    if backend_instance.preferred_summary_model != 'OpenAI': # If summarizer is not on
-        raise HTTPException(status_code=400, detail="Summarizer is not turned on.") # return an error
+#     if backend_instance.preferred_summary_model != 'OpenAI': # If summarizer is not on
+#         raise HTTPException(status_code=400, detail="Summarizer is not turned on.") # return an error
 
-    if not genai_key: # If API key is not defined
-        raise HTTPException(status_code=400, detail="OpenAI API key is not defined.") # return an error
+#     if not genai_key: # If API key is not defined
+#         raise HTTPException(status_code=400, detail="OpenAI API key is not defined.") # return an error
         
-    ct = open_ai_chat.OpenAIChat(
-        backend_instance.backend, chat_history_sql_uri, USER_CHAT_HISTORY_REFERENCE_CACHE, genai_key
-    )
+#     ct = open_ai_chat.OpenAIChat(
+#         backend_instance.backend, chat_history_sql_uri, USER_CHAT_HISTORY_REFERENCE_CACHE, genai_key
+#     )
 
-    try:
-        chat_output = ct.chat(request.prompt, request.session_id)
-        response_text, references_list = chat_output
-        chat_result = {"response": response_text, "references": references_list}
-        return chat_result
-    except Exception as e:
-        # Handle other errors, e.g., errors from the OpenAIChat instance
-        raise HTTPException(status_code=500, detail=str(e))
+#     try:
+#         chat_output = ct.chat(request.prompt, request.session_id)
+#         response_text, references_list = chat_output
+#         chat_result = {"response": response_text, "references": references_list}
+#         return chat_result
+#     except Exception as e:
+#         # Handle other errors, e.g., errors from the OpenAIChat instance
+#         raise HTTPException(status_code=500, detail=str(e))
 
-class ChatHistoryRequest(BaseModel):
-    session_id: str
+# class ChatHistoryRequest(BaseModel):
+#     session_id: str
 
-@app.post("/get_chat_history")
-def get_chat_history(request: ChatHistoryRequest):
-    if not os.path.exists(USER_CHAT_HISTORY_CACHE):
-        # If the cache doesn't exist, return an empty list
-        # This prevents error for the case where cache file hasn't been created yet or 
-        # hasn't been populated with anything.
-        return {"chat_history": [], "chat_references": []}
+# @app.post("/get_chat_history")
+# def get_chat_history(request: ChatHistoryRequest):
+#     if not os.path.exists(USER_CHAT_HISTORY_CACHE):
+#         # If the cache doesn't exist, return an empty list
+#         # This prevents error for the case where cache file hasn't been created yet or 
+#         # hasn't been populated with anything.
+#         return {"chat_history": [], "chat_references": []}
 
-    chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
-    genai_key = backend_instance.open_ai_api_key if backend_instance.open_ai_api_key else 'sk-pseudo-key'
-    ct = open_ai_chat.OpenAIChat(
-        backend_instance.backend, chat_history_sql_uri, USER_CHAT_HISTORY_REFERENCE_CACHE, genai_key
-    )
-    return ct.get_chat_history(request.session_id)
+#     chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
+#     genai_key = backend_instance.open_ai_api_key if backend_instance.open_ai_api_key else 'sk-pseudo-key'
+#     ct = open_ai_chat.OpenAIChat(
+#         backend_instance.backend, chat_history_sql_uri, USER_CHAT_HISTORY_REFERENCE_CACHE, genai_key
+#     )
+#     return ct.get_chat_history(request.session_id)
 
-class DeleteChatHistoryRequest(BaseModel):
-    session_id: str
+# class DeleteChatHistoryRequest(BaseModel):
+#     session_id: str
 
-@app.post("/delete_chat_history")
-def delete_chat_history(request: DeleteChatHistoryRequest):
-    try:
-        chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
-        genai_key = backend_instance.open_ai_api_key if backend_instance.open_ai_api_key else 'sk-pseudo-key'
-        ct = open_ai_chat.OpenAIChat(
-            backend_instance.backend, chat_history_sql_uri, USER_CHAT_HISTORY_REFERENCE_CACHE, genai_key
-        )
+# @app.post("/delete_chat_history")
+# def delete_chat_history(request: DeleteChatHistoryRequest):
+#     try:
+#         chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
+#         genai_key = backend_instance.open_ai_api_key if backend_instance.open_ai_api_key else 'sk-pseudo-key'
+#         ct = open_ai_chat.OpenAIChat(
+#             backend_instance.backend, chat_history_sql_uri, USER_CHAT_HISTORY_REFERENCE_CACHE, genai_key
+#         )
 
-        ct.delete_chat_history(request.session_id)
-        return {"detail": "Chat history deleted successfully."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+#         ct.delete_chat_history(request.session_id)
+#         return {"detail": "Chat history deleted successfully."}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 def get_email_content(emailSource, curWorkSpaceID):
     # Step 1: Locate the gmail.csv file in the workspace
