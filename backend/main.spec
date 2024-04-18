@@ -37,7 +37,7 @@ a.datas += [('client_secret_user_account.json', 'client_secret_user_account.json
 a.datas += [('client_secrets.json', 'client_secrets.json', 'DATA')]
 
 # File license
-a.datas += [('license_may_11_2024.serialized', 'license_may_11_2024.serialized', 'DATA')]
+a.datas += [('license_12_15_2024.serialized', 'license_12_15_2024.serialized', 'DATA')]
 
 # Bundle GeneralQnA model into package
 # Remeber to save {"domain": "public","author_username": "thirdai","model_name": "GeneralQnA"} to /data
