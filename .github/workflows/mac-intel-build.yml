@@ -32,10 +32,6 @@ jobs:
     - name: Install Backend Dependencies
       run: pip install -r backend/requirements.txt
 
-    - name: Install Updated ThirdAI wheel
-      run: pip install backend/artifact/thirdai-0.7.33+ac86e52-cp311-cp311-macosx_10_15_x86_64.whl --force-reinstall
-
-
 
     - name: Install NLTK and Download Stopwords
       run: |

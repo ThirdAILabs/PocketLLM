@@ -20,7 +20,7 @@ import CreateURLWorkspace from './URLWorkSpace/CreateURLWorkspace'
 import CreateGmailWorkspace from './GmailWorkSpace/CreateGmailWorkspace'
 import Subscribe from './Subscribe'
 import Settings from './Settings'
-import GmailWorkspaceProgress from './GmailWorkSpace/GmailWorkspaceProgress'
+import GmailWorkspaceProgress from '../components/GmailWorkSpace/GmailWorkspaceProgress'
 import { FeatureUsableContext } from '../contexts/FeatureUsableContext'
 
 const drawerWidth = 290
@@ -539,7 +539,7 @@ export default function SideBar(
                         console.log("Attempt to resume download...")
                         const ws = new WebSocket(`ws://localhost:${port}/gmail_resume_downloading`)
                         ws.onopen = () => { 
-                            gmailWorkspaceProgressRef.current?.click()
+                            // gmailWorkspaceProgressRef.current?.click()
                             ws.send(JSON.stringify({ 
                                 workspaceid: gmailWorkspaceSyncID 
                             })) 
@@ -548,7 +548,7 @@ export default function SideBar(
                             const data = JSON.parse(event.data)
                             console.log(data.progress, data.message)
     
-                            setGmailWorkspaceProgress(data.progress)
+                            // setGmailWorkspaceProgress(data.progress)
     
                             if (data.complete) {
                                 console.log(data.message)
@@ -572,7 +572,7 @@ export default function SideBar(
                                     // Handle messages from the server here
                                     const messageData = JSON.parse(event.data)
     
-                                    setGmailWorkspaceProgress(messageData.progress)
+                                    // setGmailWorkspaceProgress(messageData.progress)
     
                                     if (messageData.complete) {
                                         console.log("Received message from server:", messageData.message)
@@ -582,7 +582,7 @@ export default function SideBar(
                                         updateWorkspaceMetaInfo(gmailWorkspaceSyncID, updatedMetadata)
                                         gmailWorkspaceCloseRef.current?.click()
     
-                                        const response = await axios.post(`http://localhost:${port}/load_gmail_workspace_by_id`, { gmailWorkspaceSyncID }) // After training is finished, load the workspace
+                                        const response = await axios.post(`http://localhost:${port}/load_gmail_workspace_by_id`, { workspaceID: gmailWorkspaceSyncID }) // After training is finished, load the workspace
                                         if (response.data.success) {
                                             setCurWorkSpaceID(gmailWorkspaceSyncID)
                                             navigate(`/gmail/:${gmailWorkspaceSyncID}`)

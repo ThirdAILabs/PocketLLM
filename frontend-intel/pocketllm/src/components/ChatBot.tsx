@@ -116,16 +116,21 @@ export default function ChatBot({message, reference, previousHumanMessage}: Chat
                 {reference && reference.ai_refs.map((docRef, index) => {
                         switch (docRef.reference_type) {
                           case 'File':
+                            let displayFilename = docRef.filename ? docRef.filename.split(/[/\\]/).pop() : 'No filename available'
+                            if (!docRef.filename && docRef.file_path) { // Extract filename from file_path if filename is not available
+                                displayFilename = docRef.file_path.split(/[/\\]/).pop()
+                            }
+
                             return (
                               <div key={index} className='font-x-sm mt-2 text-dark-emphasis'>
                                 <a 
                                   style={{ color: 'blue', cursor: 'pointer' }} 
                                   onClick={() => openReferencePDF(parseInt(docRef.id), docRef.page + 1)}
                                 >
-                                  {docRef.filename.split(/[/\\]/).pop()} - Page: {docRef.page + 1}
+                                    {displayFilename} - Page: {docRef.page + 1}
                                 </a>
                                 <Tooltip title="View PDF" placement='right'>
-                                  <i className="bi bi-box-arrow-in-up-right cursor-pointer font-sm text-primary ms-1" onClick={() => openReferencePDF(parseInt(docRef.id), docRef.page)}></i>
+                                  <i className="bi bi-box-arrow-in-up-right cursor-pointer font-sm text-primary ms-1" onClick={() => openReferencePDF(parseInt(docRef.id), docRef.page + 1)}></i>
                                 </Tooltip>
                               </div>
                             );
