@@ -97,11 +97,19 @@ export default function FilePage({
 
 
                     <div style={{minWidth: "60vw"}}>
-                        <Summary summary = {summaryResult}/>
-                        <Extraction searchResults={searchResults}
+                        {
+                            searchResults.length === 0
+                            ?
+                            <div className='mt-5 text-secondary'>No results found</div>
+                            :
+                            <>
+                                <Summary summary = {summaryResult}/>
+                                <Extraction searchResults={searchResults}
                                     curWorkSpaceID = {curWorkSpaceID} 
                                     setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                        />
+                                />
+                            </>
+                        }
                     </div>
                 </div>
             </div>
