@@ -184,7 +184,7 @@ export default function ChatPage({curWorkSpaceID}: chatPageProps) {
             </div>
             
             <form className='chat-input-box'>
-                <textarea className='chat-textarea'
+                <textarea className='chat-textarea text-dark'
                           value={message}
                           onChange={handleChange}
                           onKeyDown={handleKeyDown}

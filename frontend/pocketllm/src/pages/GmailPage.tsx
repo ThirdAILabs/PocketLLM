@@ -81,12 +81,12 @@ export default function GmailPage({
     const email_account = gmailWorkspaceInfo?.gmailWorkspaceInfo?.email_account
 
     const [summaryResult, setSummaryResult] = useState<string>('')
-    const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+    const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null)
 
     // Switching workspace clear out
     useEffect(()=>{
         setSummaryResult('')
-        setSearchResults([])
+        setSearchResults(null)
     },[curWorkSpaceID])
 
     return (
@@ -132,12 +132,28 @@ export default function GmailPage({
                 </div>
 
                 <div style={{width: '60vw', padding: '20px'}}>
-                    <Summary summary = {summaryResult}/>
-                    <Extraction searchResults={searchResults}
-                                curWorkSpaceID = {curWorkSpaceID} 
-                                setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                                setSummarizerWinOpen = {setSummarizerWinOpen}
-                    />
+                  {
+                      searchResults === null
+                      ?
+                      <></>
+                      :
+                      <>
+                          {
+                              searchResults.length === 0 
+                              ?
+                              <div className='mt-5 text-secondary'>No results found</div>
+                              :
+                              <>
+                                <Summary summary = {summaryResult}/>
+                                <Extraction searchResults={searchResults}
+                                            curWorkSpaceID = {curWorkSpaceID} 
+                                            setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                                            setSummarizerWinOpen = {setSummarizerWinOpen}
+                                  />
+                              </>
+                          }
+                      </>
+                  }
                 </div>
             </div>
                 

@@ -47,7 +47,7 @@ if getattr(sys, 'frozen', False):
     APPLICATION_PATH = sys._MEIPASS
 else:
     APPLICATION_PATH = os.path.dirname(os.path.abspath(__file__))
-THIRDAI_LICENSE_PATH = os.path.join(APPLICATION_PATH, 'license_may_11_2024.serialized')
+THIRDAI_LICENSE_PATH = os.path.join(APPLICATION_PATH, 'license_12_15_2024.serialized')
 licensing.set_path(THIRDAI_LICENSE_PATH)
 
 
@@ -74,9 +74,7 @@ app.add_middleware(
 
 class Backend:
     def __init__(self):
-        self.backend = ndb.NeuralDB(
-            fhr=50_000, embedding_dimension=1024, extreme_output_dim=10_000
-        )
+        self.backend = ndb.NeuralDB(low_memory=True)
         self.current_results: Optional[List[Reference]] = None
         self.current_query: Optional[str] = None
         self.bazaar = Bazaar(base_url=BAZAAR_URL, cache_dir=BAZAAR_CACHE)
@@ -90,9 +88,7 @@ class Backend:
         self.outlook_query_switch = False
     
     def reset_neural_db(self):
-        self.backend = ndb.NeuralDB(
-            fhr=50_000, embedding_dimension=1024, extreme_output_dim=10_000
-        )
+        self.backend = ndb.NeuralDB(low_memory=True)
 
 backend_instance: Backend = Backend()
 
@@ -191,7 +187,7 @@ async def index_files(websocket: WebSocket):
 
         documents = []
 
-        for path in filePaths:
+        for index, path in enumerate(filePaths):
             if path.lower().endswith(".pdf"):
                 documents.append(ndb.PDF(path))
             elif path.lower().endswith(".docx"):
@@ -199,10 +195,22 @@ async def index_files(websocket: WebSocket):
             elif path.lower().endswith(".csv"):
                 documents.append(ndb.CSV(path))
 
+            # Calculate progress for the loading phase (75% of total progress)
+            load_progress = int(75 * (index + 1) / len(filePaths))
+            await websocket.send_json({
+                "progress": load_progress,
+                "message": 'Loading files into RAM',
+                "complete": False
+            })
+
         async def async_on_progress(fraction):
-            progress = int(100 * fraction)
-            message = "Indexing in progress"
-            await websocket.send_json({"progress": progress, "message": message, "complete": False})
+            # Calculate progress for the insertion phase (remaining 25% of total progress)
+            insert_progress = 75 + int(25 * fraction)
+            await websocket.send_json({
+                "progress": insert_progress,
+                "message": 'Indexing in progress',
+                "complete": False
+            })
 
         def on_progress(fraction):
             loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
@@ -224,6 +232,7 @@ async def index_files(websocket: WebSocket):
                 on_progress=on_progress,
                 on_error=on_error,
                 on_success=on_success,
+                batch_size=500
             ))
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
@@ -1563,6 +1572,7 @@ async def gmail_initial_download_train(websocket: WebSocket):
                 on_progress=on_progress,
                 on_error=on_error,
                 on_success=on_success,
+                batch_size=500,
             ))
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
@@ -1739,11 +1749,11 @@ async def gmail_resume_training(websocket: WebSocket):
 
     def on_success():
         # Move the trained model to the target location
-        if checkpoint_dir.exists():
-            if target_model_path.exists():
-                shutil.rmtree(target_model_path)  # Remove the existing model directory
-            shutil.move(str(checkpoint_dir / 'trained.ndb'), str(target_model_path))  # Move the new model to the target location
-            shutil.rmtree(checkpoint_dir) # Remove the saved_training_model directory
+        model_path = USER_WORKSPACE_CACHE / workspace_id / 'model.ndb'
+        if model_path.exists():
+            shutil.rmtree(model_path)  # Remove the existing model directory
+        # Save the model in the workspace
+        backend_instance.backend.save(model_path)
 
         if metadata_path.exists():
             with open(metadata_path, 'r') as file:
@@ -1758,35 +1768,32 @@ async def gmail_resume_training(websocket: WebSocket):
             # Save the updated metadata back to the file
             with open(metadata_path, 'w') as file:
                 json.dump(metadata, file, indent=4)
+
+        # Turn on Gmail query switch
+        backend_instance.gmail_query_switch = True
         loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Resumed training completed successfully", "complete": True, "metadata": metadata}))
 
     async for message in websocket.iter_text():
         data = json.loads(message)
 
+        backend_instance.reset_neural_db()
+
         workspace_id = data.get("workspaceid")
         workspace_folder = USER_WORKSPACE_CACHE / workspace_id
         metadata_path = workspace_folder / 'metadata.json'
         gmail_file_path = str(workspace_folder / 'documents' / 'gmail.csv')
-        checkpoint_dir = workspace_folder / "saved_training_model"
         docs_to_insert = [ndb.CSV(gmail_file_path, strong_columns = ['Subject'], weak_columns=['Email Content'], reference_columns = ['Message ID', 'Email Content'])]
-        checkpoint_config = ndb.CheckpointConfig(
-            checkpoint_dir=checkpoint_dir,
-            resume_from_checkpoint=checkpoint_dir.exists() and any(checkpoint_dir.iterdir()),
-            checkpoint_interval=1,
-        )
-        target_model_path = workspace_folder / 'model.ndb'
         loop = asyncio.get_running_loop()
 
         try:
-            # Resume training
-            db = ndb.NeuralDB()
-            loop.run_in_executor(None, lambda: db.insert(
+            # Training from scratch
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, lambda: backend_instance.backend.insert(
                 sources=docs_to_insert,
-                train=True,
                 on_progress=on_progress,
                 on_error=on_error,
                 on_success=on_success,
-                checkpoint_config=checkpoint_config
+                batch_size=500
             ))
         except Exception as e:
             await websocket.send_json({"error": str(e)})
@@ -1892,6 +1899,7 @@ async def url_train(websocket: WebSocket):
                 on_progress=on_progress,
                 on_error=on_error,
                 on_success=on_success,
+                batch_size=500,
             ))
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})

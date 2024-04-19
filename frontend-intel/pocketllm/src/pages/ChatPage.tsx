@@ -22,7 +22,8 @@ export interface AIReference {
 }
 
 type Reference =
-  | { reference_type: 'File'; id: string; filename: string; page: number }
+  | { reference_type: 'File'; id: string; file_path?: string; filename?: string; page: number } // file_path is optional for backward compatibility; 
+                                                                                                // filename is optional because sometimes it doesn't exist on backend.
   | { reference_type: 'Gmail'; reference_link: string; email_subject: string }
   | { reference_type: 'URL'; reference_link: string; website_title: string }
 
@@ -183,7 +184,7 @@ export default function ChatPage({curWorkSpaceID}: chatPageProps) {
             </div>
             
             <form className='chat-input-box'>
-                <textarea className='chat-textarea'
+                <textarea className='chat-textarea text-dark'
                           value={message}
                           onChange={handleChange}
                           onKeyDown={handleKeyDown}

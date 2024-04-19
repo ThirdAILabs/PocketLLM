@@ -20,7 +20,7 @@ import CreateURLWorkspace from './URLWorkSpace/CreateURLWorkspace'
 import CreateGmailWorkspace from './GmailWorkSpace/CreateGmailWorkspace'
 import Subscribe from './Subscribe'
 import Settings from './Settings'
-import GmailWorkspaceProgress from './GmailWorkSpace/GmailWorkspaceProgress'
+import GmailWorkspaceProgress from '../components/GmailWorkSpace/GmailWorkspaceProgress'
 import { FeatureUsableContext } from '../contexts/FeatureUsableContext'
 
 const drawerWidth = 290
@@ -572,7 +572,7 @@ export default function SideBar(
                                     // Handle messages from the server here
                                     const messageData = JSON.parse(event.data)
     
-                                    setGmailWorkspaceProgress(messageData.progress)
+                                    // setGmailWorkspaceProgress(messageData.progress)
     
                                     if (messageData.complete) {
                                         console.log("Received message from server:", messageData.message)
@@ -580,9 +580,12 @@ export default function SideBar(
                                         const updatedMetadata: WorkSpaceMetadata = messageData.metadata
     
                                         updateWorkspaceMetaInfo(gmailWorkspaceSyncID, updatedMetadata)
-                                        gmailWorkspaceCloseRef.current?.click()
+                                        
+                                        setTimeout(() => {
+                                            gmailWorkspaceCloseRef.current?.click()
+                                        }, 2000)
     
-                                        const response = await axios.post(`http://localhost:${port}/load_gmail_workspace_by_id`, { gmailWorkspaceSyncID }) // After training is finished, load the workspace
+                                        const response = await axios.post(`http://localhost:${port}/load_gmail_workspace_by_id`, { workspaceID: gmailWorkspaceSyncID }) // After training is finished, load the workspace
                                         if (response.data.success) {
                                             setCurWorkSpaceID(gmailWorkspaceSyncID)
                                             navigate(`/gmail/:${gmailWorkspaceSyncID}`)

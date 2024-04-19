@@ -147,7 +147,8 @@ class ChatInterface(ABC):
                 }
             else:
                 doc_id = doc.metadata['id']
-                file_path = doc.metadata['metadata']['source']
+                # file_path = doc.metadata['metadata']['source']
+                file_path = doc.metadata['source']
                 page = doc.metadata['metadata']['page']
 
                 filtered_doc_info = {

@@ -35,12 +35,12 @@ export default function FilePage({
     const documents = fileWorkspaceInfo ? fileWorkspaceInfo.documents : []
 
     const [summaryResult, setSummaryResult] = useState<string>('')
-    const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+    const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null)
 
     // Switching workspace clear out
     useEffect(()=>{
         setSummaryResult('')
-        setSearchResults([])
+        setSearchResults(null)
     },[curWorkSpaceID])
 
     return (
@@ -97,11 +97,27 @@ export default function FilePage({
 
 
                     <div style={{minWidth: "60vw"}}>
-                        <Summary summary = {summaryResult}/>
-                        <Extraction searchResults={searchResults}
-                                    curWorkSpaceID = {curWorkSpaceID} 
-                                    setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                        />
+                        {
+                            searchResults === null
+                            ?
+                            <></>
+                            :
+                            <>
+                                {
+                                    searchResults.length === 0 
+                                    ?
+                                    <div className='mt-5 text-secondary'>No results found</div>
+                                    :
+                                    <>
+                                        <Summary summary = {summaryResult}/>
+                                        <Extraction searchResults={searchResults}
+                                                    curWorkSpaceID = {curWorkSpaceID} 
+                                                    setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                                        />
+                                    </>
+                                }
+                            </>
+                        }
                     </div>
                 </div>
             </div>
