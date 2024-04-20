@@ -40,7 +40,8 @@ import multiprocessing
 from thirdai import licensing
 import trafilatura
 from chat import open_ai_chat
-
+import logging
+from logging.handlers import RotatingFileHandler
 
 
 if getattr(sys, 'frozen', False):
@@ -72,12 +73,39 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+def setup_logger(name):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+
+    # Create handlers
+    c_handler = logging.StreamHandler(sys.stdout)
+    f_handler = RotatingFileHandler('myapp.log', maxBytes=1000000, backupCount=5)
+
+    # Create formatters and add them to handlers
+    c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    c_handler.setFormatter(c_format)
+    f_handler.setFormatter(f_format)
+
+    # Add handlers to the logger
+    logger.addHandler(c_handler)
+    logger.addHandler(f_handler)
+
+    return logger
+
 class Backend:
     def __init__(self):
-        self.backend = ndb.NeuralDB(low_memory=True)
+        self.logger = setup_logger(self.__class__.__name__)
+
+        try:
+            self.backend = ndb.NeuralDB(low_memory=True)
+            self.bazaar = Bazaar(base_url=BAZAAR_URL, cache_dir=BAZAAR_CACHE)
+            self.logger.info("Backend initialized successfully")
+        except Exception as e:
+            self.logger.exception("Failed to initialize backend components")
+
         self.current_results: Optional[List[Reference]] = None
         self.current_query: Optional[str] = None
-        self.bazaar = Bazaar(base_url=BAZAAR_URL, cache_dir=BAZAAR_CACHE)
         self.preferred_summary_model = None
         self.open_ai_api_key = None
         self.openai_summarizer = None
@@ -174,12 +202,16 @@ async def index_files(websocket: WebSocket):
 
     global backend_instance
 
+    backend_instance.logger.info("WebSocket connection accepted for indexing files.")
+
     # If previously trained on Gmail, reset neuraldb
     if backend_instance.gmail_query_switch:
         backend_instance.reset_neural_db()
+        backend_instance.logger.info("NeuralDB reset due to Gmail query switch.")
 
     if backend_instance.outlook_query_switch:
         backend_instance.reset_neural_db()
+        backend_instance.logger.info("NeuralDB reset due to Outlook query switch.")
 
     async for message in websocket.iter_text():
         data = json.loads(message)
@@ -217,13 +249,18 @@ async def index_files(websocket: WebSocket):
 
         def on_error(error_msg):
             loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"error": True, "message": error_msg}))
+            backend_instance.logger.error(f"Error during file indexing: {error_msg}")
 
         def on_success():
             # Turn off Gmail query switch
             backend_instance.gmail_query_switch = False
             backend_instance.outlook_query_switch = False
-
-            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
+            loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({
+                "progress": 100,
+                "message": "Indexing completed",
+                "complete": True
+            }))
+            backend_instance.logger.info("Indexing of files completed successfully.")
 
         try:
             loop = asyncio.get_running_loop()
@@ -236,7 +273,7 @@ async def index_files(websocket: WebSocket):
             ))
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
-
+            backend_instance.logger.exception("An unexpected error occurred during the indexing process.")
 
 
 class QueryModel(BaseModel):
