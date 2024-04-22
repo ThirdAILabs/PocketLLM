@@ -1939,6 +1939,19 @@ async def url_train(websocket: WebSocket):
             await websocket.send_json({"error": True, "message": str(e)})
 
 
+class DestinationPath(BaseModel):
+    filePath: str
+
+@app.post("/copy_log_file")
+async def copy_log_file(destination: DestinationPath):
+    try:
+        # Copy the original log file to the destination specified by the user
+        shutil.copy2(LOG_FILE_PATH, destination.filePath)
+        return {"message": "Log file successfully copied to {}".format(destination.filePath)}
+    except Exception as e:
+        # If there's any error during the copy, return an error message
+        raise HTTPException(status_code=500, detail=f"Failed to copy log file: {str(e)}")
+
 if __name__ == "__main__":
     multiprocessing.freeze_support()
 
