@@ -40,7 +40,8 @@ import multiprocessing
 from thirdai import licensing
 import trafilatura
 from chat import open_ai_chat
-
+import logging
+from logging.handlers import RotatingFileHandler
 
 
 if getattr(sys, 'frozen', False):
@@ -73,24 +74,50 @@ app.add_middleware(
 )
 
 class Backend:
-    def __init__(self):
-        self.backend = ndb.NeuralDB(low_memory=True)
-        self.current_results: Optional[List[Reference]] = None
-        self.current_query: Optional[str] = None
-        self.bazaar = Bazaar(base_url=BAZAAR_URL, cache_dir=BAZAAR_CACHE)
-        self.preferred_summary_model = None
-        self.open_ai_api_key = None
-        self.openai_summarizer = None
-        self.thirdai_summarizer = None
-        self.gmail_auth_services = {}
-        self.gmail_query_switch = False
-        self.outlook_access_token = None
-        self.outlook_query_switch = False
-    
+    def __init__(self, log_file_path):
+        try:
+            self.logger = Backend.setup_logger('Backend_logger', log_file_path)
+
+            self.backend = ndb.NeuralDB(low_memory=True)
+            self.current_results: Optional[List[Reference]] = None
+            self.current_query: Optional[str] = None
+            self.bazaar = Bazaar(base_url=BAZAAR_URL, cache_dir=BAZAAR_CACHE)
+            self.preferred_summary_model = None
+            self.open_ai_api_key = None
+            self.openai_summarizer = None
+            self.thirdai_summarizer = None
+            self.gmail_auth_services = {}
+            self.gmail_query_switch = False
+            self.outlook_access_token = None
+            self.outlook_query_switch = False
+
+            self.logger.info("Backend initialized successfully")
+        except Exception as e:
+            self.logger.exception("Failed to initialize backend components")
+
+    @staticmethod
+    def setup_logger(name, log_file_path):
+        logger = logging.getLogger(name)
+        logger.setLevel(logging.DEBUG)
+
+        # Create handlers
+        c_handler = logging.StreamHandler(sys.stdout)
+        f_handler = RotatingFileHandler(log_file_path, maxBytes=1000000, backupCount=5)
+
+        # Create formatters and add them to handlers
+        c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+        f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        c_handler.setFormatter(c_format)
+        f_handler.setFormatter(f_format)
+
+        # Add handlers to the logger
+        logger.addHandler(c_handler)
+        logger.addHandler(f_handler)
+
+        return logger
+
     def reset_neural_db(self):
         self.backend = ndb.NeuralDB(low_memory=True)
-
-backend_instance: Backend = Backend()
 
 @app.get("/check_live")
 async def check_live():
@@ -174,12 +201,16 @@ async def index_files(websocket: WebSocket):
 
     global backend_instance
 
+    backend_instance.logger.info("WebSocket connection accepted for indexing files.")
+
     # If previously trained on Gmail, reset neuraldb
     if backend_instance.gmail_query_switch:
         backend_instance.reset_neural_db()
+        backend_instance.logger.info("NeuralDB reset due to Gmail query switch.")
 
     if backend_instance.outlook_query_switch:
         backend_instance.reset_neural_db()
+        backend_instance.logger.info("NeuralDB reset due to Outlook query switch.")
 
     async for message in websocket.iter_text():
         data = json.loads(message)
@@ -217,6 +248,7 @@ async def index_files(websocket: WebSocket):
 
         def on_error(error_msg):
             loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"error": True, "message": error_msg}))
+            backend_instance.logger.error(f"Error during file indexing: {error_msg}")
 
         def on_success():
             # Turn off Gmail query switch
@@ -224,6 +256,7 @@ async def index_files(websocket: WebSocket):
             backend_instance.outlook_query_switch = False
 
             loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
+            backend_instance.logger.info("Indexing of files completed successfully.")
 
         try:
             loop = asyncio.get_running_loop()
@@ -236,6 +269,7 @@ async def index_files(websocket: WebSocket):
             ))
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
+            backend_instance.logger.exception("An unexpected error occurred during the indexing process.")
 
 
 
@@ -1908,8 +1942,6 @@ async def url_train(websocket: WebSocket):
 if __name__ == "__main__":
     multiprocessing.freeze_support()
 
-    backend_instance = Backend()
-
     FASTAPI_LOCALHOST_PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
     WORKING_FOLDER = Path(sys.argv[2]) if len(sys.argv) > 2 else WORKING_FOLDER
     USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
@@ -1917,11 +1949,18 @@ if __name__ == "__main__":
     USER_GMAIL_LOGIN_CACHE = WORKING_FOLDER / "user_gmail_login_cache"
     USER_CHAT_HISTORY_CACHE = WORKING_FOLDER / "chat_cache" / "chat_history.db"
     USER_CHAT_HISTORY_REFERENCE_CACHE = WORKING_FOLDER / "chat_cache" / "chat_reference.json"
+    LOG_FILE_PATH = WORKING_FOLDER / "pllm_backend.log"
 
     OUTLOOK_REDIRECT_URI = f"http://localhost:{FASTAPI_LOCALHOST_PORT}/outlook_callback"
 
     os.makedirs(os.path.dirname(USER_CHAT_HISTORY_CACHE), exist_ok=True)
     os.makedirs(os.path.dirname(USER_CHAT_HISTORY_REFERENCE_CACHE), exist_ok=True)
+    os.makedirs(LOG_FILE_PATH.parent, exist_ok=True)
+
+    backend_instance = Backend(log_file_path=LOG_FILE_PATH)
+
+    backend_instance.logger.info(f'Application starting on port {FASTAPI_LOCALHOST_PORT}')
+    backend_instance.logger.info(f'Logs are being saved in {LOG_FILE_PATH}')
 
     print(f'backend: FASTAPI_LOCALHOST_PORT = {FASTAPI_LOCALHOST_PORT}')
     print(f'backend: WORKING_FOLDER = {WORKING_FOLDER}')
