@@ -11,6 +11,17 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 'node' # Use the latest stable Node.js version
+
+    - name: Install Frontend Dependencies
+      run: |
+        $Env:PATH = "C:\Program Files\Nodejs;$Env:PATH"
+        cd frontend/pocketllm
+        npm install
+
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -64,16 +75,6 @@ jobs:
     
     - name: Copy Backend to Frontend
       run: Copy-Item -Path backend/dist/main -Destination frontend/pocketllm -Recurse
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 'node' # Use the latest stable Node.js version
-
-    - name: Install Frontend Dependencies
-      run: |
-        cd frontend/pocketllm
-        npm install
 
     - name: Package the Frontend
       run: |
