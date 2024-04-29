@@ -475,28 +475,6 @@ export default function SideBar(
             });
         })
     }
-
-    const handleExportBackendLog = () => {
-        window.electron.invoke('show-save-log-dialog').then(filePath => {
-            if (!filePath) {
-                console.log('Save log dialog was canceled')
-                return
-            }
-
-            console.log('Log file will be saved to:', filePath)
-
-            axios.post(`http://localhost:${port}/copy_log_file`, { filePath })
-                .then(response => {
-                    console.log('Log file saved successfully:', response.data)
-                })
-                .catch(error => {
-                    console.error('Error during log file saving:', error.response ? error.response.data : error.message)
-                })
-        })
-        .catch(err => {
-            console.error('Error showing save dialog', err)
-        })
-    }
     
 
     const [fileWorkSpaces, setFileWorkSpaces] = useState<WorkSpaceMetadata[]>([]);
@@ -663,9 +641,6 @@ export default function SideBar(
                 </DrawerHeader>
                 <div className='w-100 h-100 d-flex flex-column justify-content-between'>
                     <div className="font-sm w-100">
-                        <button onClick={handleExportBackendLog}>
-                            Download Backend Log
-                        </button>
                         <div className='px-2 mb-1'>
                             <button  type="button"  
                                      className='font-sm text-start btn btn-general2 bg-transparent rounded-3 py-2 w-100 d-flex align-items-center'
