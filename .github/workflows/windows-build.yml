@@ -79,6 +79,7 @@ jobs:
     - name: Package the Frontend
       run: |
         cd frontend/pocketllm
+        $Env:PATH = "C:\Program Files\Nodejs;$Env:PATH"
         npm run build
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
