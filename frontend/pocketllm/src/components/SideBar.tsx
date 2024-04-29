@@ -475,6 +475,7 @@ export default function SideBar(
             });
         })
     }
+    
 
     const [fileWorkSpaces, setFileWorkSpaces] = useState<WorkSpaceMetadata[]>([]);
     const [urlWorkSpaces, setUrlWorkSpaces] = useState<WorkSpaceMetadata[]>([])
