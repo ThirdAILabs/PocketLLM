@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-macos-intel:
-    runs-on: macos-latest # This will run the job on the latest available macOS version for Intel-based machines
+    runs-on: macos-latest-large # This will run the job on the latest available macOS version for Intel-based machines
     steps:
     - uses: actions/checkout@v3
 
