@@ -563,10 +563,14 @@ function createWindow() {
   })
   ipcMain.removeHandler('show-save-log-dialog')
   ipcMain.handle('show-save-log-dialog', async (_) => {
+      const documentsPath = app.getPath('documents')
+      const defaultFilename = 'debug.log'
+      const defaultSavePath = path.join(documentsPath, defaultFilename)
+
       const result = await dialog.showSaveDialog(win!, {
-          title: 'Save Log File',
-          defaultPath: app.getPath('documents'),  // Default path to user's documents folder
-          buttonLabel: 'Save Log',
+          title: 'Save Debug Log',
+          defaultPath: defaultSavePath,
+          buttonLabel: 'Save Debug Log',
           filters: [
               { name: 'Log Files', extensions: ['log', 'txt'] }  // Allow .log and .txt files
           ]
