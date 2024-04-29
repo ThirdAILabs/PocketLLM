@@ -39,15 +39,16 @@ from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
 from thirdai import licensing
 import trafilatura
-
-
+from chat import open_ai_chat
+import logging
+from logging.handlers import RotatingFileHandler
 
 
 if getattr(sys, 'frozen', False):
     APPLICATION_PATH = sys._MEIPASS
 else:
     APPLICATION_PATH = os.path.dirname(os.path.abspath(__file__))
-THIRDAI_LICENSE_PATH = os.path.join(APPLICATION_PATH, 'license_may_11_2024.serialized')
+THIRDAI_LICENSE_PATH = os.path.join(APPLICATION_PATH, 'license_12_15_2024.serialized')
 licensing.set_path(THIRDAI_LICENSE_PATH)
 
 
@@ -73,28 +74,50 @@ app.add_middleware(
 )
 
 class Backend:
-    def __init__(self):
-        self.backend = ndb.NeuralDB(
-            fhr=50_000, embedding_dimension=1024, extreme_output_dim=10_000
-        )
-        self.current_results: Optional[List[Reference]] = None
-        self.current_query: Optional[str] = None
-        self.bazaar = Bazaar(base_url=BAZAAR_URL, cache_dir=BAZAAR_CACHE)
-        self.preferred_summary_model = None
-        self.open_ai_api_key = None
-        self.openai_summarizer = None
-        self.thirdai_summarizer = None
-        self.gmail_auth_services = {}
-        self.gmail_query_switch = False
-        self.outlook_access_token = None
-        self.outlook_query_switch = False
-    
-    def reset_neural_db(self):
-        self.backend = ndb.NeuralDB(
-            fhr=50_000, embedding_dimension=1024, extreme_output_dim=10_000
-        )
+    def __init__(self, log_file_path):
+        try:
+            self.logger = Backend.setup_logger('Backend_logger', log_file_path)
 
-backend_instance: Backend = Backend()
+            self.backend = ndb.NeuralDB(low_memory=True)
+            self.current_results: Optional[List[Reference]] = None
+            self.current_query: Optional[str] = None
+            self.bazaar = Bazaar(base_url=BAZAAR_URL, cache_dir=BAZAAR_CACHE)
+            self.preferred_summary_model = None
+            self.open_ai_api_key = None
+            self.openai_summarizer = None
+            self.thirdai_summarizer = None
+            self.gmail_auth_services = {}
+            self.gmail_query_switch = False
+            self.outlook_access_token = None
+            self.outlook_query_switch = False
+
+            self.logger.info("Backend initialized successfully")
+        except Exception as e:
+            self.logger.exception("Failed to initialize backend components")
+
+    @staticmethod
+    def setup_logger(name, log_file_path):
+        logger = logging.getLogger(name)
+        logger.setLevel(logging.DEBUG)
+
+        # Create handlers
+        c_handler = logging.StreamHandler(sys.stdout)
+        f_handler = RotatingFileHandler(log_file_path, maxBytes=1000000, backupCount=5)
+
+        # Create formatters and add them to handlers
+        c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+        f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        c_handler.setFormatter(c_format)
+        f_handler.setFormatter(f_format)
+
+        # Add handlers to the logger
+        logger.addHandler(c_handler)
+        logger.addHandler(f_handler)
+
+        return logger
+
+    def reset_neural_db(self):
+        self.backend = ndb.NeuralDB(low_memory=True)
 
 @app.get("/check_live")
 async def check_live():
@@ -145,6 +168,17 @@ def get_cached_workspace_metajson():
 
 
 
+@app.get("/highlighted_pdf_from_chat")
+def highlighted_pdf_from_chat(reference_id: Optional[int] = Query(None)):
+    # This method is necessary because backend_instance.current_results is not reset during chat RAG.
+    # whereas during normal searcch it would reset
+    # so we get the "id":47 field right before "upvote_ids":[47],
+
+    reference = backend_instance.backend._savable_state.documents.reference(reference_id)
+    buffer = io.BytesIO(hl.highlighted_pdf_bytes(reference))
+    headers = {'Content-Disposition': f'inline; filename="{Path(reference.source).name}"'}
+    return Response(buffer.getvalue(), headers=headers, media_type='application/pdf')
+
 @app.get("/highlighted_pdf")
 def highlighted_pdf(index: Optional[int] = Query(None)):
     global backend_instance
@@ -152,6 +186,7 @@ def highlighted_pdf(index: Optional[int] = Query(None)):
     # Check if index is provided and it's valid
     if index is None or index >= len(backend_instance.current_results):
         return {"error": "Invalid index provided"}
+    # print('backend_instance.current_results[1].upvote_ids', backend_instance.current_results[1].upvote_ids)
 
     reference_id = backend_instance.current_results[index].id
     reference = backend_instance.backend._savable_state.documents.reference(reference_id)
@@ -166,12 +201,16 @@ async def index_files(websocket: WebSocket):
 
     global backend_instance
 
+    backend_instance.logger.info("WebSocket connection accepted for indexing files.")
+
     # If previously trained on Gmail, reset neuraldb
     if backend_instance.gmail_query_switch:
         backend_instance.reset_neural_db()
+        backend_instance.logger.info("NeuralDB reset due to Gmail query switch.")
 
     if backend_instance.outlook_query_switch:
         backend_instance.reset_neural_db()
+        backend_instance.logger.info("NeuralDB reset due to Outlook query switch.")
 
     async for message in websocket.iter_text():
         data = json.loads(message)
@@ -179,7 +218,7 @@ async def index_files(websocket: WebSocket):
 
         documents = []
 
-        for path in filePaths:
+        for index, path in enumerate(filePaths):
             if path.lower().endswith(".pdf"):
                 documents.append(ndb.PDF(path))
             elif path.lower().endswith(".docx"):
@@ -187,16 +226,29 @@ async def index_files(websocket: WebSocket):
             elif path.lower().endswith(".csv"):
                 documents.append(ndb.CSV(path))
 
+            # Calculate progress for the loading phase (75% of total progress)
+            load_progress = int(75 * (index + 1) / len(filePaths))
+            await websocket.send_json({
+                "progress": load_progress,
+                "message": 'Loading files into RAM',
+                "complete": False
+            })
+
         async def async_on_progress(fraction):
-            progress = int(100 * fraction)
-            message = "Indexing in progress"
-            await websocket.send_json({"progress": progress, "message": message, "complete": False})
+            # Calculate progress for the insertion phase (remaining 25% of total progress)
+            insert_progress = 75 + int(25 * fraction)
+            await websocket.send_json({
+                "progress": insert_progress,
+                "message": 'Indexing in progress',
+                "complete": False
+            })
 
         def on_progress(fraction):
             loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
 
         def on_error(error_msg):
             loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"error": True, "message": error_msg}))
+            backend_instance.logger.error(f"Error during file indexing: {error_msg}")
 
         def on_success():
             # Turn off Gmail query switch
@@ -204,6 +256,7 @@ async def index_files(websocket: WebSocket):
             backend_instance.outlook_query_switch = False
 
             loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
+            backend_instance.logger.info("Indexing of files completed successfully.")
 
         try:
             loop = asyncio.get_running_loop()
@@ -212,9 +265,11 @@ async def index_files(websocket: WebSocket):
                 on_progress=on_progress,
                 on_error=on_error,
                 on_success=on_success,
+                batch_size=500
             ))
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
+            backend_instance.logger.exception("An unexpected error occurred during the indexing process.")
 
 
 
@@ -786,16 +841,21 @@ def get_cached_openai_key():
 
 class SettingInput(BaseModel):
     model_preference: str
-    open_ai_api_key: str
+    open_ai_api_key: Optional[str]
 
 @app.post("/setting")
 def setting(input_data: SettingInput):
     global backend_instance
-    backend_instance.open_ai_api_key = input_data.open_ai_api_key
     backend_instance.preferred_summary_model = input_data.model_preference
     
-    # Check if the preferred summary model is 'OpenAI'
-    if input_data.model_preference == "OpenAI":
+    if input_data.model_preference == "NONE":
+
+        return {"success": True, "msg": f'Settings updated: model_preference: {backend_instance.preferred_summary_model}'}
+    
+    elif input_data.model_preference == "OpenAI": # Check if the preferred summary model is 'OpenAI'
+
+        backend_instance.open_ai_api_key = input_data.open_ai_api_key
+
         # Ensure the cache directory exists
         WORKING_FOLDER.mkdir(parents=True, exist_ok=True)
 
@@ -803,8 +863,8 @@ def setting(input_data: SettingInput):
         with open(WORKING_FOLDER / 'user_openai_key.txt', 'w') as key_file:
             key_file.write(input_data.open_ai_api_key)
 
-    return {"success": True, 
-            "msg": f'Settings updated: open_ai_api_key: {backend_instance.open_ai_api_key} | model_preference: {backend_instance.preferred_summary_model}'}
+        return {"success": True, 
+                "msg": f'Settings updated: open_ai_api_key: {backend_instance.open_ai_api_key} | model_preference: {backend_instance.preferred_summary_model}'}
 
 @app.post("/summarize")
 def summarize():
@@ -859,6 +919,69 @@ async def websocket_summarize(websocket: WebSocket):
 
         await websocket.close()
 
+class ChatRequest(BaseModel):
+    prompt: str
+    session_id: str
+
+@app.post("/chat")
+def chat(request: ChatRequest):
+    chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
+    genai_key = backend_instance.open_ai_api_key
+
+    if backend_instance.preferred_summary_model != 'OpenAI': # If summarizer is not on
+        raise HTTPException(status_code=400, detail="Summarizer is not turned on.") # return an error
+
+    if not genai_key: # If API key is not defined
+        raise HTTPException(status_code=400, detail="OpenAI API key is not defined.") # return an error
+        
+    ct = open_ai_chat.OpenAIChat(
+        backend_instance.backend, chat_history_sql_uri, USER_CHAT_HISTORY_REFERENCE_CACHE, genai_key
+    )
+
+    try:
+        chat_output = ct.chat(request.prompt, request.session_id)
+        response_text, references_list = chat_output
+        chat_result = {"response": response_text, "references": references_list}
+        return chat_result
+    except Exception as e:
+        # Handle other errors, e.g., errors from the OpenAIChat instance
+        raise HTTPException(status_code=500, detail=str(e))
+
+class ChatHistoryRequest(BaseModel):
+    session_id: str
+
+@app.post("/get_chat_history")
+def get_chat_history(request: ChatHistoryRequest):
+    if not os.path.exists(USER_CHAT_HISTORY_CACHE):
+        # If the cache doesn't exist, return an empty list
+        # This prevents error for the case where cache file hasn't been created yet or 
+        # hasn't been populated with anything.
+        return {"chat_history": [], "chat_references": []}
+
+    chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
+    genai_key = backend_instance.open_ai_api_key if backend_instance.open_ai_api_key else 'sk-pseudo-key'
+    ct = open_ai_chat.OpenAIChat(
+        backend_instance.backend, chat_history_sql_uri, USER_CHAT_HISTORY_REFERENCE_CACHE, genai_key
+    )
+    return ct.get_chat_history(request.session_id)
+
+class DeleteChatHistoryRequest(BaseModel):
+    session_id: str
+
+@app.post("/delete_chat_history")
+def delete_chat_history(request: DeleteChatHistoryRequest):
+    try:
+        chat_history_sql_uri = f"sqlite:///{USER_CHAT_HISTORY_CACHE}"
+        genai_key = backend_instance.open_ai_api_key if backend_instance.open_ai_api_key else 'sk-pseudo-key'
+        ct = open_ai_chat.OpenAIChat(
+            backend_instance.backend, chat_history_sql_uri, USER_CHAT_HISTORY_REFERENCE_CACHE, genai_key
+        )
+
+        ct.delete_chat_history(request.session_id)
+        return {"detail": "Chat history deleted successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 def get_email_content(emailSource, curWorkSpaceID):
     # Step 1: Locate the gmail.csv file in the workspace
     workspace_folder = USER_WORKSPACE_CACHE / curWorkSpaceID
@@ -902,27 +1025,35 @@ async def gmail_summarize(websocket: WebSocket):
 
     await websocket.accept()
     
-    data = await websocket.receive_text()
-    parsed_data = json.loads(data)
-    emailSource = parsed_data["emailSource"]
-    curWorkSpaceID = parsed_data["curWorkSpaceID"]
-    email_content = get_email_content(emailSource, curWorkSpaceID)
-    
-    model_preference, open_ai_api_key = backend_instance.preferred_summary_model, backend_instance.open_ai_api_key
-
-    if model_preference == 'OpenAI':
-        backend_instance.openai_summarizer = OpenAI(open_ai_api_key)
+    try:
+        data = await websocket.receive_text()
+        parsed_data = json.loads(data)
+        emailSource = parsed_data["emailSource"]
+        curWorkSpaceID = parsed_data["curWorkSpaceID"]
+        email_content = get_email_content(emailSource, curWorkSpaceID)
         
-        model = backend_instance.openai_summarizer
-        await model.stream_answer(
-            # prompt=summary_prompt,
-            question='what is this email about?',
-            context=email_content,
-            websocket=websocket,
-            on_error=reset_summarizers,
-            model="gpt-3.5-turbo-16k",
-        )
+        model_preference, open_ai_api_key = backend_instance.preferred_summary_model, backend_instance.open_ai_api_key
 
+        if model_preference == 'OpenAI':
+            backend_instance.openai_summarizer = OpenAI(open_ai_api_key)
+            
+            model = backend_instance.openai_summarizer
+            await model.stream_answer(
+                # prompt=summary_prompt,
+                question='what is this email about?',
+                context=email_content,
+                websocket=websocket,
+                on_error=reset_summarizers,
+                model="gpt-3.5-turbo-16k",
+            )
+
+    except Exception as e:
+        # This captures any exception, logs it, and sends an error message to the frontend
+        error_message = str(e)
+        print(f"Exception in gmail_summarize: {error_message}")
+        await websocket.send_text(f"Error: An unexpected error occurred - {error_message}")
+    finally:
+        # Ensure the WebSocket is closed after handling the request or encountering an error
         await websocket.close()
 
 @app.websocket("/gmail_reply/ws/")
@@ -942,31 +1073,39 @@ async def gmail_reply(websocket: WebSocket):
 
     await websocket.accept()
     
-    data = await websocket.receive_text()
-    parsed_data = json.loads(data)
-    userIntent = parsed_data["userIntent"]
-    emailSource = parsed_data["emailSource"]
-    curWorkSpaceID = parsed_data["curWorkSpaceID"]
-    email_content = get_email_content(emailSource, curWorkSpaceID)
-    
-    model_preference, open_ai_api_key = backend_instance.preferred_summary_model, backend_instance.open_ai_api_key
-
-    if model_preference == 'OpenAI':
-        backend_instance.openai_summarizer = OpenAI(open_ai_api_key)    
+    try:
+        data = await websocket.receive_text()
+        parsed_data = json.loads(data)
+        userIntent = parsed_data["userIntent"]
+        emailSource = parsed_data["emailSource"]
+        curWorkSpaceID = parsed_data["curWorkSpaceID"]
+        email_content = get_email_content(emailSource, curWorkSpaceID)
         
-        model = backend_instance.openai_summarizer
-        await model.stream_answer(
-            prompt = (
-                "Write a reply that is about 100 words "
-                "Answer in a friendly tone. "
-            ),
-            question=f'I am writing a reply to the email. In this case I want to say: {userIntent}. Help me write what I want to say fully.',
-            context=email_content,
-            websocket=websocket,
-            on_error=reset_summarizers,
-            model="gpt-3.5-turbo-16k",
-        )
+        model_preference, open_ai_api_key = backend_instance.preferred_summary_model, backend_instance.open_ai_api_key
 
+        if model_preference == 'OpenAI':
+            backend_instance.openai_summarizer = OpenAI(open_ai_api_key)    
+            
+            model = backend_instance.openai_summarizer
+            await model.stream_answer(
+                prompt = (
+                    "Write a reply that is about 100 words "
+                    "Answer in a friendly tone. "
+                ),
+                question=f'I am writing a reply to the email. In this case I want to say: {userIntent}. Help me write what I want to say fully.',
+                context=email_content,
+                websocket=websocket,
+                on_error=reset_summarizers,
+                model="gpt-3.5-turbo-16k",
+            )
+
+    except Exception as e:
+        # This captures any exception, logs it, and sends an error message to the frontend
+        error_message = str(e)
+        print(f"Exception in gmail_summarize: {error_message}")
+        await websocket.send_text(f"Error: An unexpected error occurred - {error_message}")
+    finally:
+        # Ensure the WebSocket is closed after handling the request or encountering an error
         await websocket.close()
 
 @app.post("/gmail_inbox_delete_credential")
@@ -1467,6 +1606,7 @@ async def gmail_initial_download_train(websocket: WebSocket):
                 on_progress=on_progress,
                 on_error=on_error,
                 on_success=on_success,
+                batch_size=500,
             ))
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
@@ -1643,11 +1783,11 @@ async def gmail_resume_training(websocket: WebSocket):
 
     def on_success():
         # Move the trained model to the target location
-        if checkpoint_dir.exists():
-            if target_model_path.exists():
-                shutil.rmtree(target_model_path)  # Remove the existing model directory
-            shutil.move(str(checkpoint_dir / 'trained.ndb'), str(target_model_path))  # Move the new model to the target location
-            shutil.rmtree(checkpoint_dir) # Remove the saved_training_model directory
+        model_path = USER_WORKSPACE_CACHE / workspace_id / 'model.ndb'
+        if model_path.exists():
+            shutil.rmtree(model_path)  # Remove the existing model directory
+        # Save the model in the workspace
+        backend_instance.backend.save(model_path)
 
         if metadata_path.exists():
             with open(metadata_path, 'r') as file:
@@ -1662,35 +1802,32 @@ async def gmail_resume_training(websocket: WebSocket):
             # Save the updated metadata back to the file
             with open(metadata_path, 'w') as file:
                 json.dump(metadata, file, indent=4)
+
+        # Turn on Gmail query switch
+        backend_instance.gmail_query_switch = True
         loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Resumed training completed successfully", "complete": True, "metadata": metadata}))
 
     async for message in websocket.iter_text():
         data = json.loads(message)
 
+        backend_instance.reset_neural_db()
+
         workspace_id = data.get("workspaceid")
         workspace_folder = USER_WORKSPACE_CACHE / workspace_id
         metadata_path = workspace_folder / 'metadata.json'
         gmail_file_path = str(workspace_folder / 'documents' / 'gmail.csv')
-        checkpoint_dir = workspace_folder / "saved_training_model"
         docs_to_insert = [ndb.CSV(gmail_file_path, strong_columns = ['Subject'], weak_columns=['Email Content'], reference_columns = ['Message ID', 'Email Content'])]
-        checkpoint_config = ndb.CheckpointConfig(
-            checkpoint_dir=checkpoint_dir,
-            resume_from_checkpoint=checkpoint_dir.exists() and any(checkpoint_dir.iterdir()),
-            checkpoint_interval=1,
-        )
-        target_model_path = workspace_folder / 'model.ndb'
         loop = asyncio.get_running_loop()
 
         try:
-            # Resume training
-            db = ndb.NeuralDB()
-            loop.run_in_executor(None, lambda: db.insert(
+            # Training from scratch
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, lambda: backend_instance.backend.insert(
                 sources=docs_to_insert,
-                train=True,
                 on_progress=on_progress,
                 on_error=on_error,
                 on_success=on_success,
-                checkpoint_config=checkpoint_config
+                batch_size=500
             ))
         except Exception as e:
             await websocket.send_json({"error": str(e)})
@@ -1796,23 +1933,47 @@ async def url_train(websocket: WebSocket):
                 on_progress=on_progress,
                 on_error=on_error,
                 on_success=on_success,
+                batch_size=500,
             ))
         except Exception as e:
             await websocket.send_json({"error": True, "message": str(e)})
 
 
+class DestinationPath(BaseModel):
+    filePath: str
+
+@app.post("/copy_log_file")
+async def copy_log_file(destination: DestinationPath):
+    try:
+        # Copy the original log file to the destination specified by the user
+        shutil.copy2(LOG_FILE_PATH, destination.filePath)
+        return {"message": "Log file successfully copied to {}".format(destination.filePath)}
+    except Exception as e:
+        # If there's any error during the copy, return an error message
+        raise HTTPException(status_code=500, detail=f"Failed to copy log file: {str(e)}")
+
 if __name__ == "__main__":
     multiprocessing.freeze_support()
-
-    backend_instance = Backend()
 
     FASTAPI_LOCALHOST_PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
     WORKING_FOLDER = Path(sys.argv[2]) if len(sys.argv) > 2 else WORKING_FOLDER
     USER_WORKSPACE_CACHE = WORKING_FOLDER / "user_workspace_cache"
     USER_GMAIL_CACHE = WORKING_FOLDER / "user_gmail_cache"
     USER_GMAIL_LOGIN_CACHE = WORKING_FOLDER / "user_gmail_login_cache"
+    USER_CHAT_HISTORY_CACHE = WORKING_FOLDER / "chat_cache" / "chat_history.db"
+    USER_CHAT_HISTORY_REFERENCE_CACHE = WORKING_FOLDER / "chat_cache" / "chat_reference.json"
+    LOG_FILE_PATH = WORKING_FOLDER / "pllm_backend.log"
 
     OUTLOOK_REDIRECT_URI = f"http://localhost:{FASTAPI_LOCALHOST_PORT}/outlook_callback"
+
+    os.makedirs(os.path.dirname(USER_CHAT_HISTORY_CACHE), exist_ok=True)
+    os.makedirs(os.path.dirname(USER_CHAT_HISTORY_REFERENCE_CACHE), exist_ok=True)
+    os.makedirs(LOG_FILE_PATH.parent, exist_ok=True)
+
+    backend_instance = Backend(log_file_path=LOG_FILE_PATH)
+
+    backend_instance.logger.info(f'Application starting on port {FASTAPI_LOCALHOST_PORT}')
+    backend_instance.logger.info(f'Logs are being saved in {LOG_FILE_PATH}')
 
     print(f'backend: FASTAPI_LOCALHOST_PORT = {FASTAPI_LOCALHOST_PORT}')
     print(f'backend: WORKING_FOLDER = {WORKING_FOLDER}')

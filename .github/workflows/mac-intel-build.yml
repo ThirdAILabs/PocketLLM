@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-macos:
-    runs-on: macos-latest # This will run the job on the latest available macOS version for Intel-based machines
+    runs-on: macos-latest-large # This will run the job on the latest available macOS version for Intel-based machines
     steps:
     - uses: actions/checkout@v3
 
@@ -32,12 +32,6 @@ jobs:
     - name: Install Backend Dependencies
       run: pip install -r backend/requirements.txt
 
-    - name: Install Updated ThirdAI wheel
-      run: pip install backend/artifact/thirdai-0.7.33+ac86e52-cp311-cp311-macosx_10_15_x86_64.whl --force-reinstall
-
-    - name: Install ThirdAI NDB
-      run: |
-        python -m pip install 'thirdai[neural_db]'
 
     - name: Install NLTK and Download Stopwords
       run: |
@@ -49,6 +43,9 @@ jobs:
     - name: Get Langchain Path
       run: echo "LANGCHAIN_PATH=$(pip show langchain | grep Location | cut -d' ' -f2)/langchain" >> $GITHUB_ENV
 
+    - name: Get Langchain Community Path
+      run: echo "LANGCHAIN_COMMUNITY_PATH=$(pip show langchain_community | grep Location | cut -d' ' -f2)/langchain_community" >> $GITHUB_ENV
+
     - name: Get Trafilatura Path
       run: echo "TRAFILATURA_PATH=$(pip show trafilatura | grep Location | cut -d' ' -f2)/trafilatura" >> $GITHUB_ENV
 
@@ -59,6 +56,7 @@ jobs:
     - name: Update main_git_action.spec Paths
       run: |
         sed -i '' "s|LANGCHAIN_PATH|${{ env.LANGCHAIN_PATH }}|g" backend/main_git_action.spec
+        sed -i '' "s|LANGCHAIN_COMMUNITY_PATH|${{ env.LANGCHAIN_COMMUNITY_PATH }}|g" backend/main_git_action.spec
         sed -i '' "s|TRAFILATURA_PATH|${{ env.TRAFILATURA_PATH }}|g" backend/main_git_action.spec
         sed -i '' "s|NLTK_STOPWORDS_PATH|${{ env.NLTK_STOPWORDS_PATH }}|g" backend/main_git_action.spec
 

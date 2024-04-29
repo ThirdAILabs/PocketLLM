@@ -8,7 +8,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=['tzdata'],
+    hiddenimports=['tzdata', 'dask_expr', 'pyarrow._acero', 'pyarrow.dataset', 'pyarrow._json'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -19,6 +19,9 @@ a = Analysis(
 # Check this post: https://github.com/langchain-ai/langchain/issues/4547#issuecomment-1676403768
 # change to Langchain package location
 a.datas += Tree('LANGCHAIN_PATH', prefix='langchain')
+
+# change to Langchain community package location
+a.datas += Tree('LANGCHAIN_COMMUNITY_PATH', prefix='langchain_community')
 
 #### Add stopwords data from NLTK. Used in ./parsing_utils/summarize.py: from nltk.corpus import stopwords
 # First make sure you download nltk's stopwords: 
@@ -34,7 +37,7 @@ a.datas += [('client_secret_user_account.json', 'client_secret_user_account.json
 a.datas += [('client_secrets.json', 'client_secrets.json', 'DATA')]
 
 # File license
-a.datas += [('license_may_11_2024.serialized', 'license_may_11_2024.serialized', 'DATA')]
+a.datas += [('license_12_15_2024.serialized', 'license_12_15_2024.serialized', 'DATA')]
 
 # Bundle GeneralQnA model into package
 # Remeber to save {"domain": "public","author_username": "thirdai","model_name": "GeneralQnA"} to /data

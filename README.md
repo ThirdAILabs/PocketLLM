@@ -21,7 +21,16 @@ Follow the steps below to set up and run the project.
       <code>pip show langchain</code>
       </pre>
 
-   b. **NLTK's Stopwords Location**:
+   b. **Langchain Community Package Location**
+      <pre>
+      <code>a.datas += Tree('<text style="color: red;">/path/to/langchain_community</text>', prefix='langchain_community')</code>
+      </pre>
+      Replace `/path/to/langchain_community` with your `langchain_community` location. You can find it by running:
+      <pre>
+      <code>pip show langchain_community</code>
+      </pre>
+      
+   c. **NLTK's Stopwords Location**:
       Make sure you have downloaded nltk's stopwords:
       <pre>
       <code>import nltk</code>
@@ -33,7 +42,7 @@ Follow the steps below to set up and run the project.
       </pre>
       Replace `/path/to/nltk/stopwords` with your nltk's stopwords location.
 
-   c. **Trafilatura Package Location**:
+   d. **Trafilatura Package Location**:
       <pre>
       <code>a.datas += Tree('<text style="color: red;">/path/to/trafilatura</text>', prefix='trafilatura')</code>
       </pre>
@@ -44,11 +53,12 @@ Follow the steps below to set up and run the project.
 
 4. **Compile the Backend**:
    <pre>
-   <code>pyinstaller main.spec</code>
+      <code>which pyinstaller // *** Always double check if pyinstaller is from conda env you want </code>
+      <code>pyinstaller main.spec</code> 
    </pre>
    This will create a folder named `dist/main`.
 
-5. **Copy the Backend to Frontend**:
+6. **Copy the Backend to Frontend**:
    Copy the `main` folder from `dist` to the `frontend` directory, ensuring it is at the same level as `package.json`.
 
    > **Note**: If you need to work with the backend alone, running `python main.py` or `./dist/main` is sufficient. It's a good debugging practice to use `curl` and `websocat` without involving the frontend if you're certain the problem lies in the backend.

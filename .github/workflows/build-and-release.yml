@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-macos-intel:
-    runs-on: macos-latest # This will run the job on the latest available macOS version for Intel-based machines
+    runs-on: macos-latest-large # This will run the job on the latest available macOS version for Intel-based machines
     steps:
     - uses: actions/checkout@v3
 
@@ -32,9 +32,7 @@ jobs:
     - name: Install Backend Dependencies
       run: pip install -r backend/requirements.txt
 
-    - name: Install ThirdAI NDB
-      run: |
-        python -m pip install 'thirdai[neural_db]'
+
 
     - name: Install NLTK and Download Stopwords
       run: |
@@ -46,6 +44,9 @@ jobs:
     - name: Get Langchain Path
       run: echo "LANGCHAIN_PATH=$(pip show langchain | grep Location | cut -d' ' -f2)/langchain" >> $GITHUB_ENV
 
+    - name: Get Langchain Community Path
+      run: echo "LANGCHAIN_COMMUNITY_PATH=$(pip show langchain_community | grep Location | cut -d' ' -f2)/langchain_community" >> $GITHUB_ENV
+
     - name: Get Trafilatura Path
       run: echo "TRAFILATURA_PATH=$(pip show trafilatura | grep Location | cut -d' ' -f2)/trafilatura" >> $GITHUB_ENV
 
@@ -56,6 +57,7 @@ jobs:
     - name: Update main_git_action.spec Paths
       run: |
         sed -i '' "s|LANGCHAIN_PATH|${{ env.LANGCHAIN_PATH }}|g" backend/main_git_action.spec
+        sed -i '' "s|LANGCHAIN_COMMUNITY_PATH|${{ env.LANGCHAIN_COMMUNITY_PATH }}|g" backend/main_git_action.spec
         sed -i '' "s|TRAFILATURA_PATH|${{ env.TRAFILATURA_PATH }}|g" backend/main_git_action.spec
         sed -i '' "s|NLTK_STOPWORDS_PATH|${{ env.NLTK_STOPWORDS_PATH }}|g" backend/main_git_action.spec
 
@@ -150,9 +152,7 @@ jobs:
     - name: Install Backend Dependencies
       run: pip install -r backend/requirements.txt
 
-    - name: Install ThirdAI NDB
-      run: |
-        python -m pip install 'thirdai[neural_db]'
+
 
     - name: Install NLTK and Download Stopwords
       run: |
@@ -164,6 +164,9 @@ jobs:
     - name: Get Langchain Path
       run: echo "LANGCHAIN_PATH=$(pip show langchain | grep Location | cut -d' ' -f2)/langchain" >> $GITHUB_ENV
 
+    - name: Get Langchain Community Path
+      run: echo "LANGCHAIN_COMMUNITY_PATH=$(pip show langchain_community | grep Location | cut -d' ' -f2)/langchain_community" >> $GITHUB_ENV
+
     - name: Get Trafilatura Path
       run: echo "TRAFILATURA_PATH=$(pip show trafilatura | grep Location | cut -d' ' -f2)/trafilatura" >> $GITHUB_ENV
 
@@ -174,6 +177,7 @@ jobs:
     - name: Update main_git_action.spec Paths
       run: |
         sed -i '' "s|LANGCHAIN_PATH|${{ env.LANGCHAIN_PATH }}|g" backend/main_git_action.spec
+        sed -i '' "s|LANGCHAIN_COMMUNITY_PATH|${{ env.LANGCHAIN_COMMUNITY_PATH }}|g" backend/main_git_action.spec
         sed -i '' "s|TRAFILATURA_PATH|${{ env.TRAFILATURA_PATH }}|g" backend/main_git_action.spec
         sed -i '' "s|NLTK_STOPWORDS_PATH|${{ env.NLTK_STOPWORDS_PATH }}|g" backend/main_git_action.spec
 
@@ -255,9 +259,7 @@ jobs:
     - name: Install Backend Dependencies
       run: pip install -r backend/requirements.txt
 
-    - name: Install ThirdAI NDB
-      run: |
-        python -m pip install thirdai[neural_db]
+
 
     - name: Install NLTK and Download Stopwords
       run: |
@@ -269,6 +271,12 @@ jobs:
         $langchainLocation = pip show langchain | Select-String -Pattern "Location: (.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
         $langchainPath = ($langchainLocation -replace '\\', '/') + '/langchain'
         echo "LANGCHAIN_PATH=$langchainPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+    - name: Get Langchain Community Path
+      run: |
+        $langchainCommunityLocation = pip show langchain_community | Select-String -Pattern "Location: (.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+        $langchainCommunityPath = ($langchainCommunityLocation -replace '\\', '/') + '/langchain_community'
+        echo "LANGCHAIN_COMMUNITY_PATH=$langchainCommunityPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
     - name: Get Trafilatura Path
       run: |
@@ -284,7 +292,10 @@ jobs:
     - name: Update main_git_action.spec Paths
       run: |
         $content = Get-Content backend/main_git_action.spec
-        $content = $content -replace 'LANGCHAIN_PATH', $env:LANGCHAIN_PATH -replace 'TRAFILATURA_PATH', $env:TRAFILATURA_PATH -replace 'NLTK_STOPWORDS_PATH', $env:NLTK_STOPWORDS_PATH
+        $content = $content -replace 'LANGCHAIN_PATH', $env:LANGCHAIN_PATH `
+                               -replace 'LANGCHAIN_COMMUNITY_PATH', $env:LANGCHAIN_COMMUNITY_PATH `
+                               -replace 'TRAFILATURA_PATH', $env:TRAFILATURA_PATH `
+                               -replace 'NLTK_STOPWORDS_PATH', $env:NLTK_STOPWORDS_PATH
         $content | Set-Content backend/main_git_action.spec
 
     - name: Compile the Backend

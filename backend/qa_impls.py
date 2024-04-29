@@ -39,10 +39,11 @@ class OpenAI(QA):
         if not key:
             raise ValueError("OpenAI key required.")
 
-        import openai
+        from openai import OpenAI
+        
+        client = OpenAI(api_key=key)
 
-        self.openai = openai
-        openai.api_key = key
+        self.openai = client
 
         self.default_prompt = (
             "Write an answer that is about 100 words "
@@ -62,7 +63,9 @@ class OpenAI(QA):
         self, question: str, context: str, on_error: Callable, model='gpt-3.5-turbo', prompt=None, **kwargs
     ) -> str:
         try:
-            import openai
+            from openai import OpenAI
+
+            client = self.openai
             from nltk.tokenize import word_tokenize as nlkt_word_tokenize
 
             context_words = nlkt_word_tokenize(context)
@@ -73,7 +76,7 @@ class OpenAI(QA):
             if not prompt:
                 prompt = self.default_prompt
 
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model=model,
                 messages=[
                     {
@@ -91,7 +94,7 @@ class OpenAI(QA):
 
             response_message = ""
             for chunk in response:
-                response_message += str(chunk["choices"][0]["delta"].get("content", ""))
+                response_message += str(chunk.choices[0].delta.get("content", ""))
                 yield response_message
 
         except Exception as error:
@@ -100,7 +103,9 @@ class OpenAI(QA):
 
     async def stream_answer(self, question: str, context: str, websocket: WebSocket, on_error: Callable, model='gpt-3.5-turbo', prompt=None, **kwargs):
         try:
-            import openai
+            from openai import OpenAI
+            
+            client = self.openai
             from nltk.tokenize import word_tokenize as nlkt_word_tokenize
 
             context_words = nlkt_word_tokenize(context)
@@ -111,7 +116,7 @@ class OpenAI(QA):
             if not prompt:
                 prompt = self.default_prompt
 
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model=model,
                 messages=[
                     {
@@ -145,26 +150,14 @@ class OpenAI(QA):
 
             # Use the async_generator to asynchronously stream results
             async for chunk in async_generator(response):
-                choices = chunk.get('choices')
-                if choices:
-                    for choice in choices:
-                        delta = choice.get('delta')
-                        if delta:
-                            delta_content = delta.get('content')
-                            if delta_content:  # Ensure there's actual content
-                                # DEBUG: Check if messages are being sent
-                                full_msg += delta_content
-                                # print("full_msg content:", full_msg)
-                                await websocket.send_text(full_msg)
-                            else:
-                                pass
-                                # print("Delta content is empty")
-                        else:
-                            pass
-                            # print("Delta is missing in choice")
-                else:
-                    pass
-                    # print("Choices are missing in chunk")
+                if hasattr(chunk, 'choices'):  # Check if the 'choices' attribute exists
+                    for choice in chunk.choices:
+                        if hasattr(choice, 'delta'):  # Check if the 'delta' attribute exists
+                            if hasattr(choice, 'delta'):  # Check if the 'delta' attribute exists
+                                delta_content = choice.delta.content if hasattr(choice.delta, 'content') else ''
+                                if delta_content:  # Ensure there's actual content
+                                    full_msg += delta_content
+                                    await websocket.send_text(full_msg)
 
         except Exception as error:
             print("Error in stream_answer:", error)  # DEBUG: Log exception

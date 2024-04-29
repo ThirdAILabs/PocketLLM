@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import Tooltip from '@mui/material/Tooltip'
 import { parseISO, differenceInMinutes, differenceInHours, formatDistanceToNow } from 'date-fns'
-
+import SwitchPage from './SwitchPage'
 import Teach from "../components/Teach"
 import Summary from '../components/Summary'
 import SearchBar from '../components/GmailWorkSpace/SearchBar'
@@ -11,6 +11,8 @@ import Extraction from '../components/GmailWorkSpace/Extraction'
 import { WorkSpaceMetadata, SearchResult } from '../App'
 import EditableName from '../components/EditableName'
 import useTelemetry from '../hooks/useTelemetry'
+import ChatPage from './ChatPage'
+import { SummarizerType } from '../App'
 
 type gmailPageProps = {
     summarizer: string | null, setSummarizerWinOpen:  React.Dispatch<React.SetStateAction<boolean>>,
@@ -79,66 +81,88 @@ export default function GmailPage({
     const email_account = gmailWorkspaceInfo?.gmailWorkspaceInfo?.email_account
 
     const [summaryResult, setSummaryResult] = useState<string>('')
-    const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+    const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null)
 
     // Switching workspace clear out
     useEffect(()=>{
         setSummaryResult('')
-        setSearchResults([])
+        setSearchResults(null)
     },[curWorkSpaceID])
 
     return (
-        <div className='w-100 h-100 d-flex flex-column justify-content-between'>
-                <div className="w-100 h-100 mt-5 mb-2" style={{maxHeight: "70vh", overflowY: "auto"}}>
-                    <div className='d-flex flex-column align-items-center'>
+        <div className='w-100 h-100 d-flex flex-column'>
+          <SwitchPage searchContent={
+          <div className="w-100 h-100 my-2" style={{maxHeight: "70vh", overflowY: "auto"}}>
+            <div className='d-flex flex-column align-items-center'>
 
-                        <EditableName   workspaceName = {gmailWorkspaceInfo?.workspaceName || ''} 
-                                        curWorkSpaceID = {curWorkSpaceID}  workSpaceMetadata = {workSpaceMetadata} setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                            />
+                <EditableName   workspaceName = {gmailWorkspaceInfo?.workspaceName || ''} 
+                                curWorkSpaceID = {curWorkSpaceID}  workSpaceMetadata = {workSpaceMetadata} setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                    />
 
-                        <div className='d-flex justify-content-center align-items-center my-3'>
-                            {/* display Context */} 
-                            <div className='my-3 text-secondary font-sm' style={{marginRight: '20px'}}>
-                                <div>
-                                  {`${num_emails} emails | Last email date: ${formatDate(last_email_date!)}`}
-                                </div>
-                                <div>
-                                  {`${email_account}`}
-                                </div>
-                                
-                            </div>
-
-                            <Tooltip title="Sync inbox" placement='right' style={{cursor: 'pointer'}}>
-                                <i className="bi bi-arrow-repeat fs-5" onClick={()=>{
-                                    setGmailWorkspaceSyncID(workspaceid ?? null)
-                                    setCurrentUsage(prevUsage => prevUsage + 2)
-
-                                    recordEvent({
-                                      UserAction: `Sync gmail inbox`,
-                                      UIComponent: 'Gmail sync button',
-                                      UI: 'GmailPage',
-                                  })
-                                }}/>
-                            </Tooltip>
-                            
+                <div className='d-flex justify-content-center align-items-center my-3'>
+                    {/* display Context */} 
+                    <div className='my-3 text-secondary font-sm' style={{marginRight: '20px'}}>
+                        <div>
+                          {`${num_emails} emails | Last email date: ${formatDate(last_email_date!)}`}
                         </div>
-
-                        <div className='d-flex mb-3 align-items-center justify-content-center'>    
-                            <SearchBar setSearchResults = {setSearchResults} setSummaryResult = {setSummaryResult} summarizer={summarizer}/>
-                            <Teach curWorkSpaceID = {curWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}/>
+                        <div>
+                          {`${email_account}`}
                         </div>
-
-                        <div style={{width: '60vw', padding: '20px'}}>
-                            <Summary summary = {summaryResult}/>
-                            <Extraction searchResults={searchResults}
-                                        curWorkSpaceID = {curWorkSpaceID} 
-                                        setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                                        setSummarizerWinOpen = {setSummarizerWinOpen}
-                            />
-                        </div>
-                    </div>
                         
+                    </div>
+
+                    <Tooltip title="Sync inbox" placement='right' style={{cursor: 'pointer'}}>
+                        <i className="bi bi-arrow-repeat fs-5" onClick={()=>{
+                            setGmailWorkspaceSyncID(workspaceid ?? null)
+                            setCurrentUsage(prevUsage => prevUsage + 2)
+
+                            recordEvent({
+                              UserAction: `Sync gmail inbox`,
+                              UIComponent: 'Gmail sync button',
+                              UI: 'GmailPage',
+                          })
+                        }}/>
+                    </Tooltip>
+                    
                 </div>
+
+                <div className='d-flex mb-3 align-items-center justify-content-center'>    
+                    <SearchBar setSearchResults = {setSearchResults} setSummaryResult = {setSummaryResult} summarizer={summarizer}/>
+                    <Teach curWorkSpaceID = {curWorkSpaceID} setWorkSpaceMetadata = {setWorkSpaceMetadata}/>
+                </div>
+
+                <div style={{width: '60vw', padding: '20px'}}>
+                  {
+                      searchResults === null
+                      ?
+                      <></>
+                      :
+                      <>
+                          {
+                              searchResults.length === 0 
+                              ?
+                              <div className='mt-5 text-secondary'>No results found</div>
+                              :
+                              <>
+                                <Summary summary = {summaryResult}/>
+                                <Extraction searchResults={searchResults}
+                                            curWorkSpaceID = {curWorkSpaceID} 
+                                            setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                                            setSummarizerWinOpen = {setSummarizerWinOpen}
+                                  />
+                              </>
+                          }
+                      </>
+                  }
+                </div>
+            </div>
+                
+        </div>
+          }
+            isSummarizerOn = {summarizer === SummarizerType.OpenAI}
+            chatContent={<ChatPage curWorkSpaceID = {curWorkSpaceID}/>}
+          />
+                
         </div>
     )
   }

@@ -11,6 +11,17 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 'node' # Use the latest stable Node.js version
+
+    - name: Install Frontend Dependencies
+      run: |
+        $Env:PATH = "C:\Program Files\Nodejs;$Env:PATH"
+        cd frontend/pocketllm
+        npm install
+
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -19,12 +30,6 @@ jobs:
     - name: Install Backend Dependencies
       run: pip install -r backend/requirements.txt
 
-    - name: Install Updated ThirdAI wheel
-      run: pip install backend/artifact/thirdai-0.7.33+ac86e52-cp311-cp311-win_amd64.whl --force-reinstall
-
-    - name: Install ThirdAI NDB
-      run: |
-        python -m pip install thirdai[neural_db]
 
     - name: Install NLTK and Download Stopwords
       run: |
@@ -36,6 +41,12 @@ jobs:
         $langchainLocation = pip show langchain | Select-String -Pattern "Location: (.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
         $langchainPath = ($langchainLocation -replace '\\', '/') + '/langchain'
         echo "LANGCHAIN_PATH=$langchainPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+    - name: Get Langchain Community Path
+      run: |
+        $langchainCommunityLocation = pip show langchain_community | Select-String -Pattern "Location: (.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+        $langchainCommunityPath = ($langchainCommunityLocation -replace '\\', '/') + '/langchain_community'
+        echo "LANGCHAIN_COMMUNITY_PATH=$langchainCommunityPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
     - name: Get Trafilatura Path
       run: |
@@ -51,7 +62,10 @@ jobs:
     - name: Update main_git_action.spec Paths
       run: |
         $content = Get-Content backend/main_git_action.spec
-        $content = $content -replace 'LANGCHAIN_PATH', $env:LANGCHAIN_PATH -replace 'TRAFILATURA_PATH', $env:TRAFILATURA_PATH -replace 'NLTK_STOPWORDS_PATH', $env:NLTK_STOPWORDS_PATH
+        $content = $content -replace 'LANGCHAIN_PATH', $env:LANGCHAIN_PATH `
+                               -replace 'LANGCHAIN_COMMUNITY_PATH', $env:LANGCHAIN_COMMUNITY_PATH `
+                               -replace 'TRAFILATURA_PATH', $env:TRAFILATURA_PATH `
+                               -replace 'NLTK_STOPWORDS_PATH', $env:NLTK_STOPWORDS_PATH
         $content | Set-Content backend/main_git_action.spec
 
     - name: Compile the Backend
@@ -62,19 +76,10 @@ jobs:
     - name: Copy Backend to Frontend
       run: Copy-Item -Path backend/dist/main -Destination frontend/pocketllm -Recurse
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 'node' # Use the latest stable Node.js version
-
-    - name: Install Frontend Dependencies
-      run: |
-        cd frontend/pocketllm
-        npm install
-
     - name: Package the Frontend
       run: |
         cd frontend/pocketllm
+        $Env:PATH = "C:\Program Files\Nodejs;$Env:PATH"
         npm run build
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
