@@ -1952,6 +1952,89 @@ async def copy_log_file(destination: DestinationPath):
         # If there's any error during the copy, return an error message
         raise HTTPException(status_code=500, detail=f"Failed to copy log file: {str(e)}")
 
+def find_pdfs(directory: str) -> List[str]:
+    """Helper function to recursively find all PDF files in the specified directory."""
+    pdf_files = []
+    if os.path.exists(directory):
+        for root, _, files in os.walk(directory):
+            for file in files:
+                if file.lower().endswith('.pdf'):
+                    pdf_files.append(os.path.join(root, file))
+    return pdf_files
+
+@app.websocket("/index_pdf_os")
+async def index_pdf_os(websocket: WebSocket):
+    await websocket.accept()
+
+    # Path to the Downloads directory (adjust if necessary)
+    downloads_path = os.path.expanduser('~/Downloads')
+
+    # Get all PDF files using the helper function
+    pdf_files = find_pdfs(downloads_path)
+
+    global backend_instance
+
+    backend_instance.logger.info("WebSocket connection accepted for indexing files.")
+
+    # If previously trained on Gmail or Outlook, reset the neural database
+    if backend_instance.gmail_query_switch:
+        backend_instance.reset_neural_db()
+        backend_instance.logger.info("NeuralDB reset due to Gmail query switch.")
+
+    if backend_instance.outlook_query_switch:
+        backend_instance.reset_neural_db()
+        backend_instance.logger.info("NeuralDB reset due to Outlook query switch.")
+
+    documents = []
+
+    for index, path in enumerate(pdf_files):
+        documents.append(ndb.PDF(path))
+
+        # Calculate progress for the loading phase (75% of total progress)
+        load_progress = int(75 * (index + 1) / len(pdf_files))
+        await websocket.send_json({
+            "progress": load_progress,
+            "message": 'Loading files into RAM',
+            "complete": False
+        })
+
+    async def async_on_progress(fraction):
+        # Calculate progress for the insertion phase (remaining 25% of total progress)
+        insert_progress = 75 + int(25 * fraction)
+        await websocket.send_json({
+            "progress": insert_progress,
+            "message": 'Indexing in progress',
+            "complete": False
+        })
+
+    def on_progress(fraction):
+        loop.call_soon_threadsafe(asyncio.create_task, async_on_progress(fraction))
+
+    def on_error(error_msg):
+        loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"error": True, "message": error_msg}))
+        backend_instance.logger.error(f"Error during file indexing: {error_msg}")
+
+    def on_success():
+        # Turn off Gmail and Outlook query switches
+        backend_instance.gmail_query_switch = False
+        backend_instance.outlook_query_switch = False
+
+        loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
+        backend_instance.logger.info("Indexing of files completed successfully.")
+
+    try:
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, lambda: backend_instance.backend.insert(
+            sources=documents,
+            on_progress=on_progress,
+            on_error=on_error,
+            on_success=on_success,
+            batch_size=500
+        ))
+    except Exception as e:
+        await websocket.send_json({"error": True, "message": str(e)})
+        backend_instance.logger.exception("An unexpected error occurred during the indexing process.")
+
 if __name__ == "__main__":
     multiprocessing.freeze_support()
 
