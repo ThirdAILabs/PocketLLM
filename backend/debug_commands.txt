@@ -25,7 +25,11 @@ curl -X POST http://localhost:8000/setting \
 
 curl -X POST http://localhost:8000/chat \
      -H "Content-Type: application/json" \
-     -d '{"prompt": "when is office hour","session_id": "123"}'
+     -d '{"prompt": "how to motivate a faculty to stay","session_id": "123"}'
+
+curl -X POST http://localhost:8000/chat \
+     -H "Content-Type: application/json" \
+     -d '{"prompt": "tell me more","session_id": "123"}'
 
 websocat ws://0.0.0.0:8000/summarize/ws/
 
@@ -56,3 +60,17 @@ curl -X POST http://localhost:8000/delete_chat_history \
      -d '{"session_id": "123"}'
 
 ---------------------------------------------------------------------------------------------------------
+
+curl -X POST http://localhost:8000/import_workspace \
+-H "Content-Type: application/json" \
+-d '{
+    "directoryPath": "/Users/yecao/Downloads/Rice-Documentation.ndb"
+}'
+
+---------------------------------------------------------------------------------------------------------
+
+curl -X POST http://localhost:8000/load_by_id \
+-H "Content-Type: application/json" \
+-d '{
+    "workspaceID": "fa3b49b7-0d7d-43c2-bd90-e0a23f2da558"
+}'

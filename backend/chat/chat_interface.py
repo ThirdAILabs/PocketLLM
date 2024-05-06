@@ -149,7 +149,7 @@ class ChatInterface(ABC):
                 doc_id = doc.metadata['id']
                 # file_path = doc.metadata['metadata']['source']
                 file_path = doc.metadata['source']
-                page = doc.metadata['metadata']['page']
+                page = doc.metadata.get('metadata', {}).get('page', 1) # hack: if page field doesn't exist, set it to 1
 
                 filtered_doc_info = {
                     'reference_type': 'File',
