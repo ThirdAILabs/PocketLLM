@@ -1,5 +1,5 @@
 // import { app, BrowserWindow, ipcMain, dialog, Menu, MenuItemConstructorOptions } from 'electron'
-import { app, BrowserWindow, ipcMain, dialog, powerMonitor } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, powerMonitor, globalShortcut } from 'electron'
 import path from 'node:path'
 import portfinder from 'portfinder'
 import { autoUpdater } from 'electron-updater'
@@ -704,5 +704,17 @@ app.whenReady().then(async () => {
     console.log('System has resumed from sleep');
     
     win?.webContents.send('power-restarted')
+  })
+
+  // Register a global shortcut for Cmd + E
+  globalShortcut.register('CmdOrCtrl+E', () => {
+      console.log('Cmd + E is pressed')
+      win?.show()
+      win?.focus()
+      win?.webContents.send('global-shortcut', 'cmd-e') // Notify the renderer process that the shortcut was pressed
+  });
+
+  app.on('will-quit', () => {
+      globalShortcut.unregisterAll();
   })
 })
