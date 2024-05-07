@@ -420,7 +420,7 @@ function App() {
   }
 
   // Debounce the search function
-  const debouncedSearch = useCallback(debounce(handleSearchGlobalWorkspace, 300), [port]);
+  const debouncedSearch = useCallback(debounce(handleSearchGlobalWorkspace, 50), [port]);
 
   return (
     <FeatureUsableContext.Provider value={{
