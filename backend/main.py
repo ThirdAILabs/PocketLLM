@@ -5,6 +5,7 @@ import sys
 import json
 import hashlib
 import asyncio
+import platform
 from fastapi import FastAPI, WebSocket, HTTPException, Response, Query
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -1986,23 +1987,64 @@ def check_load_global_workspace():
 async def index_pdf_os(websocket: WebSocket):
 
     # Helper function to find pdfs
-    def find_pdfs(directory: str) -> List[str]:
-        """Helper function to recursively find all PDF files in the specified directory."""
-        pdf_files = []
-        if os.path.exists(directory):
-            for root, _, files in os.walk(directory):
+    def find_pdfs_based_on_os() -> List[str]:
+        """
+        Find all unique PDF files based on content, considering the operating system.
+        Returns a list of paths to the unique PDF files.
+        """
+        def handle_os_error(err):
+            print(f"OS error: {err}", file=sys.stderr)
+
+        def get_start_directories() -> List[str]:
+            """ Return appropriate start directories based on the operating system. """
+            os_type = platform.system()
+            if os_type == 'Windows':
+                base_dir = os.environ.get('USERPROFILE', 'C:\\Users')
+                return [os.path.join(base_dir, 'Documents')]
+            elif os_type == 'Darwin':  # macOS
+                return ['/Users']
+            return ['/']
+
+        def hash_file(filepath: str) -> str:
+            """ Generate a SHA-256 hash of a file's contents. """
+            hasher = hashlib.sha256()
+            try:
+                with open(filepath, 'rb') as f:
+                    buffer = f.read(65536)  # Read the file in chunks (e.g., 64kB)
+                    while len(buffer) > 0:
+                        hasher.update(buffer)
+                        buffer = f.read(65536)
+            except IOError as e:
+                print(f"Error reading file {filepath}: {str(e)}", file=sys.stderr)
+                return None
+            return hasher.hexdigest()
+
+        def find_pdfs(directory: str, seen_hashes: set) -> List[str]:
+            """ Recursively find all unique PDF files in the specified directory, handling permissions gracefully. """
+            pdf_files = []
+            for root, dirs, files in os.walk(directory, onerror=handle_os_error):
                 for file in files:
                     if file.lower().endswith('.pdf'):
-                        pdf_files.append(os.path.join(root, file))
-        return pdf_files
+                        full_path = os.path.join(root, file)
+                        file_hash = hash_file(full_path)
+                        if file_hash and file_hash not in seen_hashes:
+                            seen_hashes.add(file_hash)
+                            pdf_files.append(full_path)
+            return pdf_files
+
+        seen_hashes = set()
+        pdfs = []
+        start_directories = get_start_directories()
+        for directory in start_directories:
+            print(f"Scanning {directory} for PDF files...")
+            pdfs.extend(find_pdfs(directory, seen_hashes))
+        
+        return pdfs
 
     await websocket.accept()
 
-    # Path to the Downloads directory (adjust if necessary)
-    downloads_path = os.path.expanduser('~/Downloads')
-
     # Get all PDF files using the helper function
-    pdf_files = find_pdfs(downloads_path)
+    pdf_files = find_pdfs_based_on_os()
 
     global backend_instance
 
@@ -2020,7 +2062,15 @@ async def index_pdf_os(websocket: WebSocket):
     documents = []
 
     for index, path in enumerate(pdf_files):
-        documents.append(ndb.PDF(path))
+        # documents.append(ndb.PDF(path))
+        try:
+            # Attempt to create a PDF document object
+            document = ndb.PDF(path)
+            documents.append(document)
+        except Exception as e:
+            # Handle the exception, log the error, and continue with the next file
+            print(f"Error processing PDF {path}: {str(e)}")
+            continue
 
         # Calculate progress for the loading phase (75% of total progress)
         load_progress = int(75 * (index + 1) / len(pdf_files))
