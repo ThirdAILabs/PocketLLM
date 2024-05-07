@@ -1,5 +1,5 @@
 // import { app, BrowserWindow, ipcMain, dialog, Menu, MenuItemConstructorOptions } from 'electron'
-import { app, BrowserWindow, ipcMain, dialog, powerMonitor, globalShortcut } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, powerMonitor, globalShortcut, Tray, Menu } from 'electron'
 import path from 'node:path'
 import portfinder from 'portfinder'
 import { autoUpdater } from 'electron-updater'
@@ -130,7 +130,26 @@ console.log(`Current Usage: ${usageData.size} MB`)
 console.log(`Usage Reset Date: ${usageData.resetDate.toISOString()}`)
 console.log(`Premium Plan End Date: ${usageData.premiumEndDate.toISOString()}`)
 
+let tray = null
 
+function createTray() {
+  tray = new Tray('/Users/yecao/Downloads/3ai/PocketLLM/frontend/pocketllm/src/assets/file.png')
+  const contextMenu = Menu.buildFromTemplate([
+      { label: 'Show App', click:  () => {
+          win?.show()
+          win?.focus()
+      }},
+      { label: 'Quit', click:  () => {
+          app.quit()
+      }}
+  ])
+  tray.setToolTip('PocketLLM')
+  tray.setContextMenu(contextMenu)
+
+  tray.on('click', () => {
+      win?.isVisible() ? win?.hide() : win?.show()
+  })
+}
 
 
 function createWindow() {
@@ -619,6 +638,7 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     startBackend()
     createWindow()
+    // createTray()
   }
 })
 
@@ -674,6 +694,8 @@ app.whenReady().then(async () => {
   startBackend() // start backend
 
   createWindow() // create main application window
+
+  // createTray()
 
   autoUpdater.checkForUpdatesAndNotify() // initialize auto-updater after the main window has been created
 
