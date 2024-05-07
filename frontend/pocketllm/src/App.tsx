@@ -30,6 +30,7 @@ import TitleBar from './components/TitleBar'
 import WelcomePage from './pages/WelcomePage';
 
 import Extraction from './components/FileWorkSpace/Extraction'
+import ProgressBar from './components/ProgressBar'
 
 import './App.css'
 import "./styling.css"
@@ -174,6 +175,8 @@ function App() {
   const [globalSearchStr, setGlobalSearchStr] = useState('') // Global workspace search string
   const [globalWorkspaceReady, setGlobalWorkspaceReady] = useState(false) // Status of global workspace
   const [globalSearchResults, setGlobalSearchResults] = useState<SearchResult[] | null>(null)
+  const [startGlobalProgress, setStartGlobalProgress] = useState(false)
+  const [globalIndexProgress, setGlobalIndexProgress] = useState(0)
 
   // Load workspace and openai key info from disk
   useEffect(() => {
@@ -184,16 +187,28 @@ function App() {
     
           ws.onopen = () => {
               console.log('WebSocket Client Connected to /index_pdf_os');
+              setStartGlobalProgress(true)
               ws.send(JSON.stringify({})); // Send an empty JSON object to trigger the server-side indexing
           };
     
           ws.onmessage = (message) => {
-              const data = JSON.parse(message.data);
-              console.log(`Progress: ${data.progress}% - ${data.message}`);
+              const data = JSON.parse(message.data)
+              console.log(data.progress, data.message)
+
+              if (data.message === 'No data found for training.') {
+                  setStartGlobalProgress(false)
+              }
+
+              setGlobalIndexProgress(data.progress)
     
               if (data.complete) {
                   console.log('Indexing Completed!');
                   setGlobalWorkspaceReady(true)
+
+                  setTimeout(() => {
+                    setGlobalIndexProgress(0)
+                    setStartGlobalProgress(false)
+                  }, 500)
               }
           };
     
@@ -203,9 +218,11 @@ function App() {
     
           ws.onclose = () => {
               console.log('WebSocket connection closed');
+              setStartGlobalProgress(false)
           };
         } catch (error) {
             console.error('Error:', error);
+            setStartGlobalProgress(false)
         }
       }
 
@@ -411,6 +428,13 @@ function App() {
       isPremiumAccount: !!user && user.subscription_plan !== SubscriptionPlan.FREE
     }}>
     <SetAlertMessageProvider setAlertMessage={setAlertMessage}>
+
+      {
+        startGlobalProgress &&
+        <div>
+          <ProgressBar progress={globalIndexProgress}/>
+        </div>
+      }
 
       {
         globalWorkspaceReady && 
