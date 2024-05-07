@@ -1952,18 +1952,50 @@ async def copy_log_file(destination: DestinationPath):
         # If there's any error during the copy, return an error message
         raise HTTPException(status_code=500, detail=f"Failed to copy log file: {str(e)}")
 
-def find_pdfs(directory: str) -> List[str]:
-    """Helper function to recursively find all PDF files in the specified directory."""
-    pdf_files = []
-    if os.path.exists(directory):
-        for root, _, files in os.walk(directory):
-            for file in files:
-                if file.lower().endswith('.pdf'):
-                    pdf_files.append(os.path.join(root, file))
-    return pdf_files
+
+
+
+@app.get("/check_load_global_workspace/")
+def check_load_global_workspace():
+    global backend_instance
+    
+    workspaceID = "GLOBAL_FILE_WORKSPACE_ID"
+
+    # Determine the path based on workspaceID
+    model_folder = USER_WORKSPACE_CACHE / workspaceID
+    file_path = model_folder / 'model.ndb'
+
+    # Check if the path exists
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Model not found.")
+
+    try:
+        backend_instance.backend = ndb.NeuralDB.from_checkpoint(
+            checkpoint_path=str(file_path),
+        )
+        return {"message": "Workspace loaded successfully."}
+    except Exception as error:
+        error_msg = str(error)
+        print(f"backend: {error_msg}")
+        raise HTTPException(status_code=500, detail=error_msg)
+
+
+
 
 @app.websocket("/index_pdf_os")
 async def index_pdf_os(websocket: WebSocket):
+
+    # Helper function to find pdfs
+    def find_pdfs(directory: str) -> List[str]:
+        """Helper function to recursively find all PDF files in the specified directory."""
+        pdf_files = []
+        if os.path.exists(directory):
+            for root, _, files in os.walk(directory):
+                for file in files:
+                    if file.lower().endswith('.pdf'):
+                        pdf_files.append(os.path.join(root, file))
+        return pdf_files
+
     await websocket.accept()
 
     # Path to the Downloads directory (adjust if necessary)
@@ -2018,6 +2050,83 @@ async def index_pdf_os(websocket: WebSocket):
         # Turn off Gmail and Outlook query switches
         backend_instance.gmail_query_switch = False
         backend_instance.outlook_query_switch = False
+
+        loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
+        backend_instance.logger.info("Indexing of files completed successfully.")
+
+    def on_success():
+        # Turn off Gmail and Outlook query switches
+        backend_instance.gmail_query_switch = False
+        backend_instance.outlook_query_switch = False
+
+        workspaceID = "GLOBAL_FILE_WORKSPACE_ID"
+        workspaceName = "global_file_workspace"
+
+        # Generate a temporary workspace ID and create a temp folder
+        temp_workspaceID = str(uuid4())
+        temp_model_folder = USER_WORKSPACE_CACHE / temp_workspaceID
+        temp_model_folder.mkdir(parents=True, exist_ok=True)
+
+        # Define file paths for the temporary workspace
+        temp_file_path = temp_model_folder / 'model.ndb'
+        temp_metadata_path = temp_model_folder / 'metadata.json'
+        temp_documents_folder = temp_file_path / 'documents'
+
+        # Save the model in the temporary workspace
+        backend_instance.backend.save(temp_file_path)
+
+        # Extract document names for the temporary workspace
+        # Process filesystem-based documents
+        documents = []
+        if temp_documents_folder.exists() and temp_documents_folder.is_dir():
+            for subfolder in temp_documents_folder.iterdir():
+                for file in subfolder.iterdir():
+                    file_info = {
+                        "fileName": file.name,
+                        "filePath": str(file.resolve()),
+                        "uuid": str(uuid4()),
+                        "isSaved": True
+                    }
+                    documents.append(file_info)
+
+        # Process URL sources
+        url_sources = backend_instance.backend.sources()
+        for hash_val, source_info in url_sources.items():
+            if isinstance(source_info, ndb.documents.URL):
+                url_str = str(source_info.url)
+                url_info = {
+                    "fileName": url_str,
+                    "filePath": url_str,
+                    "uuid": hash_val,
+                    "isSaved": True
+                }
+                documents.append(url_info)
+
+        author_name = 'thirdai'
+        model_name = "Default model"
+
+        # Save the metadata in the temporary workspace
+        metadata = {
+            "workspaceID": workspaceID,  # Original workspace ID
+            'workspaceName': workspaceName,
+            "model_info": {
+                "author_name": author_name,
+                "model_name": model_name,
+            },
+            "documents": documents,
+            "last_modified": datetime.utcnow().isoformat()
+        }
+
+        with open(temp_metadata_path, 'w') as meta_file:
+            json.dump(metadata, meta_file)
+
+        # Now, delete the original workspace if it exists
+        original_model_folder = USER_WORKSPACE_CACHE / workspaceID
+        if original_model_folder.exists():
+            shutil.rmtree(original_model_folder)
+
+        # Rename the temporary workspace to the original workspace ID
+        move(str(temp_model_folder), str(original_model_folder))
 
         loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
         backend_instance.logger.info("Indexing of files completed successfully.")

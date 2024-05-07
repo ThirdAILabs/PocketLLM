@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, KeyboardEvent } from 'react';
 import axios from 'axios'
 import { HashRouter as Router, Route, Routes } from 'react-router-dom'
 
@@ -167,9 +167,44 @@ function App() {
   // GmailPage uses this state to communicate to sidebar to sync
   const [gmailWorkspaceSyncID, setGmailWorkspaceSyncID] = useState<string|null>(null)
 
+  // Global workspace 
+  const [globalSearchStr, setGlobalSearchStr] = useState('') // Global workspace search string
+  const [globalWorkspaceReady, setGlobalWorkspaceReady] = useState(false) // Status of global workspace
+
   // Load workspace and openai key info from disk
   useEffect(() => {
     if (port) {
+      const indexGlobalWorkspace = () => {
+        try {
+          const ws = new WebSocket(`ws://localhost:${port}/index_pdf_os`);
+    
+          ws.onopen = () => {
+              console.log('WebSocket Client Connected to /index_pdf_os');
+              ws.send(JSON.stringify({})); // Send an empty JSON object to trigger the server-side indexing
+          };
+    
+          ws.onmessage = (message) => {
+              const data = JSON.parse(message.data);
+              console.log(`Progress: ${data.progress}% - ${data.message}`);
+    
+              if (data.complete) {
+                  console.log('Indexing Completed!');
+                  setGlobalWorkspaceReady(true)
+              }
+          };
+    
+          ws.onerror = (error) => {
+              console.error(`WebSocket Error: ${error}`);
+          };
+    
+          ws.onclose = () => {
+              console.log('WebSocket connection closed');
+          };
+        } catch (error) {
+            console.error('Error:', error);
+        }
+      }
+
       const loadStateVariable = async () => {
         try {
           // Fetch the list of workspaces
@@ -193,6 +228,20 @@ function App() {
           console.log(`OpenAI cached key = ${openAiKey}`)
         } catch (error) {
           console.error('Error fetching OpenAI key:', error);
+        }
+
+        // Try to save or load spotlight search
+        try {
+          const response = await axios.get(`http://localhost:${port}/check_load_global_workspace/`)
+          console.log('Response:', response.data)
+          
+          // load global workspace successfully
+          setGlobalWorkspaceReady(true)
+        } catch (error) {
+          console.error('Error loading workspace:', error)
+
+          // Start indexing global workspace
+          indexGlobalWorkspace()
         }
       }
   
@@ -333,6 +382,27 @@ function App() {
     })
   }
 
+  const handleSearchGlobalWorkspace = async (e: KeyboardEvent) => {
+    if (e.key === 'Enter' && globalSearchStr.trim()) {
+        try {
+            const response = await axios.post<SearchResult[]>('http://127.0.0.1:8000/query', { search_str: globalSearchStr })
+            console.log('Search Results:', response.data.slice(0, 5))
+
+            const results = response.data
+
+            const top5Results = results.slice(0, 5).map((result: SearchResult, index: number) => {
+              console.log(`Result ${index + 1}:`, result.result_text)
+              return result.result_text
+            })
+
+            // console.log(top5Results)
+            
+        } catch (error) {
+            console.error('Error querying backend:', error);
+        }
+    }
+  }
+
   return (
     <FeatureUsableContext.Provider value={{
       isFeatureUsable: isFeatureUsable,
@@ -340,7 +410,22 @@ function App() {
     }}>
     <SetAlertMessageProvider setAlertMessage={setAlertMessage}>
 
-      <div className='full-page-setup p-0'>
+      {
+        globalWorkspaceReady && 
+          (
+                <div>
+                    <h2>Global workspace</h2>
+                    <input  type="text" 
+                            placeholder="Ask a question..." 
+                            value={globalSearchStr}
+                            onChange={(e) => setGlobalSearchStr(e.target.value)}
+                            onKeyDown={handleSearchGlobalWorkspace}
+                    />
+                </div>
+          )
+      }
+
+      {/* <div className='full-page-setup p-0'>
           <AppUpdater trigger = {updateTrigger}/>
           <Subscribe  trigger = {subscribeTrigger}
                       user = {user} setUser = {setUser}
@@ -430,8 +515,8 @@ function App() {
                     </Main>
               </Router>
           </Box>
-        <CustomAlertWrapper message={alertMessage} setMessage={setAlertMessage}/>
-      </div>
+          <CustomAlertWrapper message={alertMessage} setMessage={setAlertMessage}/>
+      </div> */}
     
     </SetAlertMessageProvider>
     </FeatureUsableContext.Provider>
