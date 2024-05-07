@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef, KeyboardEvent } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios'
 import { HashRouter as Router, Route, Routes } from 'react-router-dom'
+import { debounce } from 'lodash'
 
 import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap/dist/js/bootstrap.bundle.js";
@@ -27,6 +28,8 @@ import URLPage from './pages/URLPage'
 import GmailPage from './pages/GmailPage'
 import TitleBar from './components/TitleBar'
 import WelcomePage from './pages/WelcomePage';
+
+import Extraction from './components/FileWorkSpace/Extraction'
 
 import './App.css'
 import "./styling.css"
@@ -170,6 +173,7 @@ function App() {
   // Global workspace 
   const [globalSearchStr, setGlobalSearchStr] = useState('') // Global workspace search string
   const [globalWorkspaceReady, setGlobalWorkspaceReady] = useState(false) // Status of global workspace
+  const [globalSearchResults, setGlobalSearchResults] = useState<SearchResult[] | null>(null)
 
   // Load workspace and openai key info from disk
   useEffect(() => {
@@ -382,26 +386,24 @@ function App() {
     })
   }
 
-  const handleSearchGlobalWorkspace = async (e: KeyboardEvent) => {
-    if (e.key === 'Enter' && globalSearchStr.trim()) {
+  const handleSearchGlobalWorkspace = async (searchStr: string) => {
+    if( port ) {
+      if (searchStr.trim()) {
         try {
-            const response = await axios.post<SearchResult[]>('http://127.0.0.1:8000/query', { search_str: globalSearchStr })
-            console.log('Search Results:', response.data.slice(0, 5))
-
-            const results = response.data
-
-            const top5Results = results.slice(0, 5).map((result: SearchResult, index: number) => {
-              console.log(`Result ${index + 1}:`, result.result_text)
-              return result.result_text
-            })
-
-            // console.log(top5Results)
+            const response = await axios.post<SearchResult[]>(`http://localhost:${port}/query`, { search_str: searchStr });
             
+            setGlobalSearchResults(response.data.slice(0, 3))
         } catch (error) {
             console.error('Error querying backend:', error);
         }
+      } else {
+        setGlobalSearchResults(null)
+      }
     }
   }
+
+  // Debounce the search function
+  const debouncedSearch = useCallback(debounce(handleSearchGlobalWorkspace, 300), [port]);
 
   return (
     <FeatureUsableContext.Provider value={{
@@ -418,9 +420,35 @@ function App() {
                     <input  type="text" 
                             placeholder="Ask a question..." 
                             value={globalSearchStr}
-                            onChange={(e) => setGlobalSearchStr(e.target.value)}
-                            onKeyDown={handleSearchGlobalWorkspace}
+                            onChange={(e) => {
+                              setGlobalSearchStr(e.target.value); 
+                              debouncedSearch(e.target.value)
+                            }}
                     />
+
+                    <div style={{minWidth: "60vw"}}>
+                        {
+                            globalSearchResults === null
+                            ?
+                            <></>
+                            :
+                            <>
+                                {
+                                    globalSearchResults.length === 0 
+                                    ?
+                                    <div className='mt-5 text-secondary'>No results found</div>
+                                    :
+                                    <>
+                                        {/* <Summary summary = {summaryResult}/> */}
+                                        <Extraction searchResults={globalSearchResults}
+                                                    curWorkSpaceID = {curWorkSpaceID} 
+                                                    setWorkSpaceMetadata = {setWorkSpaceMetadata}
+                                        />
+                                    </>
+                                }
+                            </>
+                        }
+                    </div>
                 </div>
           )
       }
