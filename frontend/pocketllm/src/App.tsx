@@ -29,7 +29,7 @@ import GmailPage from './pages/GmailPage'
 import TitleBar from './components/TitleBar'
 import WelcomePage from './pages/WelcomePage';
 
-import Extraction from './components/FileWorkSpace/Extraction'
+import Extraction from './components/GlobalWorkspace/Extraction'
 import ProgressBar from './components/ProgressBar'
 
 import './App.css'
@@ -464,7 +464,8 @@ function App() {
                                     :
                                     <>
                                         {/* <Summary summary = {summaryResult}/> */}
-                                        <Extraction searchResults={globalSearchResults}
+                                        <Extraction globalSearchStr = {globalSearchStr}
+                                                    searchResults={globalSearchResults}
                                                     curWorkSpaceID = {curWorkSpaceID} 
                                                     setWorkSpaceMetadata = {setWorkSpaceMetadata}
                                         />
