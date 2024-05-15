@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import Tooltip from '@mui/material/Tooltip';
 
@@ -6,7 +6,6 @@ import { SearchResult } from '../../App'
 import { usePort } from '../../contexts/PortContext'
 import { WorkSpaceMetadata } from '../../App'
 import useTelemetry from '../../hooks/useTelemetry'
-import { SetAlertMessageContext } from '../../contexts/SetAlertMessageContext';
 
 interface ExtractionProps {
   searchResults: SearchResult[],
@@ -24,8 +23,6 @@ export default function Extraction({ searchResults, curWorkSpaceID, setWorkSpace
   const [textAreaValues, setTextAreaValues] = useState<string[]>([])
 
   const [collectStates, setCollectStates] = useState(new Array(searchResults.length).fill(" text-dark-emphasis"))
-
-  const setAlertMessage = useContext(SetAlertMessageContext)
 
   const recordEvent = useTelemetry()
 
@@ -106,17 +103,8 @@ export default function Extraction({ searchResults, curWorkSpaceID, setWorkSpace
 
     socket.addEventListener('message', (event) => {
       if (event.data.startsWith("Error")) {
-          console.log(event.data) // Log the entire error message for debugging
-          
-          // Check if the error message is due to "repetitive patterns" or "invalid_prompt"
-          if (event.data.includes("repetitive patterns") || event.data.includes("invalid_prompt")) {
-            console.log("Invalid Prompt Error")
-            setAlertMessage("OpenAI API rejected the prompt because of repetitive pattern.")
-          } else {
-            // For all other errors, assuming it might be related to OpenAI Key issues or others
-            console.log("OpenAI Key Error")
-            setSummarizerWinOpen(true)
-          }
+          console.log('OpenAI Key Error') // notify user to reset their OpenAIKey
+          setSummarizerWinOpen(true)
       } else {
           onSummary(event.data, index)
       }
@@ -162,17 +150,8 @@ export default function Extraction({ searchResults, curWorkSpaceID, setWorkSpace
 
     socket.addEventListener('message', (event) => {
       if (event.data.startsWith("Error")) {
-        console.log(event.data) // Log the entire error message for debugging
-        
-        // Check if the error message is due to "repetitive patterns" or "invalid_prompt"
-        if (event.data.includes("repetitive patterns") || event.data.includes("invalid_prompt")) {
-          console.log("Invalid Prompt Error")
-          setAlertMessage("OpenAI API rejected the prompt because of repetitive pattern.")
-        } else {
-          // For all other errors, assuming it might be related to OpenAI Key issues or others
-          console.log("OpenAI Key Error")
+          console.log('OpenAI Key Error') // notify user to reset their OpenAIKey
           setSummarizerWinOpen(true)
-        }
       } else {
           onReply(event.data, index);
       }
@@ -198,7 +177,7 @@ export default function Extraction({ searchResults, curWorkSpaceID, setWorkSpace
     <div>
       {
           searchResults.map((result, index) => (
-              <div key={index} className='extraction font-sm p-4 rounded-3 mb-3'>
+              <div key={index} className='extraction font-sm p-4 rounded-3 mb-3 w-100'>
                  <div className='d-flex align-items-center'>
                     <div>
                       <button className='btn btn-general p-1 px-2' onClick={() => handleUpvote(index)}>

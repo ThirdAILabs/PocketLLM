@@ -561,27 +561,6 @@ function createWindow() {
       return null
     }
   })
-  ipcMain.removeHandler('show-save-log-dialog')
-  ipcMain.handle('show-save-log-dialog', async (_) => {
-      const documentsPath = app.getPath('documents')
-      const defaultFilename = 'debug.log'
-      const defaultSavePath = path.join(documentsPath, defaultFilename)
-
-      const result = await dialog.showSaveDialog(win!, {
-          title: 'Save Debug Log',
-          defaultPath: defaultSavePath,
-          buttonLabel: 'Save Debug Log',
-          filters: [
-              { name: 'Log Files', extensions: ['log', 'txt'] }  // Allow .log and .txt files
-          ]
-      })
-
-      if (!result.canceled && result.filePath) {
-          return result.filePath  // Return the full path where user wants to save the file
-      } else {
-          return null             // Return null if dialog is canceled
-      }
-  })
 }
 
 app.on('before-quit', () => {

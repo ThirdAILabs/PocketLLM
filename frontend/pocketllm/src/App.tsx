@@ -3,8 +3,6 @@ import axios from 'axios'
 import { HashRouter as Router, Route, Routes } from 'react-router-dom'
 import { debounce } from 'lodash'
 
-import "bootstrap/dist/css/bootstrap.css";
-import "bootstrap/dist/js/bootstrap.bundle.js";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
 import { styled } from '@mui/material/styles'
@@ -29,11 +27,22 @@ import GmailPage from './pages/GmailPage'
 import TitleBar from './components/TitleBar'
 import WelcomePage from './pages/WelcomePage';
 
-import Extraction from './components/GlobalWorkspace/Extraction'
-import ProgressBar from './components/ProgressBar'
+import CircularWithValueLabel from './components/ProgressCircleSpotlight';
+
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css'; // Import TextLayer CSS
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
+interface LoadSuccessParams {
+  numPages: number;
+}
+
 
 import './App.css'
 import "./styling.css"
+import "./spotlightSearch.css"
 
 const drawerWidth = 275
 
@@ -41,7 +50,7 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
 }>(({ theme, open }) => ({
   flexGrow: 1,
-  // padding: theme.spacing(3),
+  padding: theme.spacing(3),
   transition: theme.transitions.create('margin', {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
@@ -138,7 +147,6 @@ export enum SubscriptionPlan {
 export enum SummarizerType {
   OpenAI = "OpenAI",
   ThirdAI = "ThirdAI",
-  NONE = 'NONE'
   // More types as needed
 }
 
@@ -171,16 +179,69 @@ function App() {
   // GmailPage uses this state to communicate to sidebar to sync
   const [gmailWorkspaceSyncID, setGmailWorkspaceSyncID] = useState<string|null>(null)
 
-  // Global workspace 
+  // Track if backend has started
+  const [isBackendStarted, setIsBackendStarted] = useState<boolean>(false)
+
+  // Global workspace
   const [globalSearchStr, setGlobalSearchStr] = useState('') // Global workspace search string
   const [globalWorkspaceReady, setGlobalWorkspaceReady] = useState(false) // Status of global workspace
   const [globalSearchResults, setGlobalSearchResults] = useState<SearchResult[] | null>(null)
   const [startGlobalProgress, setStartGlobalProgress] = useState(false)
   const [globalIndexProgress, setGlobalIndexProgress] = useState(0)
+  const [keywords, setKeywords] = useState<string[]>([])
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  const stopWords = new Set(['the', 'a', 'an', 'and', 'but', 'or', 'on', 'in', 'with', 'any', 'is', 'to', 'of', 'as', 'at', 'for'])
+
+  function extractKeywords(text: string) {
+    return text.toLowerCase().split(/\s+/).filter(word => !stopWords.has(word) && word.length > 0)
+  }
+
+  function highlightText(text: string, keywords: string[]) {
+    function escapeRegExp(string: string) {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // Escape special characters for regex
+    }
+    const escapedKeywords = keywords.map(keyword => escapeRegExp(keyword)); // Escape keywords
+    const regex = new RegExp(`(${escapedKeywords.join('|')})`, 'gi'); // Create a regex from keywords, case-insensitive
+    const parts = text.split(regex) // Split text into parts, capturing the keywords
+
+    return parts.map((part, index) => {
+        if (keywords.includes(part.toLowerCase())) { // Check if the part is a keyword
+            return <span key={index} style={{ backgroundColor: 'yellow' }}>{part}</span>
+        }
+        return part // Non-keyword parts are returned as normal text
+    })
+  }
+
+  useEffect(() => {
+    const words = extractKeywords(globalSearchStr)
+    setKeywords(words)
+  }, [globalSearchStr])
+
+  const handleSearchGlobalWorkspace = async (searchStr: string) => {
+    if( port ) {
+      if (searchStr.trim()) {
+        try {
+            const response = await axios.post<SearchResult[]>(`http://localhost:${port}/query`, { search_str: searchStr });
+            
+            setGlobalSearchResults(response.data.slice(0, 3))
+            console.log(response.data.slice(0, 3))
+        } catch (error) {
+            console.error('Error querying backend:', error);
+        }
+      } else {
+        setGlobalSearchResults(null)
+      }
+    }
+  }
+
+  // Debounce the search function
+  const debouncedSearch = useCallback(debounce(handleSearchGlobalWorkspace, 50), [port]);
 
   // Load workspace and openai key info from disk
   useEffect(() => {
     if (port) {
+      // Index global workspace
       const indexGlobalWorkspace = () => {
         try {
           const ws = new WebSocket(`ws://localhost:${port}/index_pdf_os`);
@@ -200,6 +261,7 @@ function App() {
               }
 
               setGlobalIndexProgress(data.progress)
+              console.log(data.progress)
     
               if (data.complete) {
                   console.log('Indexing Completed!');
@@ -226,50 +288,50 @@ function App() {
         }
       }
 
-      const loadStateVariable = async () => {
-        try {
-          // Fetch the list of workspaces
-          const responseModels = await axios.get(`http://localhost:${port}/get_cached_workspace_metajson`)
-          let workspaces: WorkSpaceMetadata[] = responseModels.data
-
-          // Since loaded from disk, set all workspace's isWorkSpaceSaved to true
-          workspaces = workspaces.map(workspace => ({ ...workspace, isWorkSpaceSaved: true }))
-
-          setWorkSpaceMetadata(workspaces)
-        } catch (error) {
-            console.error('Error fetching models:', error)
-        }
-
-        // Try to get the OpenAI key
-        try {
-          const response = await axios.get(`http://localhost:${port}/get_cached_openai_key`);
-          const openAiKey = response.data.openai_key;
-
-          setCachedOpenAIKey(openAiKey)
-          console.log(`OpenAI cached key = ${openAiKey}`)
-        } catch (error) {
-          console.error('Error fetching OpenAI key:', error);
-        }
-
-        // Try to save or load spotlight search
+      // Try to save or load spotlight search
+      const checkLoadGlobalWorkspace = async () => {
         try {
           const response = await axios.get(`http://localhost:${port}/check_load_global_workspace/`)
           console.log('Response:', response.data)
           
-          // load global workspace successfully
+          // update state to show global workspace loaded successfully
           setGlobalWorkspaceReady(true)
+          // update state bcz backend definitely started. 
+          // sometimes after power off, react state is set to false but backend still running.
+          setIsBackendStarted(true)
         } catch (error) {
           console.error('Error loading workspace:', error)
 
-          // Start indexing global workspace
+          // start indexing global workspace
           indexGlobalWorkspace()
         }
       }
-  
-      window.electron.on('server-ready', loadStateVariable)
-      window.electron.on('power-restarted', loadStateVariable)
+
+      window.electron.on('server-ready', checkLoadGlobalWorkspace)
+      window.electron.on('power-restarted', checkLoadGlobalWorkspace)
     }
   }, [port])
+
+  // Make sure search bar is focused and ready to search, esp on application start
+  useEffect(()=>{
+    if (globalWorkspaceReady && isBackendStarted) {          
+      searchInputRef.current?.focus()
+    }
+  },[globalWorkspaceReady, isBackendStarted])
+
+  useEffect(()=>{
+    window.electron.on('server-ready', ()=>{
+      setIsBackendStarted(true)
+    })
+  },[])
+
+  useEffect(() => {
+    const focusSearchInput = () => {
+      searchInputRef.current?.focus()
+    }
+
+    window.electron.on('focus-search-bar', focusSearchInput)
+  }, [])
 
   // Check for update
   useEffect(() => {
@@ -402,177 +464,295 @@ function App() {
         }
     })
   }
+  
+  const [pdfPath, setPdfPath] = useState<string | null>(null)
+  const [numPages, setNumPages] = useState<number | null>(null)
+  const [pdfData, setPdfData] = useState<string | null>(null)
+  const [pageLow, setPageLow] = useState<number | null>(null)
+  const [initialPage, setInitialPage] = useState<number | null>(null)
+  const [pageHigh, setPageHigh] = useState<number | null>(null)
+  const [highlights, setHighlights] = useState<{ [key: number]: string[] }>({})
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [referenceText, setReferenceText] = useState<string|null>(null)
+  const [displayPDF, setDisplayPDF] = useState<boolean>(false)
 
-  const handleSearchGlobalWorkspace = async (searchStr: string) => {
-    if( port ) {
-      if (searchStr.trim()) {
-        try {
-            const response = await axios.post<SearchResult[]>(`http://localhost:${port}/query`, { search_str: searchStr });
-            
-            setGlobalSearchResults(response.data.slice(0, 3))
-        } catch (error) {
-            console.error('Error querying backend:', error);
+  useEffect(() => {
+    const loadPdf = async () => {
+        if (! pdfPath) {
+          setPdfData(``)
+          return
         }
-      } else {
-        setGlobalSearchResults(null)
+
+        try {
+            const data = await window.electron.invoke('load-pdf', pdfPath)
+            setPdfData(`data:application/pdf;base64,${data}`)
+        } catch (error) {
+            console.error('Failed to load PDF:', error)
+        }
+    }
+    loadPdf()
+  }, [pdfPath])
+
+  useEffect(() => {
+    // Scroll to the initial page after the PDF is rendered
+    console.log('initialPage',initialPage)
+    const timeout = setTimeout(() => {
+        if (containerRef.current) {
+            const pageElement = containerRef.current.querySelector(`[data-page-number="${initialPage}"]`);
+            if (pageElement) {
+                pageElement.scrollIntoView({ behavior: 'instant' });
+            }
+        }
+    }, 30); // Adjust the timeout duration if necessary
+    return () => clearTimeout(timeout);
+  }, [numPages, initialPage])
+
+  const onDocumentLoadSuccess = useCallback(({ numPages }: LoadSuccessParams) => {
+    setNumPages(numPages)
+    extractText()
+  }, [pdfData, pageLow, pageHigh, referenceText])
+
+  const hasSharedSubsequence = (array1: string[], array2: string[], minLength = 6): boolean => {
+    for (let i = 0; i <= array1.length - minLength; i++) {
+        for (let j = 0; j <= array2.length - minLength; j++) {
+            let k = 0;
+            while (k < minLength && array1[i + k] === array2[j + k]) {
+                k++;
+            }
+            if (k === minLength) {
+                return true;
+            }
+        }
+    }
+    return false;
+  };
+
+  const extractText = useCallback(async () => {
+
+    if (!pdfData || !pageHigh || !pageLow) return;
+
+    const loadingTask = pdfjs.getDocument({ data: atob(pdfData.split(',')[1]) })
+    const pdf = await loadingTask.promise
+
+    const newHighlights: { [key: number]: string[] } = {}
+
+    const query = referenceText ? referenceText : ''
+    const queryTokens = query.split(' ').filter(token => token)
+
+    console.log('queryTokens', queryTokens)
+
+    // load text for each page and search if the page contains the text to highlight
+    for (let pageNum = pageLow; pageNum <= pageHigh; pageNum++) {
+        const page = await pdf.getPage(pageNum)
+        const textContent = await page.getTextContent()
+        const pageText = textContent.items.map(item => (item as any).str).join(' ')
+        const pageTokens = pageText.split(' ').filter(token => token)
+
+        if (pageNum == 1)
+            console.log('pageTokens', pageTokens)
+
+        // Check if the pageTokens array shares a subsequence of length minLength with the queryTokens array
+        if (hasSharedSubsequence(pageTokens, queryTokens)) {
+          console.log('found text');
+          newHighlights[pageNum] = [query];
+        }
+    }
+
+    setHighlights(newHighlights);
+  }, [pdfData, pageLow, pageHigh, referenceText])
+
+  const customTextRenderer = useCallback(({ str, pageNumber }: { str: string, pageNumber: number }) => {
+    function escapeRegExp(string: string) {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // Escapes special regex characters
+    }
+    const strTokens = str.split(' ').filter(token => token)
+
+    if (highlights[pageNumber] && highlights[pageNumber].some(highlight => hasSharedSubsequence(strTokens, highlight.split(' ').filter(token => token), 7))) {
+        // const parts = str.split(new RegExp(`(${highlights[pageNumber].join('|')})`, 'gi')).filter(part => part)
+        const parts = str.split(new RegExp(`(${highlights[pageNumber].map(escapeRegExp).join('|')})`, 'gi')).filter(part => part);
+
+        return parts.map((part, index) => {
+            const partTokens = part.split(' ').filter(token => token)
+            if (highlights[pageNumber].includes(part) || hasSharedSubsequence(partTokens, highlights[pageNumber].join(' ').split(' ').filter(token => token), 7)) {
+                setInitialPage(pageNumber)
+                return `<span style="background-color: yellow; color: black;" key=${index}>${part}</span>`
+            }
+            return part
+        }).join('')
+    }
+    return str
+  }, [highlights, pageLow])
+
+
+  const [selectedIndex, setSelectedIndex] = useState(0)
+
+  useEffect(() => {
+    const openPdf = async () => {
+      if (! pdfPath) return
+  
+      try {
+          await window.electron.invoke('open-pdf', pdfPath)
+      } catch (error) {
+          console.error('Failed to OPEN PDF:', error)
       }
     }
-  }
 
-  // Debounce the search function
-  const debouncedSearch = useCallback(debounce(handleSearchGlobalWorkspace, 50), [port]);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowUp') { // Use optional chaining and nullish coalescing to handle null globalSearchResults
+        setSelectedIndex(prevIndex => Math.max(0, prevIndex - 1));
+      } else if (event.key === 'ArrowDown') { // Increment index but not above max, handle null case
+        if (globalSearchResults) {
+          setSelectedIndex(prevIndex => Math.min(globalSearchResults.length - 1, prevIndex + 1));
+        }
+      } else if (event.key === 'ArrowRight') {
+        setDisplayPDF(true)
+      } else if (event.key === 'Enter' && displayPDF) {
+        openPdf() // Call openPdf when Enter is pressed
+      } else {
+        // Make sure search bar is focused and ready to search, esp on application start
+        searchInputRef.current?.focus()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [globalSearchResults, displayPDF])
+
+  // Update the PDF path when the selected index changes
+  useEffect(() => {
+    if (globalSearchResults && globalSearchResults.length > selectedIndex) {
+      const selectedResult = globalSearchResults[selectedIndex];
+      setPdfPath(selectedResult.result_source);
+      setPageLow(Math.max(1, selectedResult.page_low - 3));
+      setPageHigh(selectedResult.page_high + 3);
+      setReferenceText(selectedResult.result_text);
+    } else {
+      // Reset or set to default values if needed
+      setPdfPath(null);
+      setPageLow(null);
+      setPageHigh(null);
+      setInitialPage(null);
+      setReferenceText(null);
+    }
+  }, [selectedIndex, globalSearchResults])
 
   return (
-    <FeatureUsableContext.Provider value={{
-      isFeatureUsable: isFeatureUsable,
-      isPremiumAccount: !!user && user.subscription_plan !== SubscriptionPlan.FREE
-    }}>
-    <SetAlertMessageProvider setAlertMessage={setAlertMessage}>
-
+    <div className='basic-page-setup h-center-align'>
       {
-        startGlobalProgress &&
-        <div>
-          <ProgressBar progress={globalIndexProgress}/>
+        isBackendStarted
+        ?
+        (
+          ! globalWorkspaceReady
+          ?
+            <div className='starter-page'>
+              <h2>Welcome to PocketLLM</h2>
+              <div className='progress-intro-text'>
+                <p>Please wait, this process usually takes a few minutes</p>
+                <p>Privacy guaranteed: All data stays completely offline</p>
+              </div>
+              <div style={{display: 'flex', alignItems: "center"}}>
+                <CircularWithValueLabel progress={globalIndexProgress}/>
+                <div className='progress-text'>Preparing ... </div>
+              </div>
+            </div>
+          :
+          <div style={{display: "flex", width: "100%", alignItems: "start"}}>
+            <div className='search-res-frame'>
+              <input  placeholder='Search' 
+                          className='search-bar'
+                          value={globalSearchStr}
+                          ref={searchInputRef}
+                          onChange={(e) => {
+                            setGlobalSearchStr(e.target.value); 
+                            debouncedSearch(e.target.value)
+                            setDisplayPDF(false)
+                          }}
+                  />
+              
+                
+                {
+                  globalSearchResults && globalSearchResults?.length > 0?
+                  <div>
+                    <hr className='search-line-main'/>
+                    <div className='search-scroll-frame'>
+                      {
+                        globalSearchResults.map((result, idx)=>{
+                          return (
+                            <div key={idx}>
+                              <hr className='search-line'/>
+                                <div style={{display: "flex"}}>
+                                  <div key={idx} className={idx == selectedIndex? 'search-res-item search-select' : "search-res-item"}>
+                                    <div className='search-res-text'>{highlightText(result.result_text, keywords)}</div>
+                                    {
+                                      idx == selectedIndex?
+                                      <div className='enter-reminder'>
+                                        {
+                                          displayPDF
+                                          ?
+                                          <div className='enter-reminder'>
+                                            <div style={{marginRight: "5px"}}>Press Enter</div>
+                                            <i className="bi bi-box-arrow-up-right"></i>
+                                          </div>
+                                          :
+                                          <div style={{marginRight: "5px"}}><i className="bi bi-arrow-right"></i></div>
+                                        }
+                                      </div>
+                                      :
+                                      <></>
+                                    }
+                                    
+                                  </div>
+                                </div>
+                              
+                            </div>
+                            
+                          )
+                        })
+                      }
+                    </div>
+                  </div>
+                  :
+                  <></>
+                }
+            </div>
+              {
+                displayPDF && pageLow && pageHigh &&
+                <div ref={containerRef} style={{ height: '80vh', width: '100%', overflow: 'auto', marginLeft: "20px"}}>
+                  {pdfData && (
+                      <Document
+                          file={pdfData}
+                          onLoadSuccess={onDocumentLoadSuccess}
+                      >
+                        {numPages && Array.from(
+                            { length: Math.min(pageHigh - pageLow + 1, numPages - pageLow + 1) },
+                            (_, index) => (
+                                <Page
+                                    key={`page_${index + pageLow}`}
+                                    pageNumber={index + pageLow}
+                                    customTextRenderer={({ str }) => customTextRenderer({ str, pageNumber: index + pageLow })}
+                                />
+                            )
+                        )}
+                      </Document>
+                  )}
+                </div>
+              }
+          </div>
+            
+        )
+        :
+        <div className='starter-page'>
+          <h2>Welcome to PocketLLM</h2>
+          <div className='progress-intro-text'>
+            <p>starting up the backend ...</p>
+          </div>
         </div>
       }
 
-      {
-        globalWorkspaceReady && 
-          (
-                <div>
-                    <h2>Global workspace</h2>
-                    <input  type="text" 
-                            placeholder="Ask a question..." 
-                            value={globalSearchStr}
-                            onChange={(e) => {
-                              setGlobalSearchStr(e.target.value); 
-                              debouncedSearch(e.target.value)
-                            }}
-                    />
-
-                    <div style={{minWidth: "60vw"}}>
-                        {
-                            globalSearchResults === null
-                            ?
-                            <></>
-                            :
-                            <>
-                                {
-                                    globalSearchResults.length === 0 
-                                    ?
-                                    <div className='mt-5 text-secondary'>No results found</div>
-                                    :
-                                    <>
-                                        {/* <Summary summary = {summaryResult}/> */}
-                                        <Extraction globalSearchStr = {globalSearchStr}
-                                                    searchResults={globalSearchResults}
-                                                    curWorkSpaceID = {curWorkSpaceID} 
-                                                    setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                                        />
-                                    </>
-                                }
-                            </>
-                        }
-                    </div>
-                </div>
-          )
-      }
-
-      {/* <div className='full-page-setup p-0'>
-          <AppUpdater trigger = {updateTrigger}/>
-          <Subscribe  trigger = {subscribeTrigger}
-                      user = {user} setUser = {setUser}
-                      setOpen = {setOpen}/>
-          <SaveNotice trigger = {saveTrigger}
-                      workSpaceMetadata={workSpaceMetadata} setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                      setCurWorkSpaceID = {setCurWorkSpaceID}
-          />
-
-
-          <Box sx={{ display: 'flex', p: 0}}>
-              <CssBaseline />
-              
-              <AppBar position="fixed" open={open} elevation={0}>
-                  <MyToolbar>
-                      <div className='d-flex text-secondary w-100'>
-                          
-                          <IconButton
-                              color="inherit"
-                              aria-label="open drawer"
-                              onClick={()=>setOpen(true)}
-                              edge="start"
-                              sx={{my:2, ...(open && { display: 'none' }) }}
-                              >
-                              <MenuIcon/>
-                          </IconButton>
-                      
-                          <TitleBar 
-                                  workSpaceMetadata = {workSpaceMetadata} 
-                                  saveWorkSpaceTrigger = {saveTrigger}
-                          />
-                      </div>
-                  </MyToolbar>
-              </AppBar>
-              
-              <Router>
-                    <SideBar
-                      open = {open} setOpen = {setOpen}
-                      summarizer = {summarizer} setSummarizer = {setSummarizer} cachedOpenAIKey = {cachedOpenAIKey} setCachedOpenAIKey = {setCachedOpenAIKey} summarizerWinOpen = {summarizerWinOpen} setSummarizerWinOpen = {setSummarizerWinOpen}
-                      workSpaceMetadata = {workSpaceMetadata} 
-                      subscribeTrigger={subscribeTrigger} 
-                      curWorkSpaceID = {curWorkSpaceID} 
-                      setCurWorkSpaceID = {setCurWorkSpaceID} 
-                      setWorkSpaceMetadata = {setWorkSpaceMetadata} 
-                      saveWorkSpaceTrigger = {saveTrigger}
-                      user = {user} setUser = {setUser} setPremiumEndDate = {setPremiumEndDate} premiumEndDate = {premiumEndDate} currentUsage={currentUsage}
-                      gmailWorkspaceSyncID = {gmailWorkspaceSyncID} setGmailWorkspaceSyncID = {setGmailWorkspaceSyncID}
-                      setCurrentUsage = {setCurrentUsage}
-                    />
-                    
-                    <Main open={open}>
-                        <MyToolbar/>
-
-                        <Routes>
-                            <Route path='/' element={<WelcomePage/>} />
-                            <Route path='/file/:id' element = {
-                                <FilePage 
-                                    summarizer = {summarizer}
-                                    workSpaceMetadata={workSpaceMetadata} 
-                                    curWorkSpaceID = {curWorkSpaceID} 
-                                    setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                                    setCurrentUsage = {setCurrentUsage}
-                                />} 
-                            />
-
-                            <Route path='/url/:id' element={
-                                <URLPage
-                                    summarizer = {summarizer}
-                                    workSpaceMetadata={workSpaceMetadata} 
-                                    curWorkSpaceID = {curWorkSpaceID} 
-                                    setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                                    setCurrentUsage = {setCurrentUsage}
-                                />
-                            }/>
-
-                            <Route path='/gmail/:id' element={
-                                <GmailPage
-                                      summarizer = {summarizer} setSummarizerWinOpen = {setSummarizerWinOpen}
-                                      workSpaceMetadata={workSpaceMetadata} 
-                                      curWorkSpaceID = {curWorkSpaceID} 
-                                      setWorkSpaceMetadata = {setWorkSpaceMetadata}
-                                      setGmailWorkspaceSyncID = {setGmailWorkspaceSyncID}
-                                      setCurrentUsage = {setCurrentUsage}
-                                  />
-                            }/>
-                        </Routes>
-                    </Main>
-              </Router>
-          </Box>
-          <CustomAlertWrapper message={alertMessage} setMessage={setAlertMessage}/>
-      </div> */}
-    
-    </SetAlertMessageProvider>
-    </FeatureUsableContext.Provider>
+    </div>
   )
 }
 

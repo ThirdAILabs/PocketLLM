@@ -475,7 +475,6 @@ export default function SideBar(
             });
         })
     }
-    
 
     const [fileWorkSpaces, setFileWorkSpaces] = useState<WorkSpaceMetadata[]>([]);
     const [urlWorkSpaces, setUrlWorkSpaces] = useState<WorkSpaceMetadata[]>([])
@@ -573,7 +572,7 @@ export default function SideBar(
                                     // Handle messages from the server here
                                     const messageData = JSON.parse(event.data)
     
-                                    // setGmailWorkspaceProgress(messageData.progress)
+                                    setGmailWorkspaceProgress(messageData.progress)
     
                                     if (messageData.complete) {
                                         console.log("Received message from server:", messageData.message)
@@ -581,12 +580,9 @@ export default function SideBar(
                                         const updatedMetadata: WorkSpaceMetadata = messageData.metadata
     
                                         updateWorkspaceMetaInfo(gmailWorkspaceSyncID, updatedMetadata)
-                                        
-                                        setTimeout(() => {
-                                            gmailWorkspaceCloseRef.current?.click()
-                                        }, 2000)
+                                        gmailWorkspaceCloseRef.current?.click()
     
-                                        const response = await axios.post(`http://localhost:${port}/load_gmail_workspace_by_id`, { workspaceID: gmailWorkspaceSyncID }) // After training is finished, load the workspace
+                                        const response = await axios.post(`http://localhost:${port}/load_gmail_workspace_by_id`, { gmailWorkspaceSyncID }) // After training is finished, load the workspace
                                         if (response.data.success) {
                                             setCurWorkSpaceID(gmailWorkspaceSyncID)
                                             navigate(`/gmail/:${gmailWorkspaceSyncID}`)

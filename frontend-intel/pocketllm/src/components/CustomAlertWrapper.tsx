@@ -16,7 +16,6 @@ export default function CustomAlertWrapper({message, setMessage}: AlertProps) {
   return (
     <>
     <button ref={trigger} className='btn font-sm btn-general border border-dark-subtle mx-1' 
-        id = "alert-general"
         data-bs-toggle="modal" data-bs-target="#alert"
         style={{display: "none"}}
     >

@@ -1,5 +1,5 @@
 // import { app, BrowserWindow, ipcMain, dialog, Menu, MenuItemConstructorOptions } from 'electron'
-import { app, BrowserWindow, ipcMain, dialog, powerMonitor, globalShortcut, Tray, Menu } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, powerMonitor, Tray, Menu, globalShortcut } from 'electron'
 import path from 'node:path'
 import portfinder from 'portfinder'
 import { autoUpdater } from 'electron-updater'
@@ -130,10 +130,11 @@ console.log(`Current Usage: ${usageData.size} MB`)
 console.log(`Usage Reset Date: ${usageData.resetDate.toISOString()}`)
 console.log(`Premium Plan End Date: ${usageData.premiumEndDate.toISOString()}`)
 
+
 let tray = null
 
 function createTray() {
-  tray = new Tray('/Users/yecao/Downloads/3ai/PocketLLM/frontend/pocketllm/src/assets/file.png')
+  tray = new Tray('/Users/yecao/Downloads/3ai/pllm-dev/pocketllm/frontend/pocketllm/src/assets/pllmTemplate.png')
   const contextMenu = Menu.buildFromTemplate([
       { label: 'Show App', click:  () => {
           win?.show()
@@ -151,18 +152,23 @@ function createTray() {
   })
 }
 
-
 function createWindow() {
   win = new BrowserWindow({
     frame: false,
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
-    width: 1200, // default width
+    width: 1250, // default width
     height: 900, // default height
+    // fullscreen: true,
+    // alwaysOnTop: true,
+    transparent: true,
     webPreferences: {
+      // devTools: false, // uncomment this line in production / release
       preload: path.join(__dirname, 'preload.js'),
     },
     title: "PocketLLM"
   })
+
+  // win.setIgnoreMouseEvents(true);
 
   // During dev - console can be useful 
   // On production uncomment the following lines - disable user openning console using 'cmd + option +i'
@@ -580,26 +586,28 @@ function createWindow() {
       return null
     }
   })
-  ipcMain.removeHandler('show-save-log-dialog')
-  ipcMain.handle('show-save-log-dialog', async (_) => {
-      const documentsPath = app.getPath('documents')
-      const defaultFilename = 'debug.log'
-      const defaultSavePath = path.join(documentsPath, defaultFilename)
 
-      const result = await dialog.showSaveDialog(win!, {
-          title: 'Save Debug Log',
-          defaultPath: defaultSavePath,
-          buttonLabel: 'Save Debug Log',
-          filters: [
-              { name: 'Log Files', extensions: ['log', 'txt'] }  // Allow .log and .txt files
-          ]
-      })
+  // Handle IPC request to read a local PDF file
+  ipcMain.removeHandler('load-pdf')
+  ipcMain.handle('load-pdf', async (_, filePath) => {
+    try {
+        const data = fs.readFileSync(filePath);
+        return data.toString('base64'); // Return file data as base64 string
+    } catch (error) {
+        console.error('Error reading PDF file:', error);
+        throw error;
+    }
+  })
 
-      if (!result.canceled && result.filePath) {
-          return result.filePath  // Return the full path where user wants to save the file
-      } else {
-          return null             // Return null if dialog is canceled
-      }
+  // Handle IPC request to open a PDF file with the default viewer
+  ipcMain.removeHandler('open-pdf')
+  ipcMain.handle('open-pdf', async (_, filePath) => {
+    try {
+        const { shell } = require('electron')
+        await shell.openPath(filePath)
+    } catch (error) {
+        console.error('Failed to open PDF file:', error)
+    }
   })
 }
 
@@ -638,7 +646,6 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     startBackend()
     createWindow()
-    // createTray()
   }
 })
 
@@ -695,7 +702,7 @@ app.whenReady().then(async () => {
 
   createWindow() // create main application window
 
-  // createTray()
+  createTray()
 
   autoUpdater.checkForUpdatesAndNotify() // initialize auto-updater after the main window has been created
 
@@ -730,10 +737,18 @@ app.whenReady().then(async () => {
 
   // Register a global shortcut for Cmd + E
   globalShortcut.register('CmdOrCtrl+E', () => {
-      console.log('Cmd + E is pressed')
-      win?.show()
-      win?.focus()
-      win?.webContents.send('global-shortcut', 'cmd-e') // Notify the renderer process that the shortcut was pressed
+    console.log('Cmd + E is pressed')
+
+    if (win) {
+        if (win.isVisible()) {
+            win.hide() // Hide the window if it is visible
+        } else {
+            win.show() // Show the window if it is not visible
+            win.focus() // Focus the window
+            win.webContents.send('focus-search-bar') // Emit event to focus search bar
+        }
+        win.webContents.send('global-shortcut', 'cmd-e') // Notify the renderer process that the shortcut was pressed
+    }
   });
 
   app.on('will-quit', () => {

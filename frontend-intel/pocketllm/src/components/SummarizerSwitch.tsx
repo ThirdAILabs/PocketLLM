@@ -40,16 +40,10 @@ export default function SummarizerSwitch(
         setUseOpenAI(summarizer === SummarizerType.OpenAI)
     },[summarizer, cachedOpenAIKey])
 
-    const clickToggle = async () =>{
+    const clickToggle = () =>{
         if (isOpenAIOn) {
-            const response = await axios.post(`http://localhost:${port}/setting`, {
-                model_preference: SummarizerType.NONE,
-            })
-            if (response.data.success) {
-                document.getElementById("pills-home-tab")?.click() // Switch from chat to search
-                setUseOpenAI(false)
-                setSummarizer(null)
-            }
+            setUseOpenAI(false)
+            setSummarizer(null)
         } else {
             setOpen(true)
         }

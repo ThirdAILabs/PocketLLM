@@ -79,7 +79,7 @@ class Backend:
         try:
             self.logger = Backend.setup_logger('Backend_logger', log_file_path)
 
-            self.backend = ndb.NeuralDB(low_memory=True)
+            self.backend = ndb.NeuralDB()
             self.current_results: Optional[List[Reference]] = None
             self.current_query: Optional[str] = None
             self.bazaar = Bazaar(base_url=BAZAAR_URL, cache_dir=BAZAAR_CACHE)
@@ -118,7 +118,7 @@ class Backend:
         return logger
 
     def reset_neural_db(self):
-        self.backend = ndb.NeuralDB(low_memory=True)
+        self.backend = ndb.NeuralDB()
 
 @app.get("/check_live")
 async def check_live():
@@ -2065,7 +2065,7 @@ async def index_pdf_os(websocket: WebSocket):
         # documents.append(ndb.PDF(path))
         try:
             # Attempt to create a PDF document object
-            document = ndb.PDF(path)
+            document = ndb.PDF(path, save_extra_info = False) # save_extra_info = False: makes files not saved
             documents.append(document)
         except Exception as e:
             # Handle the exception, log the error, and continue with the next file
@@ -2095,14 +2095,6 @@ async def index_pdf_os(websocket: WebSocket):
     def on_error(error_msg):
         loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"error": True, "message": error_msg}))
         backend_instance.logger.error(f"Error during file indexing: {error_msg}")
-
-    def on_success():
-        # Turn off Gmail and Outlook query switches
-        backend_instance.gmail_query_switch = False
-        backend_instance.outlook_query_switch = False
-
-        loop.call_soon_threadsafe(asyncio.create_task, websocket.send_json({"progress": 100, "message": "Indexing completed", "complete": True}))
-        backend_instance.logger.info("Indexing of files completed successfully.")
 
     def on_success():
         # Turn off Gmail and Outlook query switches
