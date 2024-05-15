@@ -1,31 +1,14 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios'
-import { HashRouter as Router, Route, Routes } from 'react-router-dom'
 import { debounce } from 'lodash'
 
 import "bootstrap-icons/font/bootstrap-icons.css";
 
-import { styled } from '@mui/material/styles'
-import Box from '@mui/material/Box'
-import CssBaseline from '@mui/material/CssBaseline'
-import MuiAppBar, { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar'
-import Toolbar from '@mui/material/Toolbar'
-import IconButton from '@mui/material/IconButton'
-import MenuIcon from '@mui/icons-material/Menu'
-
-import SideBar from './components/SideBar'
-import AppUpdater from "./components/AppUpdater"
+// import AppUpdater from "./components/AppUpdater"
+// import Subscribe from "./components/Subscribe"
 import { usePort } from './contexts/PortContext'
-import Subscribe from "./components/Subscribe"
-import SaveNotice from './components/SaveNotice'
-import { SetAlertMessageProvider } from './contexts/SetAlertMessageContext'
-import { FeatureUsableContext } from './contexts/FeatureUsableContext'
-import CustomAlertWrapper from './components/CustomAlertWrapper'
-import FilePage from './pages/FilePage'
-import URLPage from './pages/URLPage'
-import GmailPage from './pages/GmailPage'
-import TitleBar from './components/TitleBar'
-import WelcomePage from './pages/WelcomePage';
+// import { SetAlertMessageProvider } from './contexts/SetAlertMessageContext'
+// import { FeatureUsableContext } from './contexts/FeatureUsableContext'
 
 import CircularWithValueLabel from './components/ProgressCircleSpotlight';
 
@@ -44,56 +27,6 @@ import './App.css'
 import "./styling.css"
 import "./spotlightSearch.css"
 
-const drawerWidth = 275
-
-const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
-  open?: boolean;
-}>(({ theme, open }) => ({
-  flexGrow: 1,
-  padding: theme.spacing(3),
-  transition: theme.transitions.create('margin', {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
-  }),
-  marginLeft: `-${drawerWidth}px`,
-  ...(open && {
-    transition: theme.transitions.create('margin', {
-      easing: theme.transitions.easing.easeOut,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-    marginLeft: 0,
-  }),
-}))
-
-interface AppBarProps extends MuiAppBarProps {
-  open?: boolean;
-}
-
-const AppBar = styled(MuiAppBar, {
-  shouldForwardProp: (prop) => prop !== 'open',
-})<AppBarProps>(({ theme, open }) => ({
-  transition: theme.transitions.create(['margin', 'width'], {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
-  }),
-  ...(open && {
-    width: `calc(100% - ${drawerWidth}px)`,
-    marginLeft: `${drawerWidth}px`,
-    transition: theme.transitions.create(['margin', 'width'], {
-      easing: theme.transitions.easing.easeOut,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-  }),
-}))
-
-const MyToolbar = styled(Toolbar)(({ theme }) => ({
-    ...theme.mixins.toolbar,
-    backgroundColor: '#fff',
-    border: "none",
-    boxShadow: "none",
-}))
-
-
 
 export interface SearchResult {
   page_high: number
@@ -101,41 +34,6 @@ export interface SearchResult {
   result_source: string
   result_text: string
   result_type: string
-}
-
-export interface ModelDisplayInfo {
-  author_name: string;
-  model_name: string;
-}
-
-export interface WorkSpaceMetadata {
-  workspaceID: string;
-  workspaceName: string;
-  model_info: ModelDisplayInfo;
-  documents: WorkSpaceFile[];
-  last_modified: string;
-  isWorkSpaceSaved: boolean;
-  gmailWorkspaceInfo?: GmailWorkspaceInfo; // Optional to maintain backward compatibility
-}
-
-export interface WorkSpaceFile {
-  fileName: string;
-  filePath: string;
-  fileSize: number;
-  uuid: string;
-  isSaved: boolean;
-}
-
-export interface GmailWorkspaceInfo {
-  email_account: string          // user gmail account
-  last_email_date: string | null // lastest email's date into gmail.csv, null when no email in gmail.csv
-  num_emails: number             // number of emails downloaded into gmail.csv, 0 when no email in gmail.csv
-  is_downloading: boolean
-  is_download_finished: boolean
-  initial_download_num: number
-  is_training: boolean
-  is_training_finished: boolean
-  is_sync: boolean
 }
 
 export enum SubscriptionPlan {
@@ -153,40 +51,33 @@ export enum SummarizerType {
 function App() {
   const { port } = usePort()
 
-  const [open, setOpen] = useState(true)
-
-  // Summarizer setting
-  const [cachedOpenAIKey, setCachedOpenAIKey] = useState<string>('') // User cached OpenAI key
-  const [summarizer, setSummarizer] = useState<SummarizerType | null>(null) // User summarizer choice
-  const [summarizerWinOpen, setSummarizerWinOpen] = useState(false)
-
-  // Workspace
-  const [curWorkSpaceID, setCurWorkSpaceID] = useState<string|null>(null) //  Work Space ID: Used to keep track of current chosen workspace
-  const [workSpaceMetadata, setWorkSpaceMetadata] = useState<WorkSpaceMetadata[]>([]) // All workspace
+  // // Summarizer setting
+  // const [cachedOpenAIKey, setCachedOpenAIKey] = useState<string>('') // User cached OpenAI key
+  // const [summarizer, setSummarizer] = useState<SummarizerType | null>(null) // User summarizer choice
+  // const [summarizerWinOpen, setSummarizerWinOpen] = useState(false)
 
   // Trigger
   const updateTrigger = useRef<HTMLButtonElement>(null) // Update
-  const subscribeTrigger = useRef<HTMLButtonElement>(null) // Subscription
-  const [alertMessage, setAlertMessage] = useState<string>("") // Alert
-  const saveTrigger = useRef<HTMLButtonElement>(null) // Save workspace notice
+  // const subscribeTrigger = useRef<HTMLButtonElement>(null) // Subscription
+  // const [alertMessage, setAlertMessage] = useState<string>("") // Alert
+  // const saveTrigger = useRef<HTMLButtonElement>(null) // Save workspace notice
 
   // User
-  const [user, setUser] = useState<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>(null)
+  const [user, ] = useState<{ email: string, name: string, subscription_plan: SubscriptionPlan  } | null>(null)
   const [currentUsage, setCurrentUsage] = useState(0)
   const [premiumEndDate, setPremiumEndDate] = useState<Date | null>(null)
-  const [isFeatureUsable, setIsFeatureUsable] = useState(true)
-
-  // GmailPage uses this state to communicate to sidebar to sync
-  const [gmailWorkspaceSyncID, setGmailWorkspaceSyncID] = useState<string|null>(null)
+  const [_, setIsFeatureUsable] = useState(true)
 
   // Track if backend has started
-  const [isBackendStarted, setIsBackendStarted] = useState<boolean>(false)
+  // const [isBackendStarted, setIsBackendStarted] = useState<boolean>(false)
+  const [isBackendStarted, setIsBackendStarted] = useState<boolean>(true)
 
   // Global workspace
   const [globalSearchStr, setGlobalSearchStr] = useState('') // Global workspace search string
-  const [globalWorkspaceReady, setGlobalWorkspaceReady] = useState(false) // Status of global workspace
+  // const [globalWorkspaceReady, setGlobalWorkspaceReady] = useState(false) // Status of global workspace
+  const [globalWorkspaceReady, setGlobalWorkspaceReady] = useState(true) // Status of global workspace
   const [globalSearchResults, setGlobalSearchResults] = useState<SearchResult[] | null>(null)
-  const [startGlobalProgress, setStartGlobalProgress] = useState(false)
+  const [, setStartGlobalProgress] = useState(false)
   const [globalIndexProgress, setGlobalIndexProgress] = useState(0)
   const [keywords, setKeywords] = useState<string[]>([])
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -337,25 +228,6 @@ function App() {
   useEffect(() => {
       window.electron.on('update-available', () => { updateTrigger?.current?.click() })
   }, [])
-
-  // Debug print out all workspaces
-  useEffect(() => {
-    workSpaceMetadata.forEach(_ => {
-      // console.log(`Workspace ID: ${workspace.workspaceID}`)
-      // console.log(`Workspace Name: ${workspace.workspaceName}`)
-      // console.log(`Model Author: ${workspace.model_info.author_name}`)
-      // console.log(`Model Name: ${workspace.model_info.model_name}`)
-      // workspace.documents.forEach(doc => {
-      //   console.log(`Document Name: ${doc.fileName}`)
-      //   console.log(`Document Path: ${doc.filePath}`)
-      //   console.log(`Document UUID: ${doc.uuid}`)
-      //   console.log(`Is Document Saved: ${doc.isSaved}`)
-      // });
-      // console.log(`Last Modified: ${workspace.last_modified}`)
-      // console.log(`Is Workspace Saved: ${workspace.isWorkSpaceSaved}`)
-      // console.log('----------------------------------------')
-    });
-  }, [workSpaceMetadata])
 
   // Get current usage
   useEffect(() => {
