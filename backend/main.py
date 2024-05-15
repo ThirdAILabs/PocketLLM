@@ -10,7 +10,7 @@ from fastapi import FastAPI, WebSocket, HTTPException, Response, Query
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Set
 from thirdai import neural_db as ndb
 from thirdai.neural_db.documents import Reference
 from model_bazaar.bazaar import Bazaar
@@ -43,7 +43,8 @@ import trafilatura
 from chat import open_ai_chat
 import logging
 from logging.handlers import RotatingFileHandler
-
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor
 
 if getattr(sys, 'frozen', False):
     APPLICATION_PATH = sys._MEIPASS
@@ -1981,6 +1982,14 @@ def check_load_global_workspace():
         raise HTTPException(status_code=500, detail=error_msg)
 
 
+def load_pdf(path):
+    try:
+        # Attempt to create a PDF document object
+        document = ndb.PDF(path, save_extra_info=False)  # Optimize by not saving extra info
+        return document
+    except Exception as e:
+        print(f"Error processing PDF {path}: {str(e)}")
+        return None  # Return None in case of error
 
 
 @app.websocket("/index_pdf_os")
@@ -2061,24 +2070,25 @@ async def index_pdf_os(websocket: WebSocket):
 
     documents = []
 
-    for index, path in enumerate(pdf_files):
-        # documents.append(ndb.PDF(path))
-        try:
-            # Attempt to create a PDF document object
-            document = ndb.PDF(path, save_extra_info = False) # save_extra_info = False: makes files not saved
-            documents.append(document)
-        except Exception as e:
-            # Handle the exception, log the error, and continue with the next file
-            print(f"Error processing PDF {path}: {str(e)}")
-            continue
+    await websocket.send_json({
+        "message": "Completed scanning.",
+        "progress": 50,
+        "complete": False
+    })
 
-        # Calculate progress for the loading phase (75% of total progress)
-        load_progress = int(75 * (index + 1) / len(pdf_files))
-        await websocket.send_json({
-            "progress": load_progress,
-            "message": 'Loading files into RAM',
-            "complete": False
-        })
+    # Using ProcessPoolExecutor to handle the multiprocessing
+    with ProcessPoolExecutor() as executor:
+        # Process the files, results will be in the order they were started
+        results = list(executor.map(load_pdf, pdf_files))
+        
+        # Filter out None results (failed loads)
+        documents = [doc for doc in results if doc is not None]
+
+    await websocket.send_json({
+        "message": "Completed Loading PDFs into RAM.",
+        "progress": 75,
+        "complete": False
+    })
 
     async def async_on_progress(fraction):
         # Calculate progress for the insertion phase (remaining 25% of total progress)
