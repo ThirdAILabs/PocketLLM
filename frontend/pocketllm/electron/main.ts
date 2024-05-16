@@ -136,7 +136,7 @@ let tray = null
 function createTray() {
   tray = new Tray('/Users/yecao/Downloads/3ai/pllm-dev/pocketllm/frontend/pocketllm/src/assets/pllmTemplate.png')
   const contextMenu = Menu.buildFromTemplate([
-      { label: 'Show App', click:  () => {
+      { label: 'Show App (Cmd+E)', click:  () => {
           win?.show()
           win?.focus()
       }},
@@ -156,7 +156,7 @@ function createWindow() {
   win = new BrowserWindow({
     frame: false,
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
-    width: 1250, // default width
+    width: 1300, // default width
     height: 900, // default height
     // fullscreen: true,
     // alwaysOnTop: true,
@@ -568,6 +568,12 @@ function createWindow() {
     shell.openExternal(url);
   })
 
+  // Handle IPC message from the renderer
+  ipcMain.removeAllListeners('mouse-entered')
+  ipcMain.on('mouse-entered', (_, arg) => {
+    console.log('IPC message received in Main:', arg); // Log the message received
+  })
+    
   ipcMain.removeHandler('show-save-dialog')
   ipcMain.handle('show-save-dialog', async (_) => {
     const result = await dialog.showSaveDialog(win!, {

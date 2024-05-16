@@ -18,6 +18,10 @@ import 'react-pdf/dist/esm/Page/TextLayer.css'; // Import TextLayer CSS
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
+import righArrow from './assets/righArrow.png'
+import enterKey from './assets/enterKeyboard.png'
+
+
 interface LoadSuccessParams {
   numPages: number;
 }
@@ -69,13 +73,11 @@ function App() {
   const [_, setIsFeatureUsable] = useState(true)
 
   // Track if backend has started
-  // const [isBackendStarted, setIsBackendStarted] = useState<boolean>(false)
-  const [isBackendStarted, setIsBackendStarted] = useState<boolean>(true)
+  const [isBackendStarted, setIsBackendStarted] = useState<boolean>(false)
 
   // Global workspace
   const [globalSearchStr, setGlobalSearchStr] = useState('') // Global workspace search string
-  // const [globalWorkspaceReady, setGlobalWorkspaceReady] = useState(false) // Status of global workspace
-  const [globalWorkspaceReady, setGlobalWorkspaceReady] = useState(true) // Status of global workspace
+  const [globalWorkspaceReady, setGlobalWorkspaceReady] = useState(false) // Status of global workspace
   const [globalSearchResults, setGlobalSearchResults] = useState<SearchResult[] | null>(null)
   const [, setStartGlobalProgress] = useState(false)
   const [globalIndexProgress, setGlobalIndexProgress] = useState(0)
@@ -524,6 +526,7 @@ function App() {
               <div className='progress-intro-text'>
                 <p>Please wait, this process usually takes a few minutes</p>
                 <p>Privacy guaranteed: All data stays completely offline</p>
+                <p>Command+E to summon the app</p>
               </div>
               <div style={{display: 'flex', alignItems: "center"}}>
                 <CircularWithValueLabel progress={globalIndexProgress}/>
@@ -531,7 +534,7 @@ function App() {
               </div>
             </div>
           :
-          <div style={{display: "flex", width: "100%", alignItems: "start"}}>
+          <div style={{display: "flex", width: "100%", alignItems: "start", justifyContent: 'center'}}>
             <div className='search-res-frame'>
               <input  placeholder='Search' 
                           className='search-bar'
@@ -565,11 +568,14 @@ function App() {
                                           displayPDF
                                           ?
                                           <div className='enter-reminder'>
-                                            <div style={{marginRight: "5px"}}>Press Enter</div>
-                                            <i className="bi bi-box-arrow-up-right"></i>
+                                            <div style={{marginRight: "5px", color:'grey', display: 'flex', alignItems: 'end'}}>
+                                                <div style={{paddingRight: '3px'}}>Open File</div><img src={enterKey} style={{width:'15px', opacity: '0.8'}}/>
+                                            </div>
                                           </div>
                                           :
-                                          <div style={{marginRight: "5px"}}><i className="bi bi-arrow-right"></i></div>
+                                          <div style={{marginRight: "5px", color:'grey', display: 'flex', alignItems: 'end'}}>
+                                            <div style={{paddingRight: '3px'}}>Preview</div> <img src={righArrow} style={{width:'30px', opacity: '0.8'}}/>
+                                          </div>
                                         }
                                       </div>
                                       :
@@ -592,7 +598,12 @@ function App() {
             </div>
               {
                 displayPDF && pageLow && pageHigh &&
-                <div ref={containerRef} style={{ height: '80vh', width: '100%', overflow: 'auto', marginLeft: "20px"}}>
+                <div id="forward" ref={containerRef} style={{ height: '80vh', width: '100%', overflow: 'auto', marginLeft: "20px"}}
+                  onMouseEnter={()=>{
+                    //send an ipc message and get it printed out on Main
+                    window.electron.send('mouse-entered', 'Mouse entered the designated area')
+                  }}
+                >
                   {pdfData && (
                       <Document
                           file={pdfData}
