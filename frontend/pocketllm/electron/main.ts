@@ -712,6 +712,10 @@ app.whenReady().then(async () => {
 
   autoUpdater.checkForUpdatesAndNotify() // initialize auto-updater after the main window has been created
 
+  if (process.platform === 'darwin') { // Ensure this is only called on macOS
+    app.dock.hide(); // Hides the dock icon for this app
+  }
+  
   autoUpdater.on('update-available', () => {
     console.log('Update available.')
     // win?.webContents.send('update-available') // send message to render process to notify users about an available update.
