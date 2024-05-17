@@ -27,7 +27,9 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11' # Specify Python version as v3.11
+        python-version: '3.11'
+      env:
+        RUNNER_TEMP: /Users/ksarangmath/Documents/git-action-runner/actions-runner/_work/_temp
 
     - name: Install Backend Dependencies
       run: pip install -r backend/requirements.txt
