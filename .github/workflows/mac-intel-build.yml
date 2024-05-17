@@ -13,9 +13,17 @@ jobs:
 
     - name: Create temporary keychain
       run: |
+        if security list-keychains | grep -q "temp.keychain"; then
+          echo "Deleting existing temp.keychain"
+          security delete-keychain temp.keychain
+        fi
+        echo "Creating new temp.keychain"
         security create-keychain -p "temp-keychain-password" temp.keychain
+        echo "Setting temp.keychain as default"
         security default-keychain -s temp.keychain
+        echo "Unlocking temp.keychain"
         security unlock-keychain -p "temp-keychain-password" temp.keychain
+        echo "Setting keychain settings"
         security set-keychain-settings -t 3600 -l temp.keychain
 
     - name: Import certificate to temporary keychain
