@@ -1,5 +1,5 @@
 // import { app, BrowserWindow, ipcMain, dialog, Menu, MenuItemConstructorOptions } from 'electron'
-import { app, BrowserWindow, ipcMain, dialog, powerMonitor } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, powerMonitor, Tray, Menu, globalShortcut } from 'electron'
 import path from 'node:path'
 import portfinder from 'portfinder'
 import { autoUpdater } from 'electron-updater'
@@ -131,19 +131,44 @@ console.log(`Usage Reset Date: ${usageData.resetDate.toISOString()}`)
 console.log(`Premium Plan End Date: ${usageData.premiumEndDate.toISOString()}`)
 
 
+let tray = null
 
+function createTray() {
+  tray = new Tray('/Users/yecao/Downloads/3ai/pllm-dev/pocketllm/frontend/pocketllm/src/assets/pllmTemplate.png')
+  const contextMenu = Menu.buildFromTemplate([
+      { label: 'Show App (Cmd+E)', click:  () => {
+          win?.show()
+          win?.focus()
+      }},
+      { label: 'Quit', click:  () => {
+          app.quit()
+      }}
+  ])
+  tray.setToolTip('PocketLLM')
+  tray.setContextMenu(contextMenu)
+
+  tray.on('click', () => {
+      win?.isVisible() ? win?.hide() : win?.show()
+  })
+}
 
 function createWindow() {
   win = new BrowserWindow({
     frame: false,
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
-    width: 1200, // default width
+    width: 1300, // default width
     height: 900, // default height
+    // fullscreen: true,
+    // alwaysOnTop: true,
+    transparent: true,
     webPreferences: {
+      // devTools: false, // uncomment this line in production / release
       preload: path.join(__dirname, 'preload.js'),
     },
     title: "PocketLLM"
   })
+
+  // win.setIgnoreMouseEvents(true);
 
   // During dev - console can be useful 
   // On production uncomment the following lines - disable user openning console using 'cmd + option +i'
@@ -543,6 +568,12 @@ function createWindow() {
     shell.openExternal(url);
   })
 
+  // Handle IPC message from the renderer
+  ipcMain.removeAllListeners('mouse-entered')
+  ipcMain.on('mouse-entered', (_, arg) => {
+    console.log('IPC message received in Main:', arg); // Log the message received
+  })
+    
   ipcMain.removeHandler('show-save-dialog')
   ipcMain.handle('show-save-dialog', async (_) => {
     const result = await dialog.showSaveDialog(win!, {
@@ -559,6 +590,29 @@ function createWindow() {
       return result.filePath
     } else {
       return null
+    }
+  })
+
+  // Handle IPC request to read a local PDF file
+  ipcMain.removeHandler('load-pdf')
+  ipcMain.handle('load-pdf', async (_, filePath) => {
+    try {
+        const data = fs.readFileSync(filePath);
+        return data.toString('base64'); // Return file data as base64 string
+    } catch (error) {
+        console.error('Error reading PDF file:', error);
+        throw error;
+    }
+  })
+
+  // Handle IPC request to open a PDF file with the default viewer
+  ipcMain.removeHandler('open-pdf')
+  ipcMain.handle('open-pdf', async (_, filePath) => {
+    try {
+        const { shell } = require('electron')
+        await shell.openPath(filePath)
+    } catch (error) {
+        console.error('Failed to open PDF file:', error)
     }
   })
 }
@@ -654,8 +708,14 @@ app.whenReady().then(async () => {
 
   createWindow() // create main application window
 
+  createTray()
+
   autoUpdater.checkForUpdatesAndNotify() // initialize auto-updater after the main window has been created
 
+  if (process.platform === 'darwin') { // Ensure this is only called on macOS
+    app.dock.hide(); // Hides the dock icon for this app
+  }
+  
   autoUpdater.on('update-available', () => {
     console.log('Update available.')
     // win?.webContents.send('update-available') // send message to render process to notify users about an available update.
@@ -683,5 +743,25 @@ app.whenReady().then(async () => {
     console.log('System has resumed from sleep');
     
     win?.webContents.send('power-restarted')
+  })
+
+  // Register a global shortcut for Cmd + E
+  globalShortcut.register('CmdOrCtrl+E', () => {
+    console.log('Cmd + E is pressed')
+
+    if (win) {
+        if (win.isVisible()) {
+            win.hide() // Hide the window if it is visible
+        } else {
+            win.show() // Show the window if it is not visible
+            win.focus() // Focus the window
+            win.webContents.send('focus-search-bar') // Emit event to focus search bar
+        }
+        win.webContents.send('global-shortcut', 'cmd-e') // Notify the renderer process that the shortcut was pressed
+    }
+  });
+
+  app.on('will-quit', () => {
+      globalShortcut.unregisterAll();
   })
 })
