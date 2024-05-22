@@ -11,18 +11,15 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Create temporary keychain
+    - name: Unlock existing keychain
       run: |
-        security create-keychain -p "temp-keychain-password" temp.keychain
-        security default-keychain -s temp.keychain
-        security unlock-keychain -p "temp-keychain-password" temp.keychain
-        security set-keychain-settings -t 3600 -l temp.keychain
+        security unlock-keychain -p "temp-keychain-password" "/Users/ksarangmath/Library/Keychains/login.keychain-db"
 
-    - name: Import certificate to temporary keychain
+    - name: Import certificate to existing keychain
       run: |
         echo "${{ secrets.CERTIFICATE_BASE64 }}" | base64 --decode > thirdai.p12
-        security import thirdai.p12 -k ~/Library/Keychains/temp.keychain -P ${{ secrets.CERTIFICATE_PASSWORD }} -T "/usr/bin/codesign"
-        security set-key-partition-list -S apple-tool:,apple: -s -k "temp-keychain-password" temp.keychain
+        security import thirdai.p12 -k "/Users/ksarangmath/Library/Keychains/login.keychain-db" -P ${{ secrets.CERTIFICATE_PASSWORD }} -T "/usr/bin/codesign"
+        security set-key-partition-list -S apple-tool:,apple: -s -k "temp-keychain-password" "/Users/ksarangmath/Library/Keychains/login.keychain-db"
 
     - name: Setup Python
       uses: actions/setup-python@v4
