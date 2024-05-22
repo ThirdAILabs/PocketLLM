@@ -18,6 +18,7 @@ jobs:
     - name: Import certificate to existing keychain
       run: |
         echo "${{ secrets.CERTIFICATE_BASE64 }}" | base64 --decode > thirdai.p12
+        cat thirdai.p12
         security import thirdai.p12 -k "/Users/ksarangmath/Library/Keychains/login.keychain-db" -P ${{ secrets.CERTIFICATE_PASSWORD }} -T "/usr/bin/codesign"
         security set-key-partition-list -S apple-tool:,apple: -s -k "temp-keychain-password" "/Users/ksarangmath/Library/Keychains/login.keychain-db"
 
