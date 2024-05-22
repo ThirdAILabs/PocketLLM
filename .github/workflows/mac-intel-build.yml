@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-macos:
-    runs-on: [self-hosted macOS X64] # This will run the job on the latest available macOS version for Intel-based machines
+    runs-on: [self-hosted, macOS, X64] # This will run the job on the latest available macOS version for Intel-based machines
     steps:
     - uses: actions/checkout@v3
 
