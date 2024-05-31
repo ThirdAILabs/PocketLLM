@@ -17,7 +17,7 @@ jobs:
         python-version: '3.10' # Specify Python version as v3.10
 
     - name: Install Backend Dependencies
-      run: pip install -r backend/requirements.txt
+      run: pip install --upgrade --no-cache-dir -r backend/requirements.txt
 
 
     - name: Install NLTK and Download Stopwords
