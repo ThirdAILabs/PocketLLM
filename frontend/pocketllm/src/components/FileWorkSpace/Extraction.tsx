@@ -7,6 +7,8 @@ import { usePort } from '../../contexts/PortContext'
 import { WorkSpaceMetadata } from '../../App'
 import useTelemetry from '../../hooks/useTelemetry'
 
+import YouTubeIcon from '@mui/icons-material/YouTube';
+
 interface ExtractionProps {
   searchResults: SearchResult[],
   curWorkSpaceID: string|null,
@@ -120,6 +122,7 @@ export default function Extraction({ searchResults, curWorkSpaceID, setWorkSpace
                           style={{ color: 'blue', cursor: 'pointer' }} 
                         >
                           {videoUrl}
+                          <YouTubeIcon style={{ color: '#FF0000' }} />
                         </a>
                       </>
                     )
