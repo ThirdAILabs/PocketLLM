@@ -87,38 +87,70 @@ export default function Extraction({ searchResults, curWorkSpaceID, setWorkSpace
   return (
     <div>
       {
-          searchResults.map((result, index) => (
-                <div key={index} className='extraction font-sm p-4 rounded-3 d-flex align-items-center mb-3'>
-                  <button className='btn btn-general p-1 px-2' onClick={() => handleUpvote(index)}>
-                    <i className={`bi fs-2 collect bi-hand-thumbs-up ${collectStates[index]}`}></i>
-                  </button>
-                  <div className="short-vertical-line ms-2 me-4"></div>
-                  <div>
-                    <div>{result.result_text}</div>
-                    <div className='font-x-sm mt-2 text-dark-emphasis'>
-                              <>
-                                {`View PDF: `}
-                                <a 
-                                  style={{ color: 'blue', cursor: 'pointer' }} 
-                                  onClick={() => openReferencePDF(index)}
-                                >
-                                  {result.result_source.split(/[/\\]/).pop()}
-                                </a>
-                                <Tooltip title="view PDF" placement='right'>
-                                  <i className="bi bi-box-arrow-in-up-right cursor-pointer font-sm text-primary ms-1" onClick={()=>openReferencePDF(index)}></i>
-                                </Tooltip>
-                              </>
-                      {
-                        result.page_low && result.page_high ?
-                        <>{` Pages: ${result.page_low} - ${result.page_high}`}</>
-                         :
-                        <></>
-                      }
-                    </div>
-                  </div>
+        searchResults.map((result, index) => {
+          // Check if the result text starts with "video_url:"
+          const isVideoResult = result.result_text.startsWith('video_url:');
+          let videoUrl = '';
+          let resultText = result.result_text;
+
+          if (isVideoResult) {
+            // Extract the video URL and the text
+            const parts = result.result_text.split('text:');
+            videoUrl = parts[0].replace('video_url:', '').trim();
+            resultText = parts[1].trim();
+          }
+
+          return (
+            <div key={index} className='extraction font-sm p-4 rounded-3 d-flex align-items-center mb-3'>
+              <button className='btn btn-general p-1 px-2' onClick={() => handleUpvote(index)}>
+                <i className={`bi fs-2 collect bi-hand-thumbs-up ${collectStates[index]}`}></i>
+              </button>
+              <div className="short-vertical-line ms-2 me-4"></div>
+              <div>
+                <div>{resultText}</div>
+                <div className='font-x-sm mt-2 text-dark-emphasis'>
+                  <>
+                    {isVideoResult ? (
+                      <>
+                        {`Video URL: `}
+                        <a 
+                          href={videoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: 'blue', cursor: 'pointer' }} 
+                        >
+                          {videoUrl}
+                        </a>
+                      </>
+                    )
+                    :
+                      <>
+                        {`View PDF: `}
+                        <a 
+                          style={{ color: 'blue', cursor: 'pointer' }} 
+                          onClick={() => openReferencePDF(index)}
+                        >
+                          {result.result_source.split(/[/\\]/).pop()}
+                        </a>
+                        <Tooltip title="view PDF" placement='right'>
+                          <i className="bi bi-box-arrow-in-up-right cursor-pointer font-sm text-primary ms-1" onClick={() => openReferencePDF(index)}></i>
+                        </Tooltip>
+                      </>
+                    }
+                  </>
+
+                  {
+                    result.page_low && result.page_high ?
+                    <>{` Pages: ${result.page_low} - ${result.page_high}`}</>
+                      :
+                    <></>
+                  }
                 </div>
-          ))
+              </div>
+            </div>
+          )
+        })
       }
     </div>
-  )
+  );
 }
