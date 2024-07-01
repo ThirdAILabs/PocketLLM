@@ -1,5 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import sys ; sys.setrecursionlimit(sys.getrecursionlimit() * 5)
+
 from PyInstaller.building.datastruct import Tree
 
 
@@ -8,7 +10,10 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=['tzdata', 'dask_expr', 'pyarrow._acero', 'pyarrow.dataset', 'pyarrow._json'],
+    hiddenimports=['tzdata', 'dask_expr', 'pyarrow._acero', 'pyarrow.dataset', 'pyarrow._json',
+        'scipy._lib.array_api_compat.numpy.fft',
+        'scipy.special._special_ufuncs'
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -18,7 +23,7 @@ a = Analysis(
 
 # Check this post: https://github.com/langchain-ai/langchain/issues/4547#issuecomment-1676403768
 # change to Langchain package location
-a.datas += Tree('/opt/homebrew/lib/python3.11/site-packages/langchain', prefix='langchain')
+a.datas += Tree('/Users/yecao/anaconda3/envs/pllm/lib/python3.11/site-packages/langchain', prefix='langchain')
 
 # change to Langchain community package location
 a.datas += Tree('/Users/yecao/anaconda3/envs/pllm/lib/python3.11/site-packages/langchain_community', prefix='langchain_community')
@@ -44,7 +49,7 @@ a.datas += [('license_12_15_2024.serialized', 'license_12_15_2024.serialized', '
 # a.datas += Tree('data', prefix='data')
 
 # Add trafilatura and trafilatura/settings.cfg
-a.datas += Tree('/opt/homebrew/lib/python3.11/site-packages/trafilatura', prefix='trafilatura')
+a.datas += Tree('/Users/yecao/anaconda3/envs/pllm/lib/python3.11/site-packages/trafilatura', prefix='trafilatura')
 
 pyz = PYZ(a.pure)
 

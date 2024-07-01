@@ -1,5 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import sys; sys.setrecursionlimit(sys.getrecursionlimit() * 5)
+
 from PyInstaller.building.datastruct import Tree
 
 
@@ -8,7 +10,10 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=['tzdata', 'dask_expr', 'pyarrow._acero', 'pyarrow.dataset', 'pyarrow._json'],
+    hiddenimports=['tzdata', 'dask_expr', 'pyarrow._acero', 'pyarrow.dataset', 'pyarrow._json',
+        'scipy._lib.array_api_compat.numpy.fft',
+        'scipy.special._special_ufuncs'
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

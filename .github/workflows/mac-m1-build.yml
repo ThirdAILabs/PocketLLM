@@ -7,30 +7,17 @@ on:
 
 jobs:
   build-macos:
-    runs-on: macos-latest-xlarge
+    runs-on: [self-hosted, macOS, ARM64]
     steps:
     - uses: actions/checkout@v3
-
-    - name: Create temporary keychain
-      run: |
-        security create-keychain -p "temp-keychain-password" temp.keychain
-        security default-keychain -s temp.keychain
-        security unlock-keychain -p "temp-keychain-password" temp.keychain
-        security set-keychain-settings -t 3600 -l temp.keychain
-
-    - name: Import certificate to temporary keychain
-      run: |
-        echo "${{ secrets.CERTIFICATE_BASE64 }}" | base64 --decode > thirdai.p12
-        security import thirdai.p12 -k ~/Library/Keychains/temp.keychain -P ${{ secrets.CERTIFICATE_PASSWORD }} -T "/usr/bin/codesign"
-        security set-key-partition-list -S apple-tool:,apple: -s -k "temp-keychain-password" temp.keychain
 
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11' # Specify Python version as v3.11
+        python-version: '3.10' # Specify Python version as v3.10
 
     - name: Install Backend Dependencies
-      run: pip install -r backend/requirements.txt
+      run: pip install --upgrade --no-cache-dir -r backend/requirements.txt
 
 
     - name: Install NLTK and Download Stopwords
