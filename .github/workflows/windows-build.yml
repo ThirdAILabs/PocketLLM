@@ -84,9 +84,9 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
-    - name: Debug - List files in dist directory
-      run: Get-ChildItem ./frontend/pocketllm/dist -Force | Format-Table
-      shell: pwsh
+    # - name: Debug - List files in dist directory
+    #   run: Get-ChildItem ./frontend/pocketllm/dist -Force | Format-Table
+    #   shell: pwsh
 
     - name: Prepare Artifacts for Upload
       run: |
