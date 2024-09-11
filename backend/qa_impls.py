@@ -60,7 +60,7 @@ class OpenAI(QA):
         )
 
     def answer(
-        self, question: str, context: str, on_error: Callable, model='gpt-3.5-turbo', prompt=None, **kwargs
+        self, question: str, context: str, on_error: Callable, model='gpt-4o-mini', prompt=None, **kwargs
     ) -> str:
         try:
             from openai import OpenAI
@@ -101,7 +101,7 @@ class OpenAI(QA):
             on_error("backend: Error in OpenAI Summarizer")
             raise error
 
-    async def stream_answer(self, question: str, context: str, websocket: WebSocket, on_error: Callable, model='gpt-3.5-turbo', prompt=None, **kwargs):
+    async def stream_answer(self, question: str, context: str, websocket: WebSocket, on_error: Callable, model='gpt-4o-mini', prompt=None, **kwargs):
         try:
             from openai import OpenAI
             

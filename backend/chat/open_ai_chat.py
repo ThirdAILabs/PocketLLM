@@ -12,7 +12,7 @@ class OpenAIChat(ChatInterface):
         chat_ref_file_path: str,
         openai_api_key: str,
         top_k: int = 5,
-        openai_model: str = "gpt-3.5-turbo",
+        openai_model: str = "gpt-4o-mini",
         temperature: float = 0.2,
         chat_prompt: str = "Answer the user's questions based on the below context:",
         query_reformulation_prompt: str = "Given the above conversation, generate a search query that would help retrieve relevant sources for responding to the last message.",

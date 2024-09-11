@@ -1044,7 +1044,7 @@ async def gmail_summarize(websocket: WebSocket):
                 context=email_content,
                 websocket=websocket,
                 on_error=reset_summarizers,
-                model="gpt-3.5-turbo-16k",
+                model="gpt-4o-mini",
             )
 
     except Exception as e:
@@ -1096,7 +1096,7 @@ async def gmail_reply(websocket: WebSocket):
                 context=email_content,
                 websocket=websocket,
                 on_error=reset_summarizers,
-                model="gpt-3.5-turbo-16k",
+                model="gpt-4o-mini",
             )
 
     except Exception as e:
