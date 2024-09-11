@@ -2,7 +2,7 @@
   "name": "pocketllm",
   "productName": "PocketLLM",
   "private": true,
-  "version": "2.3.2",
+  "version": "2.4.0",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
