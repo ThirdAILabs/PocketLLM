@@ -34,6 +34,7 @@ a.datas += Tree('LANGCHAIN_COMMUNITY_PATH', prefix='langchain_community')
 # nltk.download('stopwords')
 # Replace /Users/yecao/nltk_data/corpora/stopwords with your stopwords path
 a.datas += Tree('NLTK_STOPWORDS_PATH', prefix='nltk_data/corpora/stopwords')
+a.datas += Tree('NLTK_STOPWORDS_PATH', prefix='nltk_data/corpora/punkt_tab')
 
 # Gmail oAuth authentication for gmail account
 a.datas += [('client_secret_user_account.json', 'client_secret_user_account.json', 'DATA')]
