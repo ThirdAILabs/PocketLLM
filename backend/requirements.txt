@@ -1,4 +1,4 @@
-thirdai
+thirdai==0.9.5
 aiohttp
 aiosignal
 alembic
