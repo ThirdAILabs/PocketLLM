@@ -57,7 +57,8 @@
   },
   "build": {
     "extraResources": [
-      "./main"
+      "./main",
+      "THIRD_PARTY_NOTICES.txt"
     ],
     "mac": {
       "icon": "./thirdai_icon.icns"
