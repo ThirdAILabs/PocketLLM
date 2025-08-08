@@ -138,3 +138,19 @@ Follow the steps below to set up and run the project.
       Same as Mac
    3. Rename `/dist/PocketLLM Setup.exe` to `/dist/PocketLLM-Setup.exe` (replace all in-between space with hyphen)
    4. Submit to [link](https://www.microsoft.com/en-us/wdsi/filesubmission) fill out the form.
+
+## Third‑Party Licenses and Notices
+
+PocketLLM depends on many third‑party packages.  Most dependencies are MIT‑licensed, which do **not** require attribution.  However, several dependencies use copyleft or attribution‑preserving licenses that impose specific obligations.  This section summarises these licenses and the obligations they impose.  See the included `THIRD_PARTY_NOTICES.txt` for full license texts.
+
+- **Apache 2.0:** Many backend and frontend packages (including `requests`, `aiohttp`, `huggingface_hub`, `tokenizers`, `bcrypt`, `swagger-client` and `@tauri-apps/api`) are licensed under Apache 2.0.  This permissive license allows commercial use but requires that you include a copy of the license and any NOTICE files in your distribution:contentReference[oaicite:1]{index=1}.  You must also document any modifications to the original packages:contentReference[oaicite:2]{index=2}.
+
+- **BSD 3‑Clause:** Core scientific libraries (`numpy`, `pandas`, `scikit‑learn`, `shapely`) and some frontend packages (e.g. `protobufjs`) use the BSD 3‑Clause license.  Redistributions must retain the copyright notice, license conditions and disclaimer:contentReference[oaicite:3]{index=3}.
+
+- **LGPL v3:** The PostgreSQL driver `psycopg2-binary` is licensed under the GNU LGPL v3 with an OpenSSL exception.  You may link it to proprietary code, but any changes to the library itself must be released under the LGPL:contentReference[oaicite:4]{index=4}.
+
+- **AGPL v3:** `PyMuPDF` is licensed under the GNU Affero GPL v3.  If you make the application available over a network, you must provide the complete corresponding source code to users:contentReference[oaicite:5]{index=5}.  If you cannot meet the AGPL requirements, you need a commercial PyMuPDF license:contentReference[oaicite:6]{index=6}.
+
+- **GPL v3:** `PyQt6` is released under GPL v3 with a commercial option:contentReference[oaicite:7]{index=7}.  Using the GPL version requires your entire application to be released under GPL v3 and the source code to be made available.  If that is not acceptable, purchase a commercial PyQt6 license.
+
+- **Proprietary:** The `thirdai` library is proprietary.  According to its PyPI page, you need a valid license from ThirdAI to use it:contentReference[oaicite:8]{index=8}, and their documentation notes that you must supply a license file at runtime:contentReference[oaicite:9]{index=9}.  Do not redistribute ThirdAI binaries or code without permission.
